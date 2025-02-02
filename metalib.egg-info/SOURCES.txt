@@ -1,0 +1,12 @@
+setup.py
+metalib/__init__.py
+metalib/indicators.py
+metalib/metabacktester.py
+metalib/metaga.py
+metalib/metama.py
+metalib/metastrategy.py
+metalib/utils.py
+metalib.egg-info/PKG-INFO
+metalib.egg-info/SOURCES.txt
+metalib.egg-info/dependency_links.txt
+metalib.egg-info/top_level.txt
