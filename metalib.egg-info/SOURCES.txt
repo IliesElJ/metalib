@@ -1,8 +1,13 @@
+README.md
 setup.py
 metalib/__init__.py
+metalib/fastfinance.py
 metalib/indicators.py
+metalib/main.py
 metalib/metabacktester.py
+metalib/metado.py
 metalib/metaga.py
+metalib/metago.py
 metalib/metama.py
 metalib/metastrategy.py
 metalib/utils.py
