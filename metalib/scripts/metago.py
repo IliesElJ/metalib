@@ -176,7 +176,7 @@ class MetaGO(MetaStrategy):
         # Plot and save the decision tree
         plt.figure(figsize=(20, 10))
         plot_tree(tree_dummy, feature_names=X.columns, filled=True, rounded=True)
-        plt.savefig("decision_tree.png")
+        ## plt.savefig("decision_tree.png")
         plt.close()
 
         print(f"{self.tag}::: DecisionTree Model and first/second moments saved.")

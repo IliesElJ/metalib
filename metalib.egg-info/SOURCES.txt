@@ -1,16 +1,5 @@
 README.md
 setup.py
-metalib/__init__.py
-metalib/fastfinance.py
-metalib/indicators.py
-metalib/main.py
-metalib/metabacktester.py
-metalib/metado.py
-metalib/metaga.py
-metalib/metago.py
-metalib/metama.py
-metalib/metastrategy.py
-metalib/utils.py
 metalib.egg-info/PKG-INFO
 metalib.egg-info/SOURCES.txt
 metalib.egg-info/dependency_links.txt

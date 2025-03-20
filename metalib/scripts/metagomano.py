@@ -48,7 +48,7 @@ class MetaGO(MetaStrategy):
         mask_uptrend_below_yearly   = (uptrend > 0) & (close < true_open_yearly)
         mask_downtrend_above_yearly = (downtrend > 0) & (close > true_open_yearly)
 
-        close_last_4 = close.tail(4).head(3)  # Extract last 4 values, then take first 3
+        close_last_4 = close.tail(3).head(2)  # Extract last 3 values, then take first 2 candles
         close_positive_condition = np.all(close_last_4 > 0)
         close_negative_condition = np.all(close_last_4 < 0)
 
@@ -88,7 +88,7 @@ class MetaGO(MetaStrategy):
         
         # Ensure indicators is a DataFrame
         if isinstance(indicators, pd.DataFrame) and not indicators.empty:
-            file_path = f"./indicators/indicators_{self.symbols[0]}.xlsx"
+            file_path = f"../indicators/indicators_{self.symbols[0]}.xlsx"
             try:
                 indicators.to_excel(file_path, engine="openpyxl")
                 print(f"Indicators saved successfully at {file_path}")
@@ -117,7 +117,7 @@ class MetaGO(MetaStrategy):
         plt.ylabel('Price')
         plt.legend()
         plt.grid()
-        plt.savefig(f"./charts/trading_signals_{self.symbols[0]}.png")
+        plt.savefig(f"../charts/trading_signals_{self.symbols[0]}.png")
         plt.close()
         print("Trading signals chart saved as 'trading_signals.png'")
         

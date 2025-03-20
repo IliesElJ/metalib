@@ -27,7 +27,7 @@ def main():
     global metago_list
     metago_list = []
 
-    with open('metago_args.csv', mode='r') as file:
+    with open('../config/metago_args.csv', mode='r') as file:
         reader = csv.DictReader(file, delimiter=';')
         for row in reader:
             # convert parameter values to appropriate types
