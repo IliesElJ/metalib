@@ -2,8 +2,7 @@ from datetime import timedelta, datetime
 # from metagomano import MetaGO
 import os, sys
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
-from scripts.metagomano import MetaGO
+from metalib.metagomano import MetaGO
 
 import pytz
 import time
