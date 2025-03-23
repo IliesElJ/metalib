@@ -361,7 +361,8 @@ class MetaGO(MetaStrategy):
             mean_entry_price    = sum(pos.price_open * pos.volume for pos in filtered_positions) / total_volume
             num_positions       = len(filtered_positions)
         else:
-            mean_entry_price    = 0
+            tick_info = mt5.symbol_info_tick(self.symbols[0])
+            mean_entry_price = tick_info.last if tick_info.last else (tick_info.bid + tick_info.ask) / 2
             num_positions       = 0
 
         # Return the mean entry price and number of positions
