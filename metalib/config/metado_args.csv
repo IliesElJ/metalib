@@ -1,0 +1,9 @@
+symbol;timeframe;tag;active_hours;risk_factor
+EURUSD;mt5.TIMEFRAME_M1;metado_f1;None;0.3
+USDJPY;mt5.TIMEFRAME_M1;metado_f2;None;0.3
+GBPUSD;mt5.TIMEFRAME_M1;metado_f3;None;0.3
+USDCHF;mt5.TIMEFRAME_M1;metado_f4;None;0.3
+USDCAD;mt5.TIMEFRAME_M1;metado_f5;None;0.3
+AUDUSD;mt5.TIMEFRAME_M1;metado_f6;None;0.3
+NZDUSD;mt5.TIMEFRAME_M1;metado_f7;None;0.3
+AUDCHF;mt5.TIMEFRAME_M1;metado_f8;None;0.3
