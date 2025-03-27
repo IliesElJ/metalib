@@ -203,7 +203,6 @@ class MetaGA(MetaStrategy):
         print(f"{self.tag}::: XGBoost Model and first/second moments saved.")
 
     def position_sizing(self, percentage, symbol, account_balance=None):
-
         # Retrieve account balance if not provided
         if account_balance is None:
             account_info = mt5.account_info()
@@ -224,11 +223,12 @@ class MetaGA(MetaStrategy):
             return
 
         # Calculate the number of lots
-        contract_size = symbol_info.trade_contract_size  # Use trade_contract_size instead of lot_size
-        price = mt5.symbol_info_tick(symbol).ask
-        lots = position_size / (contract_size * price)
+        contract_size   = symbol_info.trade_contract_size  # Use trade_contract_size instead of lot_size
+        price           = mt5.symbol_info_tick(symbol).ask
+        lots            = position_size / (contract_size * price)
 
-        return round(self.risk_factor * 5 * lots, 2)
+        # Ensure it meets the broker's minimum lot size requirement
+        return max(round(self.risk_factor * 5 * lots, 2), symbol_info.volume_min)
 
     def retrieve_indicators(self, ohlc_df):
 
