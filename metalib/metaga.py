@@ -4,8 +4,8 @@ import MetaTrader5 as mt5
 import pytz as pytz
 import xgboost as xgb
 
-from indicators import *
-from metastrategy import MetaStrategy
+from metalib.indicators import *
+from metalib.metastrategy import MetaStrategy
 
 
 class MetaGA(MetaStrategy):
@@ -21,7 +21,7 @@ class MetaGA(MetaStrategy):
         self.risk_factor = risk_factor
         self.telegram = True
         self.logger = logging.getLogger(__name__)
-        logging.basicConfig(filename=f'{self.tag}.log', encoding='utf-8', level=logging.DEBUG)
+        logging.basicConfig(filename=f'../logs/{self.tag}.log', encoding='utf-8', level=logging.DEBUG)
 
     def signals(self):
 

@@ -29,7 +29,7 @@ class MetaDO(MetaStrategy):
         self.telegram           = True
         self.vol                = None
         self.logger             = logging.getLogger(__name__)
-        logging.basicConfig(filename=f'{self.tag}.log', encoding='utf-8', level=logging.DEBUG)
+        logging.basicConfig(filename=f'../logs/{self.tag}.log', encoding='utf-8', level=logging.DEBUG)
 
     def signals(self):
         ohlc        = self.data[self.symbols[0]]
