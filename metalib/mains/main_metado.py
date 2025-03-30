@@ -36,7 +36,8 @@ def main():
             tag = row['tag']
             print(row['active_hours'])
             ah = eval(row['active_hours'])
-            rf = eval(row['risk_factor'])  # Evaluate the string representation to get the actual value
+            rf = eval(row['risk_factor'])
+            tm = eval(row['mode'])# Evaluate the string representation to get the actual value
 
             # initialize metago objects with the retrieved parameters
             metado = MetaDO(
@@ -44,7 +45,9 @@ def main():
                 timeframe=timeframe,
                 tag=tag,
                 active_hours=ah,
-                risk_factor=rf)
+                risk_factor=rf,
+                mode=tm,
+            )
 
             metado_list.append(metado)
 

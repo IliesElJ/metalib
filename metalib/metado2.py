@@ -5,6 +5,8 @@ import vectorbt as vbt
 
 from metalib.indicators import *
 from metalib.metastrategy import MetaStrategy
+from metalib.notebooks.trend_follow import crossed_above_upper
+
 
 class MetaDO(MetaStrategy):
     def __init__(self,
@@ -14,18 +16,14 @@ class MetaDO(MetaStrategy):
                  active_hours,
                  risk_factor=1,
                  lookahead=24,
-                 hist_length=10000,
                  ):
         super().__init__(symbols, timeframe, tag, active_hours)
         self.indicators         = None
         self.quantile           = None
-        self.model              = None
-        self.indicators_std     = None
-        self.indicators_mean    = None
         self.state              = None
+        self.mode               = "mean_rev"
         self.risk_factor        = risk_factor
         self.lookahead          = lookahead
-        self.hist_length        = hist_length
         self.telegram           = True
         self.vol                = None
         self.logger             = logging.getLogger(__name__)
@@ -39,7 +37,6 @@ class MetaDO(MetaStrategy):
 
         donchian = ohlc.resample('15min', label="right", closed="right").agg(
             {'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last'})
-        donchian = donchian.shift()
 
         upper_donchian = donchian.high.rolling(8).max()
         lower_donchian = donchian.low.rolling(8).min()
@@ -52,8 +49,15 @@ class MetaDO(MetaStrategy):
         crossed_above_upper = close.vbt.crossed_above(resampled_channels.upper)
         crossed_below_lower = close.vbt.crossed_below(resampled_channels.lower)
 
-        long_signal = crossed_below_lower.iloc[-1]
-        short_signal = crossed_above_upper.iloc[-1]
+        if self.mode == "mean_rev":
+            long_signal     = crossed_below_lower.iloc[-1]
+            short_signal    = crossed_above_upper.iloc[-1]
+        elif self.mode == "trend_follow":
+            long_signal     = crossed_above_upper.iloc[-1]
+            short_signal    = crossed_below_lower.iloc[-1]
+        else:
+            print("Invalid mode: %s" % self.mode)
+            raise NotImplementedError
 
         if long_signal and not self.are_positions_with_tag_open(position_type="buy"):
             self.state = 1
