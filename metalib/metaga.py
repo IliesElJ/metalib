@@ -38,14 +38,15 @@ class MetaGA(MetaStrategy):
 
         y_hat = self.model.predict_proba(indicators)[:, 1]
         vote = np.sum(dummy_extremes_indicators.iloc[-1])
+        mean_entry_price, num_positions = self.get_positions_info()
 
         if y_hat[-1] < 0.3 and self.are_positions_with_tag_open(position_type="buy"):
             self.state = -2
         elif y_hat[-1] > 0.7 and self.are_positions_with_tag_open(position_type="sell"):
             self.state = -2
-        elif vote >= 18 and y_hat[-1] > 0.95:
+        elif vote >= 18 and y_hat[-1] > 0.95 and num_positions < 5:
             self.state = 1
-        elif vote >= 18 and y_hat[-1] < 0.1:
+        elif vote >= 18 and y_hat[-1] < 0.1 and num_positions < 5:
             if ohlc.iloc[-1]['close'] < self.quantile:
                 self.state = -1
             else:
