@@ -38,7 +38,7 @@ class MetaGA(MetaStrategy):
 
         y_hat = self.model.predict_proba(indicators)[:, 1]
         vote = np.sum(dummy_extremes_indicators.iloc[-1])
-        mean_entry_price, num_positions = self.get_positions_info()
+        mean_entry_price, num_positionxs = self.get_positions_info()
 
         if y_hat[-1] < 0.3 and self.are_positions_with_tag_open(position_type="buy"):
             self.state = -2

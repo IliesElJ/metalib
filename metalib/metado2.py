@@ -5,8 +5,6 @@ import vectorbt as vbt
 
 from metalib.indicators import *
 from metalib.metastrategy import MetaStrategy
-from metalib.notebooks.trend_follow import crossed_above_upper
-
 
 class MetaDO(MetaStrategy):
     def __init__(self,
