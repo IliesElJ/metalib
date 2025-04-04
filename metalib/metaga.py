@@ -10,17 +10,36 @@ from metalib.metastrategy import MetaStrategy
 
 class MetaGA(MetaStrategy):
 
-    def __init__(self, symbols, timeframe, tag, active_hours, risk_factor=1):
+    def __init__(   self, 
+                    symbols, 
+                    timeframe, 
+                    tag, 
+                    active_hours, 
+                    low_length=60, 
+                    mid_length=8*60,
+                    high_length=24*60,
+                    prob_bound=0.05,
+                    risk_factor=1, 
+                ):
         super().__init__(symbols, timeframe, tag, active_hours)
-        self.indicators = None
-        self.quantile = None
-        self.model = None
+        
+        if not (low_length < mid_length < high_length):
+            raise ValueError("Length parameters should be ordered.")
+        
+        self.indicators     = None
+        self.quantile       = None
+        self.model          = None
         self.indicators_std = None
-        self.indicators_mean = None
-        self.state = None
-        self.risk_factor = risk_factor
-        self.telegram = True
-        self.logger = logging.getLogger(__name__)
+        self.indicators_mean= None
+        self.low_length     = low_length 
+        self.mid_length     = mid_length
+        self.high_length    = high_length
+        self.prob_bound     = prob_bound
+        self.state          = None
+        self.risk_factor    = risk_factor
+        self.telegram       = True
+        self.logger         = logging.getLogger(__name__)
+        
         logging.basicConfig(filename=f'../logs/{self.tag}.log', encoding='utf-8', level=logging.DEBUG)
 
     def signals(self):
@@ -44,9 +63,9 @@ class MetaGA(MetaStrategy):
             self.state = -2
         elif y_hat[-1] > 0.7 and self.are_positions_with_tag_open(position_type="sell"):
             self.state = -2
-        elif vote >= 18 and y_hat[-1] > 0.95 and num_positions < 5:
+        elif vote >= 18 and y_hat[-1] > 1 - self.prob_bound and num_positions < 5:
             self.state = 1
-        elif vote >= 18 and y_hat[-1] < 0.1 and num_positions < 5:
+        elif vote >= 18 and y_hat[-1] < self.prob_bound and num_positions < 5:
             if ohlc.iloc[-1]['close'] < self.quantile:
                 self.state = -1
             else:
@@ -98,13 +117,13 @@ class MetaGA(MetaStrategy):
 
         # Retrieve OHLC data for volatility calculation
         ohlc = self.data[symbol]
-        if ohlc is None or len(ohlc) < 24 * 60:
+        if ohlc is None or len(ohlc) < 24 * self.mid_length:
             print(f"Not enough data to compute daily volatility for {symbol}.")
             return
 
         # Calculate daily volatility (standard deviation of daily returns)
         returns = np.log(ohlc['close'] / ohlc['close'].shift(1)).dropna()
-        daily_vol = returns.rolling(window=24 * 60).std().iloc[-1]
+        daily_vol = returns.rolling(window=24 * self.mid_length).std().iloc[-1]
 
         if np.isnan(daily_vol) or daily_vol == 0:
             print(f"Invalid daily volatility computed for {symbol}.")
@@ -154,7 +173,7 @@ class MetaGA(MetaStrategy):
         utc = pytz.timezone('UTC')
         # Get the current time in UTC
         end_time = datetime.now(utc)
-        start_time = end_time - timedelta(days=60)
+        start_time = end_time - timedelta(days=self.mid_length)
         # Set the time components to 0 (midnight) and maintain the timezone
         end_time = end_time.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(utc)
         start_time = start_time.astimezone(utc)
@@ -166,14 +185,14 @@ class MetaGA(MetaStrategy):
 
         # Compute rolling next returns series
         T = returns.shape[0]
-        next_five_returns = [np.sum(returns[i + 1: i + 601]) for i in range(T)]
+        next_five_returns = [np.sum(returns[i + 1: i + day_length+1]) for i in range(T)]
         next_five_returns = pd.Series(next_five_returns, index=returns.index)
 
         # Indicators
         indicators = self.retrieve_indicators(ohlc_df=data)
 
         # Retrieve history
-        hist_indicators = indicators[:35000]
+        hist_indicators = indicators[:24*day_length]
         hist_next_five_returns = next_five_returns.loc[hist_indicators.index]
         indicators = indicators.loc[indicators.index.difference(hist_indicators.index)]
         next_five_returns = next_five_returns.loc[indicators.index]
@@ -236,53 +255,57 @@ class MetaGA(MetaStrategy):
         ohlc = ohlc_df.copy()
         closes = ohlc.loc[:, 'close']
         returns = closes.apply(np.log).diff().dropna()
+        
+        low_length = self.low_length
+        mid_length = self.mid_length
+        high_length = self.high_length
 
         # Log-Returns EMAs
         emas = ewma_sets(returns.values)
         emas = pd.DataFrame(emas, index=returns.index)
 
         # Rolling Realized Volatilities
-        vols_rolling_session = returns.rolling(8 * 60).apply(lambda x: np.sum(np.square(x.values))).rename(
+        vols_rolling_session = returns.rolling(mid_length).apply(lambda x: np.sum(np.square(x.values))).rename(
             "vol_session")
-        vols_rolling_hour = returns.rolling(60).apply(lambda x: np.sum(np.square(x.values))).rename("vol_hour")
-        vols_rolling_daily = returns.rolling(24 * 60).apply(lambda x: np.sum(np.square(x.values))).rename("vol_daily")
+        vols_rolling_hour = returns.rolling(mid_length).apply(lambda x: np.sum(np.square(x.values))).rename("vol_hour")
+        vols_rolling_daily = returns.rolling(high_length).apply(lambda x: np.sum(np.square(x.values))).rename("vol_daily")
         vols_rollings = pd.concat([vols_rolling_hour, vols_rolling_session, vols_rolling_daily], axis=1)
         print(f"{self.tag}::: Computed rolling volatilies")
 
         # Rolling Skewness
-        skewness_rolling_session = returns.rolling(8 * 60).apply(skewness_nb, engine='numba', raw=True).rename(
+        skewness_rolling_session = returns.rolling(mid_length).apply(skewness_nb, engine='numba', raw=True).rename(
             "skew_session")
-        skewness_rolling_hour = returns.rolling(60).apply(skewness_nb, engine='numba', raw=True).rename("skew_hour")
-        skewness_rolling_daily = returns.rolling(24 * 60).apply(skewness_nb, engine='numba', raw=True).rename(
+        skewness_rolling_hour = returns.rolling(mid_length).apply(skewness_nb, engine='numba', raw=True).rename("skew_hour")
+        skewness_rolling_daily = returns.rolling(high_length).apply(skewness_nb, engine='numba', raw=True).rename(
             "skew_daily")
         skewness_rollings = pd.concat([skewness_rolling_hour, skewness_rolling_session, skewness_rolling_daily], axis=1)
         print(f"{self.tag}::: Computed rolling skewness")
 
         # Rolling Kurtosis
-        kurtosis_rolling_session = returns.rolling(8 * 60).apply(kurtosis_nb, engine='numba', raw=True).rename(
+        kurtosis_rolling_session = returns.rolling(mid_length).apply(kurtosis_nb, engine='numba', raw=True).rename(
             "kurt_session")
-        kurtosis_rolling_hour = returns.rolling(60).apply(kurtosis_nb, engine='numba', raw=True).rename("kurt_hour")
-        kurtosis_rolling_daily = returns.rolling(24 * 60).apply(kurtosis_nb, engine='numba', raw=True).rename(
+        kurtosis_rolling_hour = returns.rolling(mid_length).apply(kurtosis_nb, engine='numba', raw=True).rename("kurt_hour")
+        kurtosis_rolling_daily = returns.rolling(high_length).apply(kurtosis_nb, engine='numba', raw=True).rename(
             "kurt_daily")
         kurtosis_rollings = pd.concat([kurtosis_rolling_hour, kurtosis_rolling_session, kurtosis_rolling_daily], axis=1)
         print(f"{self.tag}::: Computed rolling kurtosis")
 
         # Rolling Number of Mean Crossings
-        crossings_rolling_session = closes.rolling(8 * 60).apply(retrieve_number_of_crossings_nb, engine='numba',
+        crossings_rolling_session = closes.rolling(mid_length).apply(retrieve_number_of_crossings_nb, engine='numba',
                                                                  raw=True).rename("crossings_session")
-        crossings_rolling_hour = closes.rolling(60).apply(retrieve_number_of_crossings_nb, engine='numba',
+        crossings_rolling_hour = closes.rolling(mid_length).apply(retrieve_number_of_crossings_nb, engine='numba',
                                                           raw=True).rename("crossings_hour")
-        crossings_rolling_daily = closes.rolling(24 * 60).apply(retrieve_number_of_crossings_nb, engine='numba',
+        crossings_rolling_daily = closes.rolling(high_length).apply(retrieve_number_of_crossings_nb, engine='numba',
                                                                 raw=True).rename("crossings_daily")
         crossings_rollings = pd.concat([crossings_rolling_hour, crossings_rolling_session, crossings_rolling_daily],
                                        axis=1)
         print(f"{self.tag}::: Computed rolling mean crossings")
 
         # Trend T-statistic
-        tval_rolling_session = closes.rolling(8 * 60).apply(ols_tval_nb, engine='numba', raw=True).rename(
+        tval_rolling_session = closes.rolling(mid_length).apply(ols_tval_nb, engine='numba', raw=True).rename(
             "tval_session")
-        tval_rolling_hour = closes.rolling(60).apply(ols_tval_nb, engine='numba', raw=True).rename("tval_hour")
-        tval_rolling_daily = closes.rolling(24 * 60).apply(ols_tval_nb, engine='numba', raw=True).rename("tval_daily")
+        tval_rolling_hour = closes.rolling(mid_length).apply(ols_tval_nb, engine='numba', raw=True).rename("tval_hour")
+        tval_rolling_daily = closes.rolling(high_length).apply(ols_tval_nb, engine='numba', raw=True).rename("tval_daily")
         tval_rollings = pd.concat([tval_rolling_hour, tval_rolling_session, tval_rolling_daily], axis=1)
         print(f"{self.tag}::: Computed rolling OLS t-values")
 

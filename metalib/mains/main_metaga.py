@@ -37,7 +37,11 @@ def main():
             tag = row['tag']
             print(row['active_hours'])
             ah = eval(row['active_hours'])
-            rf = eval(row['risk_factor'])  # Evaluate the string representation to get the actual value
+            rf = eval(row['risk_factor']) 
+            ll = eval(row['low_length']) 
+            ml = eval(row['mid_length']) 
+            hl = eval(row['high_length'])
+            pb = eval(row['prob_bound'])  # Evaluate the string representation to get the actual value
 
             # initialize metaga objects with the retrieved parameters
             metaga = MetaGA(
@@ -45,6 +49,10 @@ def main():
                 timeframe=timeframe,
                 tag=tag,
                 active_hours=ah,
+                low_length=ll, 
+                mid_length=ml,
+                high_length=hl,
+                prob_bound=pb,
                 risk_factor=rf)
 
             metaga_list.append(metaga)
