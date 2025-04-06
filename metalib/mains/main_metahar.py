@@ -13,14 +13,22 @@ warnings.filterwarnings("ignore")
 
 def run_strategies():
     end_time = datetime.now(pytz.utc) + timedelta(hours=3)
-    start_time = end_time - timedelta(days=40)
+    start_time = end_time - timedelta(days=10)
     for metahar in metahar_list:
-        metahar.run(start_time, end_time)
+        try:
+            metahar.run(start_time, end_time)
+        except Exception as e:
+            logging.error(f"An error occurred while running the strategy {metahar.tag}: {e}")
+            continue
 
 
 def fit_strategies():
     for metahar in metahar_list:
-        metahar.fit()
+        try:
+            metahar.fit()
+        except Exception as e:
+            logging.error(f"An error occurred while fitting the strategy {metahar.tag}: {e}")
+            continue
 
 
 def main():
@@ -55,22 +63,30 @@ def main():
 
     # Connect to MetaTrader 5 terminal and fit strategies
     for metahar in metahar_list:
-        metahar.connect()
-        metahar.fit()
+        try:
+            metahar.connect()
+            metahar.fit()
+        except Exception as e:
+            logging.error(f"An error occurred while initializing the strategy {metahar.tag}: {e}")
+            continue
 
     # Schedule the fit method to run once every day
     schedule.every().day.do(fit_strategies)
 
-    # Schedule the strategy runs to execute every hour
-    schedule.every().minute.at(":00").do(run_strategies)
-    # schedule.every().minute.at(":00").do(run_strategies)
+    # Schedule the strategy runs to execute every 15 minutes at :15, :30, :45, :00
+    schedule.every().hour.at(":00").do(run_strategies)
+    schedule.every().hour.at(":15").do(run_strategies)
+    schedule.every().hour.at(":30").do(run_strategies)
+    schedule.every().hour.at(":45").do(run_strategies)
 
     # Run the scheduling loop
     while True:
-        schedule.run_pending()
+        try:
+            schedule.run_pending()
+        except Exception as e:
+            logging.error(f"An error occurred in the scheduling loop: {e}")
         time.sleep(1)
 
 
 if __name__ == "__main__":
     main()
-
