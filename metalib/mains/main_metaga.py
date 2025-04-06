@@ -23,7 +23,6 @@ def fit_strategies():
     for metaga in metaga_list:
         metaga.fit()
 
-
 def main():
     global metaga_list
     metaga_list = []

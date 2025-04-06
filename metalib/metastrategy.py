@@ -56,7 +56,6 @@ class MetaStrategy(ABC):
         if not mt5.initialize():
             print("Initialize() failed, error code =", mt5.last_error())
             mt5.shutdown()
-            
 
     def loadData(self, start_date=None, end_date=None):
         """
