@@ -77,7 +77,7 @@ class MetaHAR(MetaStrategy):
         self.state = 0
         self.signals_data = indicators.iloc[[-1]]
         self.predicted_vol_diff = predictions
-        self.realized_previous_diff = indicators[f"short_scale_std_{self.predicted_symbol}"].diff().iloc[:1]
+        self.realized_previous_diff = indicators[f"short_scale_std_{self.predicted_symbol}"].diff().dropna().iloc[:1]
         self.timestamp = indicators.index[-1]
 
     def _process_predictions(self) -> None:
