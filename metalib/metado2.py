@@ -12,6 +12,7 @@ class MetaDO(MetaStrategy):
                  timeframe,
                  tag,
                  active_hours,
+                 mode="mean_rev",
                  risk_factor=1,
                  lookahead=24,
                  ):
@@ -19,7 +20,7 @@ class MetaDO(MetaStrategy):
         self.indicators         = None
         self.quantile           = None
         self.state              = None
-        self.mode               = "mean_rev"
+        self.mode               = mode
         self.risk_factor        = risk_factor
         self.lookahead          = lookahead
         self.telegram           = True
