@@ -1,1 +1,6 @@
 gh.exe
+*.nbc
+*.nbi
+*.pyc
+*.pyc
+metalib/__pycache__/metagomano.cpython-313.pyc
