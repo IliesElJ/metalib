@@ -316,3 +316,30 @@ class MetaStrategy(ABC):
         response = requests.get(send_text)
 
         return response.json()
+
+    def get_positions_info(self):
+        # Ensure connected to MT5
+        if not mt5.initialize():
+            print("initialize() failed, error code =", mt5.last_error())
+            return None, None
+
+        # Retrieve all positions
+        positions = mt5.positions_get()
+        if positions is None:
+            print("No positions found, error code =", mt5.last_error())
+            return None, None
+
+        # Filter positions based on the comment
+        filtered_positions = [pos for pos in positions if pos.comment == self.tag]
+
+        # Calculate mean entry price and count positions
+        if filtered_positions:
+            total_volume        = sum(pos.volume for pos in filtered_positions)
+            mean_entry_price    = sum(pos.price_open * pos.volume for pos in filtered_positions) / total_volume
+            num_positions       = len(filtered_positions)
+        else:
+            mean_entry_price    = 0
+            num_positions       = 0
+
+        # Return the mean entry price and number of positions
+        return mean_entry_price, num_positions

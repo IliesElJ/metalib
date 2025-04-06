@@ -563,3 +563,43 @@ def get_previous_levels(static_series):
 
     return prev_level, second_prev_level, third_prev_level, fourth_prev_level
 
+@njit(fastmath=True)
+def log_var(price_arr):
+    ret = np.log(price_arr[1:]) - np.log(price_arr[-1:])
+    return np.var(ret)
+
+from sklearn.linear_model import LassoCV
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+
+def build_lasso_cv(X, y, normalize=True, fit_intercept=True, alphas=None, cv=5):
+    """
+    Builds and fits a Lasso model using cross-validation to choose the best alpha.
+
+    Parameters:
+        X (pd.DataFrame or np.ndarray): Feature matrix.
+        y (pd.Series or np.ndarray): Target variable.
+        normalize (bool): Whether to standardize features before fitting.
+        fit_intercept (bool): Whether to fit the intercept in Lasso.
+        alphas (array-like or None): List of alphas to test. Defaults to logspace(-4, 2, 100).
+        cv (int): Number of cross-validation folds.
+
+    Returns:
+        model (Pipeline or LassoCV): Fitted model with best alpha from CV.
+    """
+    if alphas is None:
+        alphas = np.logspace(-10, 10, 1000)
+
+    lasso_cv = LassoCV(alphas=alphas, cv=cv, fit_intercept=fit_intercept)
+
+    if normalize:
+        model = make_pipeline(StandardScaler(), lasso_cv)
+    else:
+        model = lasso_cv
+
+    model.fit(X, y)
+
+    best_alpha = lasso_cv.alpha_ if not normalize else model.named_steps['lassocv'].alpha_
+    print(f"Selected alpha via {cv}-fold CV: {best_alpha:.5f}")
+
+    return model, best_alpha
