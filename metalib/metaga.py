@@ -173,7 +173,7 @@ class MetaGA(MetaStrategy):
         utc = pytz.timezone('UTC')
         # Get the current time in UTC
         end_time = datetime.now(utc)
-        start_time = end_time - timedelta(days=self.mid_length)
+        start_time = end_time - timedelta(days=66)
         # Set the time components to 0 (midnight) and maintain the timezone
         end_time = end_time.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(utc)
         start_time = start_time.astimezone(utc)
@@ -185,14 +185,14 @@ class MetaGA(MetaStrategy):
 
         # Compute rolling next returns series
         T = returns.shape[0]
-        next_five_returns = [np.sum(returns[i + 1: i + day_length+1]) for i in range(T)]
+        next_five_returns = [np.sum(returns[i + 1: i + self.mid_length+1]) for i in range(T)]
         next_five_returns = pd.Series(next_five_returns, index=returns.index)
 
         # Indicators
         indicators = self.retrieve_indicators(ohlc_df=data)
 
         # Retrieve history
-        hist_indicators = indicators[:24*day_length]
+        hist_indicators = indicators[:24*self.mid_length]
         hist_next_five_returns = next_five_returns.loc[hist_indicators.index]
         indicators = indicators.loc[indicators.index.difference(hist_indicators.index)]
         next_five_returns = next_five_returns.loc[indicators.index]

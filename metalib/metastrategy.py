@@ -45,10 +45,6 @@ class MetaStrategy(ABC):
         self.short_only = short_only
         self.save_to_sql_db = save_to_sql_db
 
-        if self.save_to_sql_db:
-            self.engine_signal = create_engine(
-                f"postgresql+psycopg2://{username}:{password}@{host}:{port}/{database_signal}")
-
     def connect(self):
         """
         Establishes a connection to the MetaTrader 5 terminal.

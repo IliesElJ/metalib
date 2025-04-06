@@ -70,8 +70,8 @@ class MetaDO(MetaStrategy):
 
         print(f"{self.tag}::: Donchian Signal Check:")
         print(f"    - Current Close: {close.iloc[-1]:.2f}")
-        print(f"    - Resampled Upper Band: {resampled_channels.upper.iloc[-1]:.2f}")
-        print(f"    - Resampled Lower Band: {resampled_channels.lower.iloc[-1]:.2f}")
+        print(f"    - Resampled Upper Band: {resampled_channels.upper.iloc[-1]}")
+        print(f"    - Resampled Lower Band: {resampled_channels.lower.iloc[-1]}")
         print(f"    - Crossed Above Upper (Short Signal): {crossed_above_upper.iloc[-1]}")
         print(f"    - Crossed Below Lower (Long Signal): {crossed_below_lower.iloc[-1]}")
         print(f"    => Final Long Signal: {long_signal}")
