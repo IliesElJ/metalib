@@ -3,18 +3,13 @@ import logging
 import MetaTrader5 as mt5
 import pytz as pytz
 import os
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 from metalib.indicators import *
 from metalib.metastrategy import MetaStrategy
 
 
 class MetaHAR(MetaStrategy):
-
-    SIGNALS_LOG_FILENAME = "{tag}_signals_log.csv"
-    TRAINING_PERIOD_DAYS = 66
-    UTC_TIMEZONE = 'UTC'
-    RESAMPLE_FREQUENCY = "1t"
 
     def __init__(   self, 
                     symbols,
@@ -43,6 +38,9 @@ class MetaHAR(MetaStrategy):
         
         logging.basicConfig(filename=f'../logs/{self.tag}.log', encoding='utf-8', level=logging.DEBUG)
 
+    TRAINING_PERIOD_DAYS = 66
+    UTC_TIMEZONE = 'UTC'
+    RESAMPLE_FREQUENCY = "1t"
 
     def signals(self) -> None:
         """Process market signals and update strategy state."""
@@ -84,7 +82,8 @@ class MetaHAR(MetaStrategy):
 
     def _process_predictions(self) -> None:
         """Process and log prediction results."""
-        file_path = self.SIGNALS_LOG_FILENAME.format(tag=self.tag)
+        path = f"../indicators/{self.tag}_signals_log.csv"
+        file_path = path.format(tag=self.tag)
         previous_prediction = self._get_previous_prediction(file_path)
 
         if previous_prediction:
