@@ -37,8 +37,49 @@ def ewma(data, period, alpha=1.0):
     out = convolve(data, weights)
     return np.concatenate((np.array([np.nan] * (len(data) - len(out))), out))
 
+@njit(fastmath=True, parallel=True)
+def corr_elements(price_arr):
+    """
+    Calculates the pairwise correlation of elements from a given input array of prices. This function computes
+    logarithmic returns of the price array, calculates the correlation matrix, and extracts the upper triangular
+    elements of the matrix excluding the diagonal as the result.
+
+    :param price_arr: 2D array of input prices with dimensions of (n_samples, n_features).
+        Each row represents a sample, and each column corresponds to a feature.
+
+    :return: 1D numpy array containing the upper triangular values (excluding the diagonal) of the correlation matrix
+        calculated from the log returns of the input price array.
+    """
+    price_arr = np.log(price_arr).T
+    log_return = price_arr[:, 1:] - price_arr[:, :-1]
+    log_corr = np.corrcoef(log_return)
+
+    n = log_corr.shape[0]
+    out = []
+
+    for i in prange(n):
+        for j in prange(i + 1, n):
+            if(len(out)<n):
+                out.append(log_corr[i, j])
+
+    return np.array(out)
 
 def ewma_sets(data):
+    """
+    Computes the Exponentially Weighted Moving Average (EWMA) for given data
+    across multiple combinations of periods and smoothing coefficients (alpha)
+    and returns the results as a multidimensional array.
+
+    This function generates a feature set where each column corresponds to the
+    EWMA calculated using a particular combination of period and alpha. The
+    input data is processed iteratively for each combination.
+
+    :param data: The input data for which the EWMA should be computed.
+    :type data: numpy.ndarray
+    :return: A two-dimensional array where each column corresponds to the EWMA
+             computed with a specific period and alpha.
+    :rtype: numpy.ndarray
+    """
     sets = np.zeros((len(data), 9))
     i = 0
 
