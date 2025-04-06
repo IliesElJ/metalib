@@ -53,7 +53,7 @@ class MetaHAR(MetaStrategy):
         recent_indicators = indicators.tail(3)
 
         # Make predictions
-        volatility_predictions = self.model.predict(recent_indicators)[:, 1]
+        volatility_predictions = self.model.predict(recent_indicators)
 
         # Update strategy state
         self._update_strategy_state(recent_indicators, volatility_predictions)
@@ -116,8 +116,26 @@ class MetaHAR(MetaStrategy):
             "last_indicators": [self.signals_data.iloc[-1].to_dict()],
             "prediction": [float(self.predicted_vol_diff[-1])],
             "realized_diff": [float(self.realized_previous_diff)],
-            "prediction_realized_difference": [prediction_diff]
+            "prediction_realized_difference": [prediction_diff],
+            "same_sign": [int(np.sign(self.predicted_vol_diff[-1]) == np.sign(self.realized_previous_diff))]
         }
+
+        file_path = f"../indicators/{self.tag}_signals_log.csv"
+
+        # Ensure the directory exists
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+        # Check if the row already exists
+        if os.path.isfile(file_path):
+            existing_data = pd.read_csv(file_path)
+            if self.timestamp in existing_data["timestamp"].values:
+                return  # Skip appending if the row already exists
+
+        # Write data to the file
+        if not os.path.isfile(file_path) or os.path.getsize(file_path) == 0:
+            pd.DataFrame(data_to_write).to_csv(file_path, index=False)
+        else:
+            pd.DataFrame(data_to_write).to_csv(file_path, mode='a', header=False, index=False)
 
 
     def check_conditions(self):
@@ -178,6 +196,7 @@ class MetaHAR(MetaStrategy):
 
         # Load and prepare data
         self.loadData(start_time, end_time)
+
         features, target = self.prepare_training_data(self.data)
 
         # Train model
@@ -242,7 +261,7 @@ class MetaHAR(MetaStrategy):
             return trend_short, trend_long, sq_ret_short, sq_ret_long
 
         # Calculate base metrics
-        price_series = close_df.loc[:, 'close']
+        price_series = close_df
         log_returns = price_series.apply(np.log).diff().dropna()
 
         # Calculate all indicators

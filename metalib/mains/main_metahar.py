@@ -62,8 +62,8 @@ def main():
     schedule.every().day.do(fit_strategies)
 
     # Schedule the strategy runs to execute every hour
-    schedule.every().hour.at(":00").do(run_strategies)
-    # schedule.every().minute.do(run_strategies)
+    schedule.every().minute.at(":00").do(run_strategies)
+    # schedule.every().minute.at(":00").do(run_strategies)
 
     # Run the scheduling loop
     while True:
