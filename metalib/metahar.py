@@ -229,7 +229,7 @@ class MetaHAR(MetaStrategy):
             fx_rolling_log_corr = price_data.rolling(
                 self.short_factor,
                 method="table"
-            ).apply(corr_elements, engine='numba', raw=True).dropna()
+            ).apply( corr_eigenvalues, engine='numba', raw=True).dropna()
 
             long_factor_log_corr = fx_rolling_log_corr.rolling(self.long_factor).apply(
                 lambda x: np.median(x), engine='numba', raw=True

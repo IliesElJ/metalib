@@ -64,6 +64,26 @@ def corr_elements(price_arr):
 
     return np.array(out)
 
+@njit(fastmath=True, parallel=True)
+def corr_eigenvalues(price_arr):
+    """
+    Calculates the eigenvalues of the correlation matrix computed from logarithmic returns of the input price array.
+
+    :param price_arr: 2D array of input prices with dimensions of (n_samples, n_features).
+        Each row represents a sample, and each column corresponds to a feature.
+
+    :return: 1D numpy array containing the eigenvalues of the correlation matrix
+        calculated from the log returns of the input price array.
+    """
+    price_arr = np.log(price_arr).T
+    log_return = price_arr[:, 1:] - price_arr[:, :-1]
+    log_corr = np.corrcoef(log_return)
+
+    # Compute eigenvalues of the correlation matrix
+    eigenvalues = np.linalg.eigvals(log_corr)
+
+    return eigenvalues
+
 def ewma_sets(data):
     """
     Computes the Exponentially Weighted Moving Average (EWMA) for given data
@@ -467,7 +487,6 @@ def get_second_monday_open_ffill(ohlc_df, index_to_refill):
     second_monday_ffill = second_monday_series.reindex(index_to_refill, method='ffill')
 
     return second_monday_ffill
-
 
 def get_first_monday_of_april_open_ffill(ohlc_df, index_to_refill):
     """
