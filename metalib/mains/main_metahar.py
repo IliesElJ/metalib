@@ -67,6 +67,7 @@ def main():
             metahar.connect()
             metahar.fit()
         except Exception as e:
+            print(e)
             logging.error(f"An error occurred while initializing the strategy {metahar.tag}: {e}")
             continue
 

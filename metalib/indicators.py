@@ -75,14 +75,37 @@ def corr_eigenvalues(price_arr):
     :return: 1D numpy array containing the eigenvalues of the correlation matrix
         calculated from the log returns of the input price array.
     """
-    price_arr = np.log(price_arr).T
-    log_return = price_arr[:, 1:] - price_arr[:, :-1]
+    # Check for valid input
+    if price_arr.size == 0 or np.any(price_arr <= 0):
+        return np.array([np.nan] * (price_arr.shape[1] if price_arr.ndim > 1 else 1))
+
+    # Compute log returns more safely
+    log_prices = np.log(price_arr).T
+    log_return = log_prices[:, 1:] - log_prices[:, :-1]
+
+    # Check for invalid values in returns
+    if np.any(~np.isfinite(log_return)):
+        return np.array([np.nan] * (price_arr.shape[1] if price_arr.ndim > 1 else 1))
+
+    # Need at least 2 samples for correlation
+    if log_return.shape[1] < 2:
+        return np.array([np.nan] * (price_arr.shape[1] if price_arr.ndim > 1 else 1))
+
+    # Compute correlation matrix using corrcoef
     log_corr = np.corrcoef(log_return)
 
-    # Compute eigenvalues of the correlation matrix
-    eigenvalues = np.linalg.eigvals(log_corr)
+    # Ensure matrix is symmetric and replace NaN/infinite values
+    log_corr = np.nan_to_num((log_corr + log_corr.T) / 2)
+
+    # Compute and sort eigenvalues
+    try:
+        eigenvalues = np.linalg.eigvals(log_corr)
+        eigenvalues = np.real(eigenvalues)
+    except:
+        return np.array([np.nan] * log_corr.shape[0])
 
     return eigenvalues
+
 
 def ewma_sets(data):
     """
