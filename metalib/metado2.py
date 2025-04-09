@@ -113,19 +113,21 @@ class MetaDO(MetaStrategy):
             percentage=self.risk_factor, 
             symbol=self.symbols[0]
         )
-        
-        mean_entry_price, num_positions = self.get_positions_info()
-        mean_entry_price = round(mean_entry_price, 4)
-        
+
         symbol = self.symbols[0]
         symbol_info = mt5.symbol_info(symbol)
-        
+        digits = symbol_info.digits +1  # Use symbol_info.digits for proper rounding + add one because its after the decimal
+        tick_size = symbol_info.point
+
         if symbol_info is None:
             print(f"Failed to get symbol info for {symbol}")
             return
         
-        tick_size = symbol_info.point
-        digits = symbol_info.digits  # Use symbol_info.digits for proper rounding
+        print(f"Rounding for {symbol}: {digits}")
+        print(f"Vol Risk factor: {self.vol * self.risk_factor}")
+
+        mean_entry_price, num_positions = self.get_positions_info()
+        mean_entry_price = round(mean_entry_price, digits)
 
         # Take-Profit and Stop-Loss calculations (keeping your SL formula)
         tp = mean_entry_price * (1 + self.state * self.vol * self.risk_factor)

@@ -34,7 +34,6 @@ def main():
             symbol = row['symbol']
             timeframe = eval(row['timeframe'])  # Evaluate the string representation to get the actual constant
             tag = row['tag']
-            print(row['active_hours'])
             ah = eval(row['active_hours'])
             rf = eval(row['risk_factor'])
             tm = row['mode']
@@ -60,7 +59,7 @@ def main():
     schedule.every().day.do(fit_strategies)
 
     # Schedule the strategy runs to execute every minutes
-    schedule.every(5).minutes.at(":00").do(run_strategies)
+    schedule.every().minute.at(":00").do(run_strategies)
     # schedule.every().minute.do(run_strategies)
 
     # Run the scheduling loop

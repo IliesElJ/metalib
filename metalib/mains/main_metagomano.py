@@ -38,7 +38,6 @@ def main():
             symbol = row['symbol']
             timeframe = eval(row['timeframe'])  # Evaluate the string representation to get the actual constant
             tag = row['tag']
-            print(row['active_hours'])
             ah = eval(row['active_hours'])
             rf = eval(row['risk_factor'])  # Evaluate the string representation to get the actual value
 
