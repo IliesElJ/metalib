@@ -215,14 +215,14 @@ class MetaHAR(MetaStrategy):
     def retrieve_indicators(self, close_df):
         # Constants
         COLUMN_PREFIXES = {
-            'long_corr_': 'long_factor_log_corr',
-            'short_corr_': 'short_factor_log_corr',
+            # 'long_corr_': 'long_factor_log_corr',
+            # 'short_corr_': 'short_factor_log_corr',
             'long_scale_std_': 'long_scale_std',
             'short_scale_std_': 'short_scale_std',
             'trend_ewm_short_factor_': 'trend_ewm_short_factor',
             'trend_ewm_long_factor_': 'trend_ewm_long_factor',
             'sq_ret_ewm_short_factor_': 'sq_ret_ewm_short_factor',
-            'sq_ret_ewm_long_factor_': 'sq_ret_ewm_long_factor'
+            'sq_ret_ewm_long_factor_': 'sq_ret_ewm_long_factor',
         }
 
         def calculate_rolling_correlations(price_data):
@@ -260,35 +260,61 @@ class MetaHAR(MetaStrategy):
 
             return trend_short, trend_long, sq_ret_short, sq_ret_long
 
+        def calculate_asym_std(log_returns):
+            downside_squared_returns = log_returns.where(log_returns < 0, 0).apply(lambda x: x ** 2, engine="numba",
+                                                                                   raw=True)
+            upside_squared_returns = log_returns.where(log_returns > 0, 0).apply(lambda x: x ** 2, engine="numba",
+                                                                                 raw=True)
+
+            # EWM of realized semi-variances (HAR-RSV style)
+            downside_vol_ewm_short = downside_squared_returns.ewm(halflife=self.short_factor).mean()
+            upside_vol_ewm_short = upside_squared_returns.ewm(halflife=self.short_factor).mean()
+
+            downside_vol_ewm_long = downside_squared_returns.ewm(halflife=self.long_factor).mean()
+            upside_vol_ewm_long = upside_squared_returns.ewm(halflife=self.long_factor).mean()
+
+            return downside_vol_ewm_short, downside_vol_ewm_long, upside_vol_ewm_short, upside_vol_ewm_long
+
+
+
         # Calculate base metrics
         price_series = close_df
         log_returns = price_series.apply(np.log).diff().dropna()
 
         # Calculate all indicators
-        long_corr, short_corr = calculate_rolling_correlations(price_series)
+        # long_corr, short_corr = calculate_rolling_correlations(price_series)
         long_std, short_std = calculate_scale_std(price_series)
         trend_short, trend_long, sq_ret_short, sq_ret_long = calculate_ewm_indicators(log_returns)
+        downside_short, downside_long, upside_short, upside_long = calculate_asym_std(log_returns)
 
         # Validate unique indices
         for name, df in [
-            ("long_factor_log_corr", long_corr),
-            ("short_factor_log_corr", short_corr),
+            # ("long_factor_log_corr", long_corr),
+            # ("short_factor_log_corr", short_corr),
             ("long_scale_std", long_std),
-            ("short_scale_std", short_std)
+            ("short_scale_std", short_std),
+            ("long_scale_upside", upside_long),
+            ("short_scale_upside", upside_short),
+            ("long_scale_downside", downside_long),
+            ("short_scale_downside", downside_short),
         ]:
             if not df.index.is_unique:
                 raise IndexError(f"Duplicates found in {name}")
 
         # Combine all indicators
         indicators = pd.concat([
-            long_corr.add_prefix("long_corr_"),
-            short_corr.add_prefix("short_corr_"),
+            # long_corr.add_prefix("long_corr_"),
+            # short_corr.add_prefix("short_corr_"),
             long_std.add_prefix("long_scale_std_").apply(np.log),
             short_std.add_prefix("short_scale_std_").apply(np.log),
             trend_short.add_prefix("trend_ewm_short_factor_"),
             trend_long.add_prefix("trend_ewm_long_factor_"),
             sq_ret_short.add_prefix("sq_ret_ewm_short_factor_"),
-            sq_ret_long.add_prefix("sq_ret_ewm_long_factor_")
+            sq_ret_long.add_prefix("sq_ret_ewm_long_factor_"),
+            downside_short.add_prefix("downside_ewm_short_factor_"),
+            downside_long.add_prefix("downside_ewm_long_factor_"),
+            upside_short.add_prefix("upside_ewm_short_factor_"),
+            upside_long.add_prefix("upside_ewm_long_factor_")
         ], axis=1).dropna()
         indicators.loc[:, 'const'] = 1
 
