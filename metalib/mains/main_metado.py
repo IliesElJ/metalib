@@ -22,7 +22,6 @@ def fit_strategies():
     for metado in metado_list:
         metado.fit()
 
-
 def main():
     global metado_list
     metado_list = []

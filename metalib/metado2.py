@@ -45,7 +45,7 @@ class MetaDO(MetaStrategy):
 
         resample_freq = timeframe_mapping.get(self.timeframe, "15min")
         donchian = ohlc.resample(resample_freq, label="right", closed="right").agg(
-            {'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last'})
+            {'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last'}).dropna()
 
         upper_donchian = donchian.high.rolling(8).max()
         lower_donchian = donchian.low.rolling(8).min()
@@ -116,7 +116,7 @@ class MetaDO(MetaStrategy):
         
     def check_conditions(self):
         if not self.vol:
-            print(f"Warning: self.vol is None or 0, skipping trade execution.")
+            print(f"{self.tag}:::Warning: self.vol is None or 0, skipping trade execution.")
             return
 
         volume = self.position_sizing(
@@ -130,12 +130,12 @@ class MetaDO(MetaStrategy):
         tick_size = symbol_info.point
 
         if symbol_info is None:
-            print(f"Failed to get symbol info for {symbol}")
+            print(f"{self.tag}:::Failed to get symbol info for {symbol}")
             return
         
-        print(f"Rounding for {symbol}: {digits}")
-        print(f"Strategy Risk factor: {self.risk_factor}")
-        print(f"Vol times Risk factor: {self.vol * self.risk_factor}")
+        print(f"{self.tag}::: Rounding for {symbol}: {digits}")
+        print(f"{self.tag}::: Strategy Risk factor: {self.risk_factor}")
+        print(f"{self.tag}::: Vol times Risk factor: {self.vol * self.risk_factor}")
 
         positions_mean_entry_price, num_positions = self.get_positions_info()
 
@@ -147,7 +147,7 @@ class MetaDO(MetaStrategy):
 
         # Proper rounding
         tp, sl = round(tp, digits), round(sl, digits)
-        print(f"Mid Price: {price_mid}, Positions: {num_positions}, Vol: {self.vol}%, State: {self.state}, TP: {tp}, SL: {sl}")
+        print(f"{self.tag}::: Mid Price: {price_mid}, Positions: {num_positions}, Vol: {self.vol}%, State: {self.state}, TP: {tp}, SL: {sl}")
 
         if self.state in [1, -1]:  # If a trade signal is active
             try:
@@ -157,7 +157,7 @@ class MetaDO(MetaStrategy):
                     f"Entered {trade_type} order for {symbol} with volume: {volume}. Mean Entry Price: {positions_mean_entry_price}, Positions: {num_positions}."
                 )
             except Exception as e:
-                print(f"Execution failed for {symbol}: {str(e)}")
+                print(f"{self.tag}::: Execution failed for {symbol}: {str(e)}")
 
 
     def fit(self, data=None):
@@ -170,7 +170,7 @@ class MetaDO(MetaStrategy):
         if account_balance is None:
             account_info = mt5.account_info()
             if account_info is None:
-                print("Failed to get account balance, error code =", mt5.last_error())
+                print(f"{self.tag}::: Failed to get account balance, error code =", mt5.last_error())
                 mt5.shutdown()
                 return
             account_balance = account_info.balance
@@ -181,7 +181,7 @@ class MetaDO(MetaStrategy):
         # Get the symbol info
         symbol_info = mt5.symbol_info(symbol)
         if symbol_info is None:
-            print(f"Failed to get symbol info for {symbol}, error code =", mt5.last_error())
+            print(f"{self.tag}::: Failed to get symbol info for {symbol}, error code =", mt5.last_error())
             mt5.shutdown()
             return
 
@@ -191,8 +191,7 @@ class MetaDO(MetaStrategy):
         lots            = position_size / (contract_size * price)        
 
         # Ensure it meets the broker's minimum lot size requirement
-        return symbol_info.volume_min #max(round(self.risk_factor * 5 * lots, 2), symbol_info.volume_min)
-
+        return max(round(self.risk_factor * 5 * lots, 2), symbol_info.volume_min)
 
     def retrieve_indicators(self, ohlc_df):
         print(f"{self.tag}::: No indicators to compute indicators")
