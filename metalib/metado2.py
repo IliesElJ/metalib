@@ -28,13 +28,23 @@ class MetaDO(MetaStrategy):
         self.logger             = logging.getLogger(__name__)
         logging.basicConfig(filename=f'../logs/{self.tag}.log', encoding='utf-8', level=logging.DEBUG)
 
+    
     def signals(self):
         ohlc        = self.data[self.symbols[0]]
         close       = ohlc['close']
 
         self.vol        = close.pct_change().std()*np.sqrt(self.lookahead)
 
-        donchian = ohlc.resample('15min', label="right", closed="right").agg(
+        timeframe_mapping = {
+            mt5.TIMEFRAME_M1: "15min",
+            mt5.TIMEFRAME_M5: "1H",
+            mt5.TIMEFRAME_M15: "4H",
+            mt5.TIMEFRAME_H1: "1D",
+            mt5.TIMEFRAME_H4: "2D",
+        }
+
+        resample_freq = timeframe_mapping.get(self.timeframe, "15min")
+        donchian = ohlc.resample(resample_freq, label="right", closed="right").agg(
             {'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last'})
 
         upper_donchian = donchian.high.rolling(8).max()
