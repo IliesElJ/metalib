@@ -126,8 +126,7 @@ class MetaDO(MetaStrategy):
 
         symbol = self.symbols[0]
         symbol_info = mt5.symbol_info(symbol)
-        digits = symbol_info.digits +1  # Use symbol_info.digits for proper rounding + add one because its after the decimal
-        tick_size = symbol_info.point
+        digits = symbol_info.digits+1  # Use symbol_info.digits for proper rounding + add one because its after the decimal
 
         if symbol_info is None:
             print(f"{self.tag}:::Failed to get symbol info for {symbol}")
