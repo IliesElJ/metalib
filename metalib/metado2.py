@@ -147,7 +147,6 @@ class MetaDO(MetaStrategy):
 
         # Proper rounding
         tp, sl = round(tp, digits), round(sl, digits)
-        self.state = 1
         print(f"Mid Price: {price_mid}, Positions: {num_positions}, Vol: {self.vol}%, State: {self.state}, TP: {tp}, SL: {sl}")
 
         if self.state in [1, -1]:  # If a trade signal is active
