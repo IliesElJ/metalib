@@ -7,3 +7,7 @@ USDCAD;mt5.TIMEFRAME_M1;metado_f5;None;0.3;mean_rev
 AUDUSD;mt5.TIMEFRAME_M1;metado_f6;None;0.3;mean_rev
 NZDUSD;mt5.TIMEFRAME_M1;metado_f7;None;0.3;mean_rev
 AUDCHF;mt5.TIMEFRAME_M1;metado_f8;None;0.3;mean_rev
+EURUSD;mt5.TIMEFRAME_H1;metado_f1t;None;0.3;trend_follow
+USDJPY;mt5.TIMEFRAME_H1;metado_f2t;None;0.3;trend_follow
+GBPUSD;mt5.TIMEFRAME_H1;metado_f3t;None;0.3;trend_follow
+USDCHF;mt5.TIMEFRAME_H1;metado_f4t;None;0.3;trend_follow
