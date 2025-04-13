@@ -32,7 +32,7 @@ class MetaDO(MetaStrategy):
         ohlc        = self.data[self.symbols[0]]
         close       = ohlc['close']
 
-        self.vol        = close.pct_change().std()*np.sqrt(48)
+        self.vol        = close.pct_change().std()*np.sqrt(self.lookahead)
 
         donchian = ohlc.resample('15min', label="right", closed="right").agg(
             {'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last'})
@@ -124,36 +124,32 @@ class MetaDO(MetaStrategy):
             return
         
         print(f"Rounding for {symbol}: {digits}")
-        print(f"Vol Risk factor: {self.vol * self.risk_factor}")
+        print(f"Strategy Risk factor: {self.risk_factor}")
+        print(f"Vol times Risk factor: {self.vol * self.risk_factor}")
 
-        mean_entry_price, num_positions = self.get_positions_info()
-        mean_entry_price = round(mean_entry_price, digits)
+        positions_mean_entry_price, num_positions = self.get_positions_info()
 
         # Take-Profit and Stop-Loss calculations (keeping your SL formula)
-        tp = mean_entry_price * (1 + self.state * self.vol * self.risk_factor)
-        sl = mean_entry_price * (1 - self.state * self.vol)
+        price_mid = (symbol_info.ask + symbol_info.bid) / 2
+
+        tp = price_mid * (1 + self.state * self.vol * self.risk_factor)
+        sl = price_mid * (1 - self.state * self.vol)
 
         # Proper rounding
         tp, sl = round(tp, digits), round(sl, digits)
 
-        print(f"Mean Entry Price: {mean_entry_price}, Positions: {num_positions}, Vol: {self.vol}%, State: {self.state}, TP: {tp}, SL: {sl}")
+        print(f"Mid Price: {price_mid}, Positions: {num_positions}, Vol: {self.vol}%, State: {self.state}, TP: {tp}, SL: {sl}")
 
-        if self.state in [1, -1]:  # If a trade signal is active
+        if True: # self.state in [1, -1]:  # If a trade signal is active
             try:
                 self.execute(symbol=symbol, volume=volume, short=(self.state == -1), sl=sl, tp=tp)
                 trade_type = "BUY" if self.state == 1 else "SELL"
                 self.send_telegram_message(
-                    f"Entered {trade_type} order for {symbol} with volume: {volume}. Mean Entry Price: {mean_entry_price}, Positions: {num_positions}."
+                    f"Entered {trade_type} order for {symbol} with volume: {volume}. Mean Entry Price: {positions_mean_entry_price}, Positions: {num_positions}."
                 )
             except Exception as e:
                 print(f"Execution failed for {symbol}: {str(e)}")
 
-        elif self.state == -2:
-            if num_positions > 0:  # Avoid unnecessary API calls
-                self.close_all_positions()
-                self.send_telegram_message(f"Closed all positions for {symbol}")
-            else:
-                print(f"No positions to close for {symbol}")
 
     def fit(self, data=None):
         print(f"{self.tag}::: No fitted content to save.")
@@ -186,7 +182,7 @@ class MetaDO(MetaStrategy):
         lots            = position_size / (contract_size * price)        
 
         # Ensure it meets the broker's minimum lot size requirement
-        return max(round(self.risk_factor * 5 * lots, 2), symbol_info.volume_min)
+        return symbol_info.volume_min #max(round(self.risk_factor * 5 * lots, 2), symbol_info.volume_min)
 
 
     def retrieve_indicators(self, ohlc_df):
