@@ -1,71 +1,36 @@
-from datetime import timedelta, datetime
-from metalib.metado2 import MetaDO
-import os, sys
-
-import pytz
-import time
-import schedule
-import csv
+import yaml
+import warnings
+from multiprocessing import Process
+from metalib.metaworker import run_strategy_loop
 import MetaTrader5 as mt5
 
-import warnings
 warnings.filterwarnings("ignore")
 
-
-def run_strategies():
-    end_time = datetime.now(pytz.utc) + timedelta(hours=3)
-    start_time = end_time - timedelta(days=40)
-    for metado in metado_list:
-        metado.run(start_time, end_time)
-
-def fit_strategies():
-    for metado in metado_list:
-        metado.fit()
-
 def main():
-    global metado_list
-    metado_list = []
+    processes = []
 
-    with open('../config/metado_args.csv', mode='r') as file:
-        reader = csv.DictReader(file, delimiter=';')
-        for row in reader:
-            # convert parameter values to appropriate types
-            symbol = row['symbol']
-            timeframe = eval(row['timeframe'])  # Evaluate the string representation to get the actual constant
-            tag = row['tag']
-            ah = eval(row['active_hours'])
-            rf = eval(row['risk_factor'])
-            tm = row['mode']
+    with open("../config/metado.yaml", "r") as f:
+        config_data = yaml.safe_load(f)
 
-            # initialize metago objects with the retrieved parameters
-            metado = MetaDO(
-                symbols=[symbol],
-                timeframe=timeframe,
-                tag=tag,
-                active_hours=ah,
-                risk_factor=rf,
-                mode=tm,
-            )
+    for name, entry in config_data.items():
+        strategy_type = entry.pop("strategy_type")
+        init_args = entry.copy()
 
-            metado_list.append(metado)
+        # Convert timeframe string (e.g. "TIMEFRAME_M1") to actual mt5 constant
+        if isinstance(init_args.get("timeframe"), str):
+            init_args["timeframe"] = eval(init_args["timeframe"])
 
-    # Connect to MetaTrader 5 terminal and fit strategies
-    for metado in metado_list:
-        metado.connect()
-        metado.fit()
+        # Convert null active_hours to None
+        if "active_hours" in init_args and init_args["active_hours"] is None:
+            init_args["active_hours"] = None
 
-    # Schedule the fit method to run once every day
-    schedule.every().day.do(fit_strategies)
+        # Start the strategy in its own process
+        p = Process(target=run_strategy_loop, args=(strategy_type, init_args))
+        p.start()
+        processes.append(p)
 
-    # Schedule the strategy runs to execute every minutes
-    schedule.every().minute.at(":00").do(run_strategies)
-    # schedule.every().minute.do(run_strategies)
-
-    # Run the scheduling loop
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
-
+    for p in processes:
+        p.join()
 
 if __name__ == "__main__":
     main()

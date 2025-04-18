@@ -1,0 +1,107 @@
+EURUSD_M1:
+  strategy_type: metado
+  symbols: ["EURUSD"]
+  timeframe: mt5.TIMEFRAME_M1
+  tag: metado_f1
+  active_hours: null
+  risk_factor: 0.3
+  mode: mean_rev
+
+USDJPY_M1:
+  strategy_type: metado
+  symbols: ["USDJPY"]
+  timeframe: mt5.TIMEFRAME_M1
+  tag: metado_f2
+  active_hours: null
+  risk_factor: 0.3
+  mode: mean_rev
+
+GBPUSD_M1:
+  strategy_type: metado
+  symbols: ["GBPUSD"]
+  timeframe: mt5.TIMEFRAME_M1
+  tag: metado_f3
+  active_hours: null
+  risk_factor: 0.3
+  mode: mean_rev
+
+USDCHF_M1:
+  strategy_type: metado
+  symbols: ["USDCHF"]
+  timeframe: mt5.TIMEFRAME_M1
+  tag: metado_f4
+  active_hours: null
+  risk_factor: 0.3
+  mode: mean_rev
+
+USDCAD_M1:
+  strategy_type: metado
+  symbols: ["USDCAD"]
+  timeframe: mt5.TIMEFRAME_M1
+  tag: metado_f5
+  active_hours: null
+  risk_factor: 0.3
+  mode: mean_rev
+
+AUDUSD_M1:
+  strategy_type: metado
+  symbols: ["AUDUSD"]
+  timeframe: mt5.TIMEFRAME_M1
+  tag: metado_f6
+  active_hours: null
+  risk_factor: 0.3
+  mode: mean_rev
+
+NZDUSD_M1:
+  strategy_type: metado
+  symbols: ["NZDUSD"]
+  timeframe: mt5.TIMEFRAME_M1
+  tag: metado_f7
+  active_hours: null
+  risk_factor: 0.3
+  mode: mean_rev
+
+AUDCHF_M1:
+  strategy_type: metado
+  symbols: ["AUDCHF"]
+  timeframe: mt5.TIMEFRAME_M1
+  tag: metado_f8
+  active_hours: null
+  risk_factor: 0.3
+  mode: mean_rev
+
+EURUSD_H1:
+  strategy_type: metado
+  symbols: ["EURUSD"]
+  timeframe: mt5.TIMEFRAME_H1
+  tag: metado_f1t
+  active_hours: null
+  risk_factor: 0.3
+  mode: trend_follow
+
+USDJPY_H1:
+  strategy_type: metado
+  symbols: ["USDJPY"]
+  timeframe: mt5.TIMEFRAME_H1
+  tag: metado_f2t
+  active_hours: null
+  risk_factor: 0.3
+  mode: trend_follow
+
+GBPUSD_H1:
+  strategy_type: metado
+  symbols: ["GBPUSD"]
+  timeframe: mt5.TIMEFRAME_H1
+  tag: metado_f3t
+  active_hours: null
+  risk_factor: 0.3
+  mode: trend_follow
+
+USDCHF_H1:
+  strategy_type: metado
+  symbols: ["USDCHF"]
+  timeframe: mt5.TIMEFRAME_H1
+  tag: metado_f4t
+  active_hours: null
+  risk_factor: 0.3
+  mode: trend_follow
