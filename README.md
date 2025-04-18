@@ -7,3 +7,4 @@ Should add:
 - Use average returns for each strategy to guess risk weights that distribute downside in an equilly wighted manner.
 - Compute sensitivities of (smoothed) returns to some features that we compute. For that, need to do the following:
 - Save indicators and last return to daily HDF5 files. One per strategy instance.
+- Once we have the return saved at each run, take first price close from mt5 and rebuild the price time series to see if we match the price at each timestamp.
