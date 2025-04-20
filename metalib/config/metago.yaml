@@ -1,0 +1,71 @@
+EURUSD_H1_GO:
+  strategy_type: metago
+  symbols: [ "EURUSD" ]
+  timeframe: mt5.TIMEFRAME_H1
+  tag: metago_f1
+  active_hours: None
+  risk_factor: 0.09
+  lookahead: 48
+
+USDJPY_H1_GO:
+  strategy_type: metago
+  symbols: [ "USDJPY" ]
+  timeframe: mt5.TIMEFRAME_H1
+  tag: metago_f2
+  active_hours: None
+  risk_factor: 0.09
+  lookahead: 48
+
+GBPUSD_H1_GO:
+  strategy_type: metago
+  symbols: [ "GBPUSD" ]
+  timeframe: mt5.TIMEFRAME_H1
+  tag: metago_f3
+  active_hours: None
+  risk_factor: 0.09
+  lookahead: 48
+
+USDCHF_H1_GO:
+  strategy_type: metago
+  symbols: [ "USDCHF" ]
+  timeframe: mt5.TIMEFRAME_H1
+  tag: metago_f4
+  active_hours: None
+  risk_factor: 0.09
+  lookahead: 48
+
+USDCAD_H1_GO:
+  strategy_type: metago
+  symbols: [ "USDCAD" ]
+  timeframe: mt5.TIMEFRAME_H1
+  tag: metago_f5
+  active_hours: None
+  risk_factor: 0.09
+  lookahead: 48
+
+AUDUSD_H1_GO:
+  strategy_type: metago
+  symbols: [ "AUDUSD" ]
+  timeframe: mt5.TIMEFRAME_H1
+  tag: metago_f6
+  active_hours: None
+  risk_factor: 0.09
+  lookahead: 48
+
+NZDUSD_H1_GO:
+  strategy_type: metago
+  symbols: [ "NZDUSD" ]
+  timeframe: mt5.TIMEFRAME_H1
+  tag: metago_f7
+  active_hours: None
+  risk_factor: 0.09
+  lookahead: 48
+
+AUDCHF_H1_GO:
+  strategy_type: metago
+  symbols: [ "AUDCHF" ]
+  timeframe: mt5.TIMEFRAME_H1
+  tag: metago_f8
+  active_hours: None
+  risk_factor: 0.09
+  lookahead: 48

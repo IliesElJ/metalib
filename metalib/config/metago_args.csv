@@ -1,9 +1,0 @@
-symbol;timeframe;tag;active_hours;risk_factor
-EURUSD;mt5.TIMEFRAME_H1;metago_f1;None;0.09
-USDJPY;mt5.TIMEFRAME_H1;metago_f2;None;0.09
-GBPUSD;mt5.TIMEFRAME_H1;metago_f3;None;0.09
-USDCHF;mt5.TIMEFRAME_H1;metago_f4;None;0.09
-USDCAD;mt5.TIMEFRAME_H1;metago_f5;None;0.09
-AUDUSD;mt5.TIMEFRAME_H1;metago_f6;None;0.09
-NZDUSD;mt5.TIMEFRAME_H1;metago_f7;None;0.09
-AUDCHF;mt5.TIMEFRAME_H1;metago_f8;None;0.09

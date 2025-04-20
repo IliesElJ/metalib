@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 # Registry maps a keyword to a strategy class and expected init keys
 from metalib.metado2 import MetaDO
 from metalib.metaga import MetaGA
-from metalib.metago import MetaGO
+from metalib.metagomano import MetaGO
 from metalib.metahar import MetaHAR
 
 strategy_registry = {
@@ -40,12 +40,9 @@ strategy_registry = {
         "class": MetaGO,
         "init_keys": [
             "symbols",
-            "predicted_symbol",
             "timeframe",
             "tag",
             "active_hours",
-            "short_factor",
-            "long_factor"
         ]
     },
     "metahar": {
