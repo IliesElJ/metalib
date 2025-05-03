@@ -39,8 +39,6 @@ class MetaGA(MetaStrategy):
         self.risk_factor    = risk_factor
         self.telegram       = True
         self.logger         = logging.getLogger(__name__)
-        
-        logging.basicConfig(filename=f'../logs/{self.tag}.log', encoding='utf-8', level=logging.DEBUG)
 
     def signals(self):
 

@@ -3,6 +3,7 @@ from metalib.fastfinance import *
 import numpy as np
 import os 
 import pandas as pd
+import MetaTrader5 as mt5
 
 
 @njit(parallel=True)

@@ -1,0 +1,8 @@
+BTCUSD_M1:
+  strategy_type: metado
+  symbols: ["BTCUSD"]
+  timeframe: mt5.TIMEFRAME_M1
+  tag: metado_crypto_btc_mr
+  active_hours: null
+  risk_factor: 0.3
+  mode: mean_rev

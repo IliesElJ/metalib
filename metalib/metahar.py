@@ -35,8 +35,6 @@ class MetaHAR(MetaStrategy):
         self.predicted_symbol = predicted_symbol
         self.telegram       = True
         self.logger         = logging.getLogger(__name__)
-        
-        logging.basicConfig(filename=f'../logs/{self.tag}.log', encoding='utf-8', level=logging.DEBUG)
 
     TRAINING_PERIOD_DAYS = 66
     UTC_TIMEZONE = 'UTC'
@@ -54,6 +52,7 @@ class MetaHAR(MetaStrategy):
 
         # Make predictions
         volatility_predictions = self.model.predict(recent_indicators)
+
 
         # Update strategy state
         self._update_strategy_state(recent_indicators, volatility_predictions)

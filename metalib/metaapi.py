@@ -3,13 +3,13 @@ from typing import Dict, Any
 from pathlib import Path
 import yaml
 from fastapi import FastAPI, Request
-from metacontroller import MetaController
+from metalib.metacontroller import MetaController
 warnings.filterwarnings("ignore")
 app = FastAPI()
 controller = MetaController()
 
 # Global constant for configuration path
-CONFIG_PATH = Path("../config")
+CONFIG_PATH = Path("config")
 
 def start_strategy_instances(metacontroller) -> Dict[str, Any]:
     """
@@ -25,7 +25,12 @@ def start_strategy_instances(metacontroller) -> Dict[str, Any]:
 
     try:
         # Process all yaml files in the config directory
-        for config_file in CONFIG_PATH.glob("*.yaml"):
+        configs = sorted(CONFIG_PATH.glob("*.yaml"))
+        print(f"API::Found {len(configs)} configuration files in {CONFIG_PATH}")
+
+        for config_file in configs:
+            print(f"API::Starting instances from {config_file.name}")
+
             with config_file.open("r") as f:
                 strategy_configs = yaml.safe_load(f)
 
@@ -49,8 +54,9 @@ def start_strategy_instances(metacontroller) -> Dict[str, Any]:
 
 
 # Usage in FastAPI endpoint
-@app.get("/start_stored_instances}")
+@app.get("/start_stored_instances")
 def start_stored_instances():
+    print("API::Starting stored instances")
     return start_strategy_instances(controller)
 @app.get("/")
 def read_root():

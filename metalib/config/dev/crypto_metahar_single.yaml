@@ -1,0 +1,9 @@
+BTCUSD_M1_CRYPTO:
+  strategy_type: metahar
+  symbols: ['BTCUSD', 'ETHUSD', 'XRPUSD', 'LTCUSD', 'ADAUSD']
+  predicted_symbol: BTCUSD
+  timeframe: mt5.TIMEFRAME_M1
+  tag: metahar_crypto_btcusd
+  active_hours: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]
+  short_factor: 15
+  long_factor: 240
