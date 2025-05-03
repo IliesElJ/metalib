@@ -57,6 +57,7 @@ class MetaDO(MetaStrategy):
         resampled_channels = resampled_channels.reindex(ohlc.index).ffill()
         crossed_above_upper = close.vbt.crossed_above(resampled_channels.upper)
         crossed_below_lower = close.vbt.crossed_below(resampled_channels.lower)
+        
 
         if self.mode == "mean_rev":
             long_signal     = crossed_below_lower.iloc[-1]
@@ -88,6 +89,17 @@ class MetaDO(MetaStrategy):
         print(f"    => Final Short Signal: {short_signal}")
         print(f"    => Final State: {self.state}")
         print(f"{self.tag}::: Saved Vol which is currently: {self.vol}%")
+
+        self.signalData = pd.Series({
+            'timestamp': ohlc.index[-1],
+            'current_close': close.iloc[-1],
+            'upper_band': resampled_channels.upper.iloc[-1],
+            'lower_band': resampled_channels.lower.iloc[-1],
+            'long_signal': long_signal,
+            'short_signal': short_signal,
+            'state': self.state,
+            'volatility': self.vol
+        })
 
             
     def plot_signals(self, indicators, long_signal, short_signal):

@@ -41,9 +41,11 @@ class MetaStrategy(ABC):
         self.data = {}
         self.tag = tag
         self.active_hours = active_hours
+        self.state = 0
         self.long_only = long_only
         self.short_only = short_only
-        self.save_to_sql_db = save_to_sql_db
+        self.save_to_sql_db = True # save_to_sql_db
+        self.signalData = None
 
     def connect(self):
         """
@@ -88,12 +90,36 @@ class MetaStrategy(ABC):
 
     def save_signal_data_to_db(self):
         """
-        Saves the price data from self.data to the database, creating one table per symbol.
+        Saves the signal data to a single HDF5 file ("signals.hdf5"), organized by tag and date.
         """
 
-        df = self.signals_data
-        table_name = f"signals_{self.tag}"  # Define the table name based on the symbol
-        df.reset_index().to_sql(table_name, self.engine_signal, if_exists='append', index=False)
+        signal_line = self.signalData
+
+        # Check if signal_line is a pd.Series
+        if not isinstance(signal_line, pd.Series):
+            raise ValueError("signal_line must be a pandas Series.")
+
+        # Check if 'timestamp' key exists and is valid
+        if 'timestamp' not in signal_line or pd.isna(signal_line['timestamp']):
+            raise ValueError("The signal_line must contain a valid 'timestamp'.")
+
+        # Get the current day from the timestamp
+        current_day = pd.to_datetime(signal_line['timestamp']).strftime('%Y-%m-%d')
+
+        # Define the file name and group paths
+        file_name = "signals.hdf5"
+        tag_group = f"/{self.tag}"
+        day_group = f"{tag_group}/{current_day}"
+
+        # Append to the file and create groups if they do not exist
+        with pd.HDFStore(file_name, mode='a') as store:
+            if day_group in store:
+                existing_data = store[day_group]
+                updated_data = pd.concat([existing_data, signal_line.to_frame().T], ignore_index=True)
+                store.put(day_group, updated_data)
+            else:
+                # Create the tag group and day group, if they do not exist
+                store.put(day_group, signal_line.to_frame().T)
 
     @abstractmethod
     def signals(self):

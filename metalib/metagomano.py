@@ -80,22 +80,11 @@ class MetaGO(MetaStrategy):
 
         print(f"{self.tag}::: Saved Vol which is currently: {self.vol}%")
 
-        signal_line = indicators.iloc[[-1]]
-        self.signals_data = signal_line
-        
-        # Generate and save the chart
-        self.plot_signals(indicators.iloc[-24*5:], long_signal, short_signal)
-        
-        # Ensure indicators is a DataFrame
-        if isinstance(indicators, pd.DataFrame) and not indicators.empty:
-            file_path = f"../indicators/indicators_{self.symbols[0]}.xlsx"
-            try:
-                indicators.to_excel(file_path, engine="openpyxl")
-                print(f"Indicators saved successfully at {file_path}")
-            except Exception as e:
-                print(f"Error saving file: {e}")
-        else:
-            print("Indicators DataFrame is empty or invalid!")
+        signal_line = indicators.reset_index(drop=True).iloc[[-1]]
+        signal_line["timestamp"] = indicators.index[-1]
+        self.signalData = signal_line
+
+
             
     def plot_signals(self, indicators, long_signal, short_signal):
         plt.figure(figsize=(12, 6))

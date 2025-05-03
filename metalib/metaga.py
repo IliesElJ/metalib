@@ -80,7 +80,7 @@ class MetaGA(MetaStrategy):
         signal_line.loc[:, 'vote'] = vote
         signal_line.loc[:, 'predicted_proba'] = y_hat[-1]
 
-        self.signals_data = signal_line
+        self.signalData = signal_line
 
     def position_sizing_vol_adjusted(self, risk_percentage=0.01, account_balance=None):
         """
