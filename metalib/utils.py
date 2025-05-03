@@ -143,3 +143,14 @@ def split_dataframe(df, insample_days, outsample_days):
         start_date = start_date + outsample_offset
 
     return insample_dfs, outsample_dfs
+
+def clean_args(args):
+    # Convert timeframe string (e.g. "TIMEFRAME_M1") to actual mt5 constant
+    if isinstance(args.get("timeframe"), str):
+        args["timeframe"] = eval(args["timeframe"])
+
+    # Convert null active_hours to None
+    if "active_hours" in args and args["active_hours"] is None:
+        args["active_hours"] = None
+
+    return args
