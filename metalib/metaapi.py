@@ -4,12 +4,11 @@ from pathlib import Path
 import yaml
 from fastapi import FastAPI, Request
 from metalib.metacontroller import MetaController
+from metalib.constants import DEFAULT_CONFIG_PATH
+
 warnings.filterwarnings("ignore")
 app = FastAPI()
 controller = MetaController()
-
-# Global constant for configuration path
-CONFIG_PATH = Path("config/prod")
 
 def start_strategy_instances(metacontroller) -> Dict[str, Any]:
     """
@@ -25,8 +24,8 @@ def start_strategy_instances(metacontroller) -> Dict[str, Any]:
 
     try:
         # Process all yaml files in the config directory
-        configs = sorted(CONFIG_PATH.glob("*.yaml"))
-        print(f"API::Found {len(configs)} configuration files in {CONFIG_PATH}")
+        configs = sorted(DEFAULT_CONFIG_PATH.glob("*.yaml"))
+        print(f"API::Found {len(configs)} configuration files in {DEFAULT_CONFIG_PATH}")
 
         for config_file in configs:
             print(f"API::Starting instances from {config_file.name}")
@@ -48,7 +47,7 @@ def start_strategy_instances(metacontroller) -> Dict[str, Any]:
         return instances
 
     except FileNotFoundError:
-        return {"error": f"Configuration directory not found at {CONFIG_PATH}"}
+        return {"error": f"Configuration directory not found at {DEFAULT_CONFIG_PATH}"}
     except yaml.YAMLError:
         return {"error": f"Invalid YAML configuration file"}
 

@@ -4,10 +4,7 @@ import pandas as pd
 import requests
 import sys
 from datetime import datetime
-
-# HDF% Store
-DATABASE_PRICE = "store/price"
-DATABASE_SIGNAL = "store/signals"
+from metalib.constants import SIGNALS_FILE, LOG_EXTENSION
 
 class MetaStrategy(ABC):
     """
@@ -38,7 +35,6 @@ class MetaStrategy(ABC):
         self.state = 0
         self.long_only = long_only
         self.short_only = short_only
-        self.save_to_sql_db = True # save_to_sql_db
         self.signalData = None
 
     def connect(self):
@@ -85,7 +81,7 @@ class MetaStrategy(ABC):
         current_day = pd.to_datetime(signal_line['timestamp']).strftime('%Y-%m-%d')
 
         # Define the file name and group paths
-        file_name = f"{DATABASE_SIGNAL}.hdf5"
+        file_name = SIGNALS_FILE
         tag_group = f"/{self.tag}"
         day_group = f"{tag_group}/{current_day}"
 
@@ -195,7 +191,7 @@ class MetaStrategy(ABC):
         try:
             # Setup logging
             today = datetime.today().strftime('%Y-%m-%d')
-            log_path = f'logs/output_{self.tag}_{today}.log'
+            log_path = f"logs/output_{self.tag}_{today}{LOG_EXTENSION}"
             
             # Ensure logs directory exists
             import os
