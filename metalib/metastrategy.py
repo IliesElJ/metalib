@@ -2,18 +2,12 @@ from abc import ABC, abstractmethod
 import MetaTrader5 as mt5
 import pandas as pd
 import requests
-from metalib.utils import load_hist_data
-# from sqlalchemy import create_engine
+import sys
+from datetime import datetime
 
-# POSTGRESQL Connexion
-database_price = "price"
-database_signal = "signal"
-
-username = "postgres"
-password = "toor"
-host = "localhost"
-port = "5432"
-
+# HDF% Store
+DATABASE_PRICE = "store/price"
+DATABASE_SIGNAL = "store/signals"
 
 class MetaStrategy(ABC):
     """
@@ -72,22 +66,6 @@ class MetaStrategy(ABC):
 
         print(f"Last time in the index: {self.data[symbol].index[-1]}")
 
-    def save_price_data_to_db(self):
-        """
-        Saves the price data from self.data to the database, creating one table per symbol.
-        """
-        for symbol, df in self.data.items():
-            # Ensure the DataFrame has the 'symbol' column, if it's not already present
-            if 'symbol' not in df.columns:
-                df['symbol'] = symbol
-
-            for column, dtype in df.dtypes.items():
-                if dtype == 'uint64':
-                    df[column] = df[column].astype('int64')  # or 'float64' if necessary
-
-            table_name = f"prices_{symbol.lower()}"  # Define the table name based on the symbol
-            # df.reset_index().to_sql(table_name, self.engine_price, if_exists='append', index=False)
-
     def save_signal_data_to_db(self):
         """
         Saves the signal data to a single HDF5 file ("signals.hdf5"), organized by tag and date.
@@ -97,17 +75,17 @@ class MetaStrategy(ABC):
 
         # Check if signal_line is a pd.Series
         if not isinstance(signal_line, pd.Series):
-            raise ValueError("signal_line must be a pandas Series.")
+            raise ValueError("The signal vector must be in a pandas Series.")
 
         # Check if 'timestamp' key exists and is valid
         if 'timestamp' not in signal_line or pd.isna(signal_line['timestamp']):
-            raise ValueError("The signal_line must contain a valid 'timestamp'.")
+            raise ValueError("The signal vector must contain a valid 'timestamp'.")
 
         # Get the current day from the timestamp
         current_day = pd.to_datetime(signal_line['timestamp']).strftime('%Y-%m-%d')
 
         # Define the file name and group paths
-        file_name = "signals.hdf5"
+        file_name = f"{DATABASE_SIGNAL}.hdf5"
         tag_group = f"/{self.tag}"
         day_group = f"{tag_group}/{current_day}"
 
@@ -200,27 +178,107 @@ class MetaStrategy(ABC):
     def run(self, start_date, end_date):
         """
         Main method to run the strategy.
+        
+        Parameters:
+        -----------
+        start_date : datetime
+            The start date for data retrieval
+        end_date : datetime
+            The end date for data retrieval
+            
+        Returns:
+        --------
+        bool
+            True if the strategy executed successfully, False otherwise
         """
-
-        self.loadData(start_date, end_date)
-        self.signals()
-
-        if self.save_to_sql_db:
-            self.save_signal_data_to_db()
-
-        current_hour = self.data[next(iter(self.data))].index[-1].hour
-
-        if not self.are_positions_with_tag_open():
-            if self.active_hours is not None and current_hour not in self.active_hours and self.state != -2:
-                print(f"Current hour ({current_hour}) is not within active hours. Strategy will not run.")
-                return
-
-            # Check if long_only
-            if (self.long_only and self.state == -1) or (self.short_only and self.state == 1):
-                print("Long only or short only strategy, and the current state is not in the direction.")
-                return
-
-        self.check_conditions()
+        log_file = None
+        try:
+            # Setup logging
+            today = datetime.today().strftime('%Y-%m-%d')
+            log_path = f'logs/output_{self.tag}_{today}.log'
+            
+            # Ensure logs directory exists
+            import os
+            os.makedirs(os.path.dirname(log_path), exist_ok=True)
+            
+            # Save original stdout to restore later
+            original_stdout = sys.stdout
+            log_file = open(log_path, 'a')
+            sys.stdout = log_file
+            
+            # Data preparation phase
+            try:
+                self.loadData(start_date, end_date)
+            except Exception as e:
+                print(f"Error loading data: {str(e)}")
+                return False
+                
+            try:
+                self.signals()
+            except Exception as e:
+                print(f"Error generating signals: {str(e)}")
+                return False
+                
+            try:
+                self.save_signal_data_to_db()
+            except Exception as e:
+                print(f"Error saving signal data: {str(e)}")
+                # Continue execution as this is not critical
+            
+            # Get current hour from the last data point
+            try:
+                first_symbol = next(iter(self.data))
+                if not self.data or not self.data[first_symbol].index.size:
+                    print("No data available for analysis")
+                    return False
+                    
+                current_hour = self.data[first_symbol].index[-1].hour
+            except (StopIteration, IndexError, KeyError) as e:
+                print(f"Error accessing data timestamp: {str(e)}")
+                return False
+            
+            # Check if we should execute the strategy
+            if not self.are_positions_with_tag_open():
+                # Time-based filtering
+                if (self.active_hours is not None and 
+                    current_hour not in self.active_hours and 
+                    self.state != -2):
+                    print(f"Current hour ({current_hour}) is not within active hours. Strategy will not run.")
+                    return False
+                
+                # Direction-based filtering
+                if (self.long_only and self.state == -1):
+                    print("Long only strategy, but current state indicates short. Strategy will not run.")
+                    return False
+                elif (self.short_only and self.state == 1):
+                    print("Short only strategy, but current state indicates long. Strategy will not run.")
+                    return False
+            
+            # Execute strategy logic
+            try:
+                self.check_conditions()
+                return True
+            except Exception as e:
+                print(f"Error executing strategy conditions: {str(e)}")
+                return False
+                
+        except Exception as e:
+            # Catch any unexpected exceptions
+            if sys.stdout != sys.__stdout__:
+                print(f"Unexpected error in strategy execution: {str(e)}")
+            else:
+                # If stdout redirection failed, print to console
+                print(f"Critical error in strategy execution: {str(e)}")
+            return False
+            
+        finally:
+            # Ensure resources are properly closed
+            if log_file:
+                sys.stdout = sys.__stdout__  # Restore original stdout
+                try:
+                    log_file.close()
+                except:
+                    pass
 
     def are_positions_with_tag_open(self, position_type=None):
         # Retrieve all open positions

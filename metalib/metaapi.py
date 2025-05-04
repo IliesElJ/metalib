@@ -66,7 +66,10 @@ def list():
     return controller.list_processes()
 @app.get("/stop/{tag}")
 def stop(tag: str):
-    return controller.stop_script(tag)
+    return controller.stop_instance(tag)
+@app.get("/stop_all_running")
+def stop(tag: str):
+    return controller.stop_all_running()
 @app.get("/start")
 async def start(request: Request):
     query_params = dict(request.query_params)

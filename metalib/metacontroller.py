@@ -28,7 +28,7 @@ class MetaController:
 
         return message, pid, running
 
-    def stop_script(self, tag):
+    def stop_instance(self, tag):
         process = self.processes.get(tag)
         if not process:
             print(f"{tag} is not running.")
@@ -38,6 +38,11 @@ class MetaController:
         process.wait()
         del self.processes[tag]
         print(f"Stopped {tag}")
+
+    def stop_all_running(self):
+        for tag in self.list_processes():
+            self.stop_instance(tag)
+        return
 
     def list_processes(self):
         return list(self.processes.keys())
