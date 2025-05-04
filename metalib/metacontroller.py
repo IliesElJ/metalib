@@ -40,4 +40,4 @@ class MetaController:
         print(f"Stopped {tag}")
 
     def list_processes(self):
-        return self.processes
+        return list(self.processes.keys())

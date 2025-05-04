@@ -80,7 +80,15 @@ class MetaHAR(MetaStrategy):
         self.timestamp = indicators.index[-1]
 
     def _process_predictions(self) -> None:
-        """Process and log prediction results."""
+        """
+        Process prediction results and store them in signalData.
+        
+        This method:
+        1. Retrieves previous predictions (if available)
+        2. Calculates the difference between predicted and realized values
+        3. Creates a Series with all prediction metrics and indicator values
+        4. Stores the result in self.signalData for use by the strategy
+        """
         path = f"../indicators/{self.tag}_signals_log.csv"
         file_path = path.format(tag=self.tag)
         previous_prediction = self._get_previous_prediction(file_path)
@@ -95,10 +103,37 @@ class MetaHAR(MetaStrategy):
         else:
             prediction_diff = None
 
-        self._write_prediction_data(prediction_diff)
+        # Create a dictionary with prediction data
+        prediction_data = {
+            "timestamp": self.timestamp,
+            "prediction": float(self.predicted_vol_diff[-1]),
+            "realized_diff": float(self.realized_previous_diff),
+            "prediction_realized_difference": prediction_diff if prediction_diff is not None else 0.0,
+            "same_sign": int(np.sign(self.predicted_vol_diff[-1]) == np.sign(self.realized_previous_diff))
+        }
+        
+        # Add all indicator values as individual fields
+        for col, value in self.signals_data.iloc[-1].items():
+            # Ensure values are simple types (int, float, bool, or string)
+            if isinstance(value, (int, float, bool, str)):
+                prediction_data[col] = value
+            elif pd.isna(value):
+                prediction_data[col] = 0.0
+            else:
+                # Convert complex types to float if possible, otherwise to string
+                try:
+                    prediction_data[col] = float(value)
+                except (ValueError, TypeError):
+                    prediction_data[col] = str(value)
+        
+        # Save to signalData
+        self.signalData = pd.Series(prediction_data)
 
     def _get_previous_prediction(self, file_path: str) -> Optional[float]:
-        """Retrieve the previous prediction from the log file."""
+        """
+        Retrieve the previous prediction from the log file.
+        This is used for comparison with current realized values.
+        """
         if not os.path.isfile(file_path) or os.path.getsize(file_path) == 0:
             return None
 
@@ -107,35 +142,6 @@ class MetaHAR(MetaStrategy):
             return None
 
         return float(previous_data.iloc[-1].get("prediction", None))
-
-    def _write_prediction_data(self, prediction_diff: Optional[float]) -> None:
-        """Write prediction data to the log file."""
-        data_to_write = {
-            "timestamp": [self.timestamp],
-            "last_indicators": [self.signals_data.iloc[-1].to_dict()],
-            "prediction": [float(self.predicted_vol_diff[-1])],
-            "realized_diff": [float(self.realized_previous_diff)],
-            "prediction_realized_difference": [prediction_diff],
-            "same_sign": [int(np.sign(self.predicted_vol_diff[-1]) == np.sign(self.realized_previous_diff))]
-        }
-
-        file_path = f"../indicators/{self.tag}_signals_log.csv"
-
-        # Ensure the directory exists
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
-
-        # Check if the row already exists
-        if os.path.isfile(file_path):
-            existing_data = pd.read_csv(file_path)
-            if self.timestamp in existing_data["timestamp"].values:
-                return  # Skip appending if the row already exists
-
-        # Write data to the file
-        if not os.path.isfile(file_path) or os.path.getsize(file_path) == 0:
-            pd.DataFrame(data_to_write).to_csv(file_path, index=False)
-        else:
-            pd.DataFrame(data_to_write).to_csv(file_path, mode='a', header=False, index=False)
-
 
     def check_conditions(self):
         return True
@@ -206,7 +212,6 @@ class MetaHAR(MetaStrategy):
         print(f"{self.tag}::: Lasso Model trained {training_period}.")
         self.logger.info(f"Lasso Model trained {training_period}.")
         print(f"{self.tag}::: Lasso Model and coefficients saved.")
-
 
     def position_sizing(self, percentage, symbol, account_balance=None):
         return 0

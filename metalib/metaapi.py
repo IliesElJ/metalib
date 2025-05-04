@@ -9,7 +9,7 @@ app = FastAPI()
 controller = MetaController()
 
 # Global constant for configuration path
-CONFIG_PATH = Path("config")
+CONFIG_PATH = Path("config/prod")
 
 def start_strategy_instances(metacontroller) -> Dict[str, Any]:
     """
@@ -61,14 +61,12 @@ def start_stored_instances():
 @app.get("/")
 def read_root():
     return {"Meta": "API"}
-
 @app.get("/list")
 def list():
     return controller.list_processes()
 @app.get("/stop/{tag}")
 def stop(tag: str):
     return controller.stop_script(tag)
-
 @app.get("/start")
 async def start(request: Request):
     query_params = dict(request.query_params)
