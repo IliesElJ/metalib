@@ -38,10 +38,6 @@ LOG_EXTENSION = ".log"
 SIGNALS_FILE = f"{DATABASE_SIGNAL}{HDF5_EXTENSION}"
 PRICE_FILE = f"{DATABASE_PRICE}{HDF5_EXTENSION}"
 
-# Logging
-LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-LOG_ENCODING = "utf-8"
-
 # MetaTrader constants
 MT5_ORDER_TYPE_BUY = 0
 MT5_ORDER_TYPE_SELL = 1
@@ -58,7 +54,7 @@ API_PORT = 8000
 STATE_NEUTRAL = 0
 STATE_LONG = 1
 STATE_SHORT = -1
-STATE_DISABLED = -2
+STATE_EXIT = -2
 
 # Ensure directories exist
 def ensure_directories():

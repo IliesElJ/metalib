@@ -190,7 +190,8 @@ class MetaGA(MetaStrategy):
         indicators = self.retrieve_indicators(ohlc_df=data)
 
         # Retrieve history
-        hist_indicators = indicators[:24*self.mid_length]
+        hist_len = int(0.5*indicators.shape[0])
+        hist_indicators = indicators[:hist_len]
         hist_next_five_returns = next_five_returns.loc[hist_indicators.index]
         indicators = indicators.loc[indicators.index.difference(hist_indicators.index)]
         next_five_returns = next_five_returns.loc[indicators.index]
@@ -265,7 +266,7 @@ class MetaGA(MetaStrategy):
         # Rolling Realized Volatilities
         vols_rolling_session = returns.rolling(mid_length).apply(lambda x: np.sum(np.square(x.values))).rename(
             "vol_session")
-        vols_rolling_hour = returns.rolling(mid_length).apply(lambda x: np.sum(np.square(x.values))).rename("vol_hour")
+        vols_rolling_hour = returns.rolling(low_length).apply(lambda x: np.sum(np.square(x.values))).rename("vol_hour")
         vols_rolling_daily = returns.rolling(high_length).apply(lambda x: np.sum(np.square(x.values))).rename("vol_daily")
         vols_rollings = pd.concat([vols_rolling_hour, vols_rolling_session, vols_rolling_daily], axis=1)
         print(f"{self.tag}::: Computed rolling volatilies")
@@ -273,7 +274,7 @@ class MetaGA(MetaStrategy):
         # Rolling Skewness
         skewness_rolling_session = returns.rolling(mid_length).apply(skewness_nb, engine='numba', raw=True).rename(
             "skew_session")
-        skewness_rolling_hour = returns.rolling(mid_length).apply(skewness_nb, engine='numba', raw=True).rename("skew_hour")
+        skewness_rolling_hour = returns.rolling(low_length).apply(skewness_nb, engine='numba', raw=True).rename("skew_hour")
         skewness_rolling_daily = returns.rolling(high_length).apply(skewness_nb, engine='numba', raw=True).rename(
             "skew_daily")
         skewness_rollings = pd.concat([skewness_rolling_hour, skewness_rolling_session, skewness_rolling_daily], axis=1)
@@ -282,7 +283,7 @@ class MetaGA(MetaStrategy):
         # Rolling Kurtosis
         kurtosis_rolling_session = returns.rolling(mid_length).apply(kurtosis_nb, engine='numba', raw=True).rename(
             "kurt_session")
-        kurtosis_rolling_hour = returns.rolling(mid_length).apply(kurtosis_nb, engine='numba', raw=True).rename("kurt_hour")
+        kurtosis_rolling_hour = returns.rolling(low_length).apply(kurtosis_nb, engine='numba', raw=True).rename("kurt_hour")
         kurtosis_rolling_daily = returns.rolling(high_length).apply(kurtosis_nb, engine='numba', raw=True).rename(
             "kurt_daily")
         kurtosis_rollings = pd.concat([kurtosis_rolling_hour, kurtosis_rolling_session, kurtosis_rolling_daily], axis=1)
@@ -291,7 +292,7 @@ class MetaGA(MetaStrategy):
         # Rolling Number of Mean Crossings
         crossings_rolling_session = closes.rolling(mid_length).apply(retrieve_number_of_crossings_nb, engine='numba',
                                                                  raw=True).rename("crossings_session")
-        crossings_rolling_hour = closes.rolling(mid_length).apply(retrieve_number_of_crossings_nb, engine='numba',
+        crossings_rolling_hour = closes.rolling(low_length).apply(retrieve_number_of_crossings_nb, engine='numba',
                                                           raw=True).rename("crossings_hour")
         crossings_rolling_daily = closes.rolling(high_length).apply(retrieve_number_of_crossings_nb, engine='numba',
                                                                 raw=True).rename("crossings_daily")

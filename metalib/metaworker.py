@@ -80,7 +80,11 @@ def run_strategy_loop(strategy_type, init_args):
     def run_wrapper():
         end_time = datetime.now(pytz.utc) + timedelta(hours=3)
         start_time = end_time - timedelta(days=40)
-        instance.run(start_time, end_time)
+
+        try:
+            instance.run(start_time, end_time)
+        except Exception as e:
+            print(f"Error running strategy: {e}")
 
     schedule.every().minute.at(":00").do(run_wrapper)
     schedule.every().day.do(instance.fit)
