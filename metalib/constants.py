@@ -9,13 +9,14 @@ import os
 from pathlib import Path
 
 # Base directories
-ROOT_DIR = Path(os.path.dirname(os.path.abspath(__file__)))
+ROOT_DIR = Path(os.path.dirname(os.path.abspath(__file__))).parent
 CONFIG_DIR = ROOT_DIR / "config"
 LOGS_DIR = ROOT_DIR / "logs"
 STORE_DIR = ROOT_DIR / "store"
 DATA_DIR = ROOT_DIR / "data"
 INDICATORS_DIR = ROOT_DIR / "indicators"
 CHARTS_DIR = ROOT_DIR / "charts"
+
 
 # Configuration environments
 CONFIG_DEV = CONFIG_DIR / "dev"

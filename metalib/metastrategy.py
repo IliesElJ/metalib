@@ -71,7 +71,7 @@ class MetaStrategy(ABC):
 
         # Check if signal_line is a pd.Series
         if not isinstance(signal_line, pd.Series):
-            raise ValueError("The signal vector must be in a pandas Series.")
+            raise ValueError("The signal vector must be in a pandas Series not: ", type(signal_line))
 
         # Check if 'timestamp' key exists and is valid
         if 'timestamp' not in signal_line or pd.isna(signal_line['timestamp']):

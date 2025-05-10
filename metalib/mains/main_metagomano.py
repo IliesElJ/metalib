@@ -9,7 +9,7 @@ warnings.filterwarnings("ignore")
 def main():
     processes = []
 
-    with open("../config/metago.yaml", "r") as f:
+    with open("../config/prod/metago.yaml", "r") as f:
         config_data = yaml.safe_load(f)
 
     for name, entry in config_data.items():
