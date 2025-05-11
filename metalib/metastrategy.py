@@ -209,11 +209,11 @@ class MetaStrategy(ABC):
                 print(f"Error loading data: {str(e)}")
                 return False
                 
-            # try:
-            self.signals()
-            # except Exception as e:
-            #     print(f"Error generating signals: {str(e)}")
-            #     return False
+            try:
+                self.signals()
+            except Exception as e:
+                print(f"Error generating signals: {str(e)}")
+                return False
                 
             try:
                 self.save_signal_data_to_db()
