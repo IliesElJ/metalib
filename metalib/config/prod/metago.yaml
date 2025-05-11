@@ -69,3 +69,39 @@ AUDCHF_H1_GO:
   active_hours: None
   risk_factor: 0.09
   lookahead: 48
+
+  GER40CASH_H1_GO:
+    strategy_type: metago
+    symbols: [ "GER40.cash" ]
+    timeframe: mt5.TIMEFRAME_H1
+    tag: metago_i1
+    active_hours: None
+    risk_factor: 0.0025
+    lookahead: 48
+
+  US100CASH_H1_GO:
+    strategy_type: metago
+    symbols: [ "US100.cash" ]
+    timeframe: mt5.TIMEFRAME_H1
+    tag: metago_i2
+    active_hours: None
+    risk_factor: 0.0025
+    lookahead: 48
+
+  BTCUSD_H1_GO:
+    strategy_type: metago
+    symbols: [ "BTCUSD" ]
+    timeframe: mt5.TIMEFRAME_H1
+    tag: metago_c1
+    active_hours: None
+    risk_factor: 0.0025
+    lookahead: 48
+
+  XRPUSD_H1_GO:
+    strategy_type: metago
+    symbols: [ "XRPUSD" ]
+    timeframe: mt5.TIMEFRAME_H1
+    tag: metago_c2
+    active_hours: None
+    risk_factor: 0.0025
+    lookahead: 48

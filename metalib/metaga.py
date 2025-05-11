@@ -74,6 +74,7 @@ class MetaGA(MetaStrategy):
         signal_line = indicators.iloc[-1]
         signal_line['vote'] = vote
         signal_line['predicted_proba'] = y_hat[-1]
+        signal_line['timestamp'] = ohlc.index[-1],
 
         self.signalData = signal_line
 
