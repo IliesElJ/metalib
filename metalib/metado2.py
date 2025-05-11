@@ -1,4 +1,3 @@
-import logging
 import MetaTrader5 as mt5
 import matplotlib.pyplot as plt
 import vectorbt as vbt
@@ -25,7 +24,6 @@ class MetaDO(MetaStrategy):
         self.lookahead          = lookahead
         self.telegram           = True
         self.vol                = None
-        self.logger             = logging.getLogger(__name__)
 
     
     def signals(self):

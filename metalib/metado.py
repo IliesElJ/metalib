@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-import logging
 import MetaTrader5 as mt5
 import numpy as np
 import pytz as pytz
@@ -24,12 +23,9 @@ class MetaDO(MetaStrategy):
         self.state = None
         self.risk_factor = risk_factor
         self.telegram = True
-        self.logger = logging.getLogger(__name__)
         self.lookback = lookback
         self.stop_loss = 5
         self.columns_to_drop = ['next_returns', 'open', 'high', 'low', 'close', 'lower', 'higher', 'real_volume', 'tick_volume', 'spread']
-
-        logging.basicConfig(filename=f'../logs/{self.tag}.log', encoding='utf-8', level=logging.DEBUG)
 
     def signals(self):
         ohlc = self.data[self.symbols[0]]

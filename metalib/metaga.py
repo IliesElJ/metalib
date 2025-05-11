@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-import logging
 import MetaTrader5 as mt5
 import pytz as pytz
 import xgboost as xgb
@@ -10,7 +9,7 @@ from metalib.metastrategy import MetaStrategy
 
 class MetaGA(MetaStrategy):
 
-    def __init__(   self, 
+    def __init__(   self,
                     symbols, 
                     timeframe, 
                     tag, 
@@ -38,13 +37,11 @@ class MetaGA(MetaStrategy):
         self.state          = None
         self.risk_factor    = risk_factor
         self.telegram       = True
-        self.logger         = logging.getLogger(__name__)
 
     def signals(self):
 
-        ohlc = self.data[self.symbols[0]]
-        indicators = self.retrieve_indicators(ohlc)
-
+        ohlc            = self.data[self.symbols[0]]
+        indicators      = self.retrieve_indicators(ohlc)
         self.indicators = indicators
 
         # Demean Indicators
@@ -75,8 +72,8 @@ class MetaGA(MetaStrategy):
         print(f"{self.tag}::: Vote of indicators: {vote}, and last 3 predicted probabilities: {y_hat}")
 
         signal_line = indicators.iloc[[-1]]
-        signal_line.loc[:, 'vote'] = vote[-1]
-        signal_line.loc[:, 'predicted_proba'] = y_hat[-1]
+        signal_line.loc['vote'] = vote[-1]
+        signal_line.loc['predicted_proba'] = y_hat[-1]
 
         self.signalData = signal_line
 
@@ -210,8 +207,7 @@ class MetaGA(MetaStrategy):
         xgb_dummy = xgb.XGBClassifier().fit(X, y)
         print(f"{self.tag}::: XGBoost Model trained from {X.index[0]} to {X.index[-1]}.")
         # Add line to log file to signal training completion
-        self.logger.info(f"XGBoost Model trained from {X.index[0]} to {X.index[-1]}.")
-        
+
         # Save model, 1st and 2nd indicator moments
         self.model = xgb_dummy
         self.indicators_mean = hist_indicators.mean()
@@ -264,10 +260,12 @@ class MetaGA(MetaStrategy):
         emas = pd.DataFrame(emas, index=returns.index)
 
         # Rolling Realized Volatilities
-        vols_rolling_session = returns.rolling(mid_length).apply(lambda x: np.sum(np.square(x.values))).rename(
+        vols_rolling_session = returns.rolling(self.mid_length).apply(square_sum, engine='numba', raw=True).rename(
             "vol_session")
-        vols_rolling_hour = returns.rolling(low_length).apply(lambda x: np.sum(np.square(x.values))).rename("vol_hour")
-        vols_rolling_daily = returns.rolling(high_length).apply(lambda x: np.sum(np.square(x.values))).rename("vol_daily")
+        vols_rolling_hour = returns.rolling(self.low_length).apply(square_sum, engine='numba', raw=True).rename(
+            "vol_hour")
+        vols_rolling_daily = returns.rolling(self.high_length).apply(square_sum, engine='numba', raw=True).rename(
+            "vol_daily")
         vols_rollings = pd.concat([vols_rolling_hour, vols_rolling_session, vols_rolling_daily], axis=1)
         print(f"{self.tag}::: Computed rolling volatilies")
 

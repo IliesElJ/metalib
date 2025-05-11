@@ -273,6 +273,8 @@ def ols_tval_nb(prices_arr):
 
     return t_value.item()
 
+square_sum = njit(lambda x: np.sum(np.square(x)))
+
 @njit(cache=True)
 def manual_cov(X, Y, window_size):
     cov = np.sum(X * Y) / (window_size - 1)

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import MetaTrader5 as mt5
 import pandas as pd
-import requests
+from requests import get
 import sys
 from datetime import datetime
 from metalib.constants import SIGNALS_FILE, LOG_EXTENSION
@@ -209,11 +209,11 @@ class MetaStrategy(ABC):
                 print(f"Error loading data: {str(e)}")
                 return False
                 
-            try:
-                self.signals()
-            except Exception as e:
-                print(f"Error generating signals: {str(e)}")
-                return False
+            # try:
+            self.signals()
+            # except Exception as e:
+            #     print(f"Error generating signals: {str(e)}")
+            #     return False
                 
             try:
                 self.save_signal_data_to_db()
@@ -375,20 +375,12 @@ class MetaStrategy(ABC):
 
     def send_telegram_message(self, message):
         bot_token = '6879531129:AAFwzA9vu2xt8-2zMvPKTyyTgfKMdZlpBWw'
-        chat_id = '295737723'
+        chat_ids = ("295737723", "895011343", "5797648513")
+        response = None
 
-        send_text = f'https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&parse_mode=Markdown&text={message}'
-        response = requests.get(send_text)
-
-        chat_id = '895011343'
-
-        send_text = f'https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&parse_mode=Markdown&text={message}'
-        response = requests.get(send_text)
-
-        chat_id = '5797648513'
-
-        send_text = f'https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&parse_mode=Markdown&text={message}'
-        response = requests.get(send_text)
+        for chat_id in chat_ids:
+            send_text = f'https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&parse_mode=Markdown&text={message}'
+            response = get(send_text)
 
         return response.json()
 
