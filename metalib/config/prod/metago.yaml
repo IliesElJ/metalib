@@ -4,7 +4,7 @@ EURUSD_H1_GO:
   timeframe: mt5.TIMEFRAME_H1
   tag: metago_f1
   active_hours: None
-  risk_factor: 0.09
+  risk_factor: 0.36
   lookahead: 48
 
 USDJPY_H1_GO:
@@ -13,7 +13,7 @@ USDJPY_H1_GO:
   timeframe: mt5.TIMEFRAME_H1
   tag: metago_f2
   active_hours: None
-  risk_factor: 0.09
+  risk_factor: 0.36
   lookahead: 48
 
 GBPUSD_H1_GO:
@@ -22,7 +22,7 @@ GBPUSD_H1_GO:
   timeframe: mt5.TIMEFRAME_H1
   tag: metago_f3
   active_hours: None
-  risk_factor: 0.09
+  risk_factor: 0.36
   lookahead: 48
 
 USDCHF_H1_GO:
@@ -31,7 +31,7 @@ USDCHF_H1_GO:
   timeframe: mt5.TIMEFRAME_H1
   tag: metago_f4
   active_hours: None
-  risk_factor: 0.09
+  risk_factor: 0.36
   lookahead: 48
 
 USDCAD_H1_GO:
@@ -40,7 +40,7 @@ USDCAD_H1_GO:
   timeframe: mt5.TIMEFRAME_H1
   tag: metago_f5
   active_hours: None
-  risk_factor: 0.09
+  risk_factor: 0.36
   lookahead: 48
 
 AUDUSD_H1_GO:
@@ -49,7 +49,7 @@ AUDUSD_H1_GO:
   timeframe: mt5.TIMEFRAME_H1
   tag: metago_f6
   active_hours: None
-  risk_factor: 0.09
+  risk_factor: 0.36
   lookahead: 48
 
 NZDUSD_H1_GO:
@@ -58,7 +58,7 @@ NZDUSD_H1_GO:
   timeframe: mt5.TIMEFRAME_H1
   tag: metago_f7
   active_hours: None
-  risk_factor: 0.09
+  risk_factor: 0.36
   lookahead: 48
 
 AUDCHF_H1_GO:
@@ -67,41 +67,41 @@ AUDCHF_H1_GO:
   timeframe: mt5.TIMEFRAME_H1
   tag: metago_f8
   active_hours: None
-  risk_factor: 0.09
+  risk_factor: 0.36
   lookahead: 48
 
-  GER40CASH_H1_GO:
-    strategy_type: metago
-    symbols: [ "GER40.cash" ]
-    timeframe: mt5.TIMEFRAME_H1
-    tag: metago_i1
-    active_hours: None
-    risk_factor: 0.0025
-    lookahead: 48
+GER40CASH_H1_GO:
+  strategy_type: metago
+  symbols: [ "GER40.cash" ]
+  timeframe: mt5.TIMEFRAME_H1
+  tag: metago_i1
+  active_hours: None
+  risk_factor: 0.01
+  lookahead: 48
 
-  US100CASH_H1_GO:
-    strategy_type: metago
-    symbols: [ "US100.cash" ]
-    timeframe: mt5.TIMEFRAME_H1
-    tag: metago_i2
-    active_hours: None
-    risk_factor: 0.0025
-    lookahead: 48
+US100CASH_H1_GO:
+  strategy_type: metago
+  symbols: [ "US100.cash" ]
+  timeframe: mt5.TIMEFRAME_H1
+  tag: metago_i2
+  active_hours: None
+  risk_factor: 0.01
+  lookahead: 48
 
-  BTCUSD_H1_GO:
-    strategy_type: metago
-    symbols: [ "BTCUSD" ]
-    timeframe: mt5.TIMEFRAME_H1
-    tag: metago_c1
-    active_hours: None
-    risk_factor: 0.0025
-    lookahead: 48
+BTCUSD_H1_GO:
+  strategy_type: metago
+  symbols: [ "BTCUSD" ]
+  timeframe: mt5.TIMEFRAME_H1
+  tag: metago_c1
+  active_hours: None
+  risk_factor: 0.01
+  lookahead: 48
 
-  XRPUSD_H1_GO:
-    strategy_type: metago
-    symbols: [ "XRPUSD" ]
-    timeframe: mt5.TIMEFRAME_H1
-    tag: metago_c2
-    active_hours: None
-    risk_factor: 0.0025
-    lookahead: 48
+XRPUSD_H1_GO:
+  strategy_type: metago
+  symbols: [ "XRPUSD" ]
+  timeframe: mt5.TIMEFRAME_H1
+  tag: metago_c2
+  active_hours: None
+  risk_factor: 0.01
+  lookahead: 48
