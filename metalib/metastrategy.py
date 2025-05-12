@@ -31,7 +31,7 @@ class MetaStrategy(ABC):
         self.timeframe = timeframe
         self.data = {}
         self.tag = tag
-        self.active_hours = active_hours
+        self.active_hours = active_hours if isinstance(active_hours, list) else None
         self.state = 0
         self.long_only = long_only
         self.short_only = short_only
@@ -78,7 +78,7 @@ class MetaStrategy(ABC):
             raise ValueError("The signal vector must contain a valid 'timestamp'.")
 
         # Get the current day from the timestamp
-        current_day = pd.to_datetime(signal_line['timestamp']).strftime('%Y-%m-%d')
+        current_day = pd.to_datetime(signal_line['timestamp']).strftime('%Y-%m-%d')[0]
 
         # Define the file name and group paths
         file_name = SIGNALS_FILE
@@ -236,9 +236,9 @@ class MetaStrategy(ABC):
             # Check if we should execute the strategy
             if not self.are_positions_with_tag_open():
                 # Time-based filtering
-                if (self.active_hours is not None and 
+                if( self.active_hours is not None and
                     current_hour not in self.active_hours and 
-                    self.state != -2):
+                    self.state != -2 ):
                     print(f"Current hour ({current_hour}) is not within active hours. Strategy will not run.")
                     return False
                 

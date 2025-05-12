@@ -21,7 +21,7 @@ def main():
             init_args["timeframe"] = eval(init_args["timeframe"])
 
         # Convert null active_hours to None
-        if "active_hours" in init_args and init_args["active_hours"] is None:
+        if "active_hours" in init_args and init_args["active_hours"] == "None":
             init_args["active_hours"] = None
 
         # Start the strategy in its own process

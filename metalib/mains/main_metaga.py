@@ -9,7 +9,7 @@ warnings.filterwarnings("ignore")
 def main():
     processes = []
 
-    with open("../config/prod/crypto_metaga_single.yaml", "r") as f:
+    with open("../config/prod/metaga.yaml", "r") as f:
         config_data = yaml.safe_load(f)
 
     for name, entry in config_data.items():
@@ -21,7 +21,7 @@ def main():
             init_args["timeframe"] = eval(init_args["timeframe"])
 
         # Convert null active_hours to None
-        if "active_hours" in init_args and init_args["active_hours"] is None:
+        if "active_hours" in init_args and init_args["active_hours"] == "None":
             init_args["active_hours"] = None
 
         # Start the strategy in its own process
