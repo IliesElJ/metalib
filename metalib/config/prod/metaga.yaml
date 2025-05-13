@@ -10,18 +10,6 @@ EURUSD_H1_GA:
   high_length: 1440
   prob_bound: 0.05
 
-GBPUSD_H1_GA:
-  strategy_type: metaga
-  symbols: [ "GBPUSD" ]
-  timeframe: mt5.TIMEFRAME_M1
-  tag: metaga_f3
-  active_hours: None
-  risk_factor: 0.005
-  low_length: 60
-  mid_length: 480
-  high_length: 1440
-  prob_bound: 0.05
-
 USDJPY_H1_GA:
   strategy_type: metaga
   symbols: [ "USDJPY" ]
@@ -46,47 +34,11 @@ USDCHF_H1_GA:
   high_length: 1440
   prob_bound: 0.05
 
-USDCAD_H1_GA:
-  strategy_type: metaga
-  symbols: [ "USDCAD" ]
-  timeframe: mt5.TIMEFRAME_M1
-  tag: metaga_f5
-  active_hours: None
-  risk_factor: 0.005
-  low_length: 60
-  mid_length: 480
-  high_length: 1440
-  prob_bound: 0.05
-
 AUDUSD_H1_GA:
   strategy_type: metaga
   symbols: [ "AUDUSD" ]
   timeframe: mt5.TIMEFRAME_M1
   tag: metaga_f6
-  active_hours: None
-  risk_factor: 0.005
-  low_length: 60
-  mid_length: 480
-  high_length: 1440
-  prob_bound: 0.05
-
-NZDUSD_H1_GA:
-  strategy_type: metaga
-  symbols: [ "NZDUSD" ]
-  timeframe: mt5.TIMEFRAME_M1
-  tag: metaga_f7
-  active_hours: None
-  risk_factor: 0.005
-  low_length: 60
-  mid_length: 480
-  high_length: 1440
-  prob_bound: 0.05
-
-AUDCHF_H1_GA:
-  strategy_type: metaga
-  symbols: [ "AUDCHF" ]
-  timeframe: mt5.TIMEFRAME_M1
-  tag: metaga_f8
   active_hours: None
   risk_factor: 0.005
   low_length: 60

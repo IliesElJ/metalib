@@ -16,15 +16,6 @@ USDJPY_H1_GO:
   risk_factor: 0.36
   lookahead: 48
 
-GBPUSD_H1_GO:
-  strategy_type: metago
-  symbols: [ "GBPUSD" ]
-  timeframe: mt5.TIMEFRAME_H1
-  tag: metago_f3
-  active_hours: None
-  risk_factor: 0.36
-  lookahead: 48
-
 USDCHF_H1_GO:
   strategy_type: metago
   symbols: [ "USDCHF" ]
@@ -48,24 +39,6 @@ AUDUSD_H1_GO:
   symbols: [ "AUDUSD" ]
   timeframe: mt5.TIMEFRAME_H1
   tag: metago_f6
-  active_hours: None
-  risk_factor: 0.36
-  lookahead: 48
-
-NZDUSD_H1_GO:
-  strategy_type: metago
-  symbols: [ "NZDUSD" ]
-  timeframe: mt5.TIMEFRAME_H1
-  tag: metago_f7
-  active_hours: None
-  risk_factor: 0.36
-  lookahead: 48
-
-AUDCHF_H1_GO:
-  strategy_type: metago
-  symbols: [ "AUDCHF" ]
-  timeframe: mt5.TIMEFRAME_H1
-  tag: metago_f8
   active_hours: None
   risk_factor: 0.36
   lookahead: 48

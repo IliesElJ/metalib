@@ -16,24 +16,6 @@ USDJPY_M1:
   risk_factor: 0.3
   mode: mean_rev
 
-GBPUSD_M1:
-  strategy_type: metado
-  symbols: ["GBPUSD"]
-  timeframe: mt5.TIMEFRAME_M1
-  tag: metado_f3
-  active_hours: null
-  risk_factor: 0.3
-  mode: mean_rev
-
-USDCHF_M1:
-  strategy_type: metado
-  symbols: ["USDCHF"]
-  timeframe: mt5.TIMEFRAME_M1
-  tag: metado_f4
-  active_hours: null
-  risk_factor: 0.3
-  mode: mean_rev
-
 USDCAD_M1:
   strategy_type: metado
   symbols: ["USDCAD"]
@@ -43,29 +25,11 @@ USDCAD_M1:
   risk_factor: 0.3
   mode: mean_rev
 
-AUDUSD_M1:
-  strategy_type: metado
-  symbols: ["AUDUSD"]
-  timeframe: mt5.TIMEFRAME_M1
-  tag: metado_f6
-  active_hours: null
-  risk_factor: 0.3
-  mode: mean_rev
-
 NZDUSD_M1:
   strategy_type: metado
   symbols: ["NZDUSD"]
   timeframe: mt5.TIMEFRAME_M1
   tag: metado_f7
-  active_hours: null
-  risk_factor: 0.3
-  mode: mean_rev
-
-AUDCHF_M1:
-  strategy_type: metado
-  symbols: ["AUDCHF"]
-  timeframe: mt5.TIMEFRAME_M1
-  tag: metado_f8
   active_hours: null
   risk_factor: 0.3
   mode: mean_rev
