@@ -36,6 +36,7 @@ class MetaGO(MetaStrategy):
         ohlc        = self.data[self.symbols[0]]
         indicators  = self.retrieve_indicators(ohlc)
         close       = ohlc['close']
+        del ohlc
 
         self.vol        = close.pct_change().std()*np.sqrt(48)
         self.indicators = indicators
@@ -73,7 +74,7 @@ class MetaGO(MetaStrategy):
         print(f"{self.tag}::: Short Signal Components:")
         print(f"    - All of last 4 (except last) are < 0: {close_negative_condition}")
         print(f"    - Downtrend > 0: {downtrend > 0}")
-        print(f"    - Close > True Open Yearly: {close.iloc[-1] > true_open_yearly}")
+        print(f"    - Close > True Open Monthly: {close.iloc[-1] > true_open_monthly}")
         print(f"    - Mask Downtrend Above Yearly: {mask_downtrend_above_yearly.iloc[-1]}")
         print(f"    => Final Short Signal: {short_signal}")
 
@@ -202,10 +203,8 @@ class MetaGO(MetaStrategy):
                                               'high': 'max',
                                               'low': 'min',
                                               'close': 'last',
-                                              })
+                                              }, closed="right", label="right")
         closes  = ohlc.loc[:, 'close']
-        returns = closes.apply(np.log).diff().dropna()
-
         short_sma   = closes.rolling(12).mean()
         long_sma    = closes.rolling(24).mean()
 
@@ -218,11 +217,13 @@ class MetaGO(MetaStrategy):
         true_open_monthly   = get_second_monday_open_ffill(ohlc_daily, ohlc.index)
         true_open_yearly    = get_first_monday_of_april_open_ffill(ohlc_daily, ohlc.index)
         print(f"{self.tag}::: Computed True opens (weekly, monthly) ")
+        del ohlc
+        del ohlc_daily
 
         # Compute differences between various true open prices
         crossed_diff_monthly_weekly     = true_open_monthly - true_open_weekly
-        above_true_open_monthly_diff    = ohlc['close'] - true_open_monthly
-        above_true_open_weekly_diff     = ohlc['close'] - true_open_weekly
+        above_true_open_monthly_diff    = closes - true_open_monthly
+        above_true_open_weekly_diff     = closes - true_open_weekly
         print(f"{self.tag}::: Computed True opens diffs (weekly, monthly) ")
 
         # Merge Features
@@ -241,6 +242,7 @@ class MetaGO(MetaStrategy):
                                 'above_true_open_monthly_diff', 'above_true_open_weekly_diff',
                                 'short_sma', 'long_sma',
                                 'close' ]
+
         indicators.index    = pd.to_datetime(indicators.index)
         indicators.columns  = indicators.columns.astype(str)
         print(f"{self.tag}::: Merged indicators")
