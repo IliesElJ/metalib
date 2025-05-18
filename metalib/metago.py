@@ -121,14 +121,11 @@ class MetaGO(MetaStrategy):
 
         # Indicators
         indicators      = self.retrieve_indicators(ohlc_df=data).dropna()
-        self.indicators = indicators
         close           = data['close']
 
         # Retrieve history
         hist_indicators     = indicators[:hist_length]
         hist_next_returns   = next_returns.loc[hist_indicators.index]
-        # indicators          = indicators.loc[indicators.index.difference(hist_indicators.index)]
-        # next_returns        = next_returns.loc[indicators.index]
 
         # Demean from history
         indicators     = (hist_indicators - hist_indicators.mean()) / hist_indicators.std()
@@ -169,9 +166,6 @@ class MetaGO(MetaStrategy):
         self.model = tree_dummy
         self.indicators_mean = hist_indicators.mean()
         self.indicators_std = hist_indicators.std()
-
-        # Save the 90% quantile of the closes
-        self.quantile = data['close'].quantile(0.9)
 
         # Plot and save the decision tree
         plt.figure(figsize=(20, 10))
@@ -217,7 +211,6 @@ class MetaGO(MetaStrategy):
                                               'close': 'last',
                                               })
         closes  = ohlc.loc[:, 'close']
-        returns = closes.apply(np.log).diff().dropna()
 
         short_sma   = closes.rolling(12).median()
         long_sma    = closes.rolling(24).median()
@@ -229,13 +222,12 @@ class MetaGO(MetaStrategy):
 
         true_open_weekly    = get_last_monday_6pm_open_ffill(ohlc, ohlc.index)
         true_open_monthly   = get_second_monday_open_ffill(ohlc_daily, ohlc.index)
-        true_open_yearly    = get_first_monday_of_april_open_ffill(ohlc_daily, ohlc.index)
         print(f"{self.tag}::: Computed True opens (weekly, monthly) ")
 
         # Compute differences between various true open prices
         crossed_diff_monthly_weekly     = true_open_monthly - true_open_weekly
-        above_true_open_monthly_diff    = ohlc['close'] - true_open_monthly
-        above_true_open_weekly_diff     = ohlc['close'] - true_open_weekly
+        above_true_open_monthly_diff    = closes - true_open_monthly
+        above_true_open_weekly_diff     = closes - true_open_weekly
         print(f"{self.tag}::: Computed True opens diffs (weekly, monthly) ")
 
         # Merge Features

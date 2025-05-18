@@ -42,10 +42,10 @@ class MetaGO(MetaStrategy):
 
         uptrend     = indicators['uptrend'].iloc[-1]
         downtrend   = indicators['downtrend'].iloc[-1]
-        true_open_yearly = indicators['true_open_monthly'].iloc[-1]
+        true_open_monthly = indicators['true_open_monthly'].iloc[-1]
 
-        mask_uptrend_below_yearly   = (uptrend > 0) & (close < true_open_yearly)
-        mask_downtrend_above_yearly = (downtrend > 0) & (close > true_open_yearly)
+        mask_uptrend_below_yearly   = (uptrend > 0) & (close < true_open_monthly)
+        mask_downtrend_above_yearly = (downtrend > 0) & (close > true_open_monthly)
 
         close_last_4 = close.tail(3).head(2)  # Extract last 3 values, then take first 2 candles
         close_positive_condition = np.all(close_last_4 > 0)
@@ -66,8 +66,8 @@ class MetaGO(MetaStrategy):
         print(f"{self.tag}::: Long Signal Components:")
         print(f"    - All of last 4 (except last) are > 0: {close_positive_condition}")
         print(f"    - Uptrend > 0: {uptrend > 0}")
-        print(f"    - Close < True Open Yearly: {close.iloc[-1] < true_open_yearly}")
-        print(f"    - Mask Uptrend Below Yearly: {mask_uptrend_below_yearly.iloc[-1]}")
+        print(f"    - Close < True Open Monthly: {close.iloc[-1] < true_open_monthly}")
+        print(f"    - Mask Uptrend Below Monthly: {mask_uptrend_below_yearly.iloc[-1]}")
         print(f"    => Final Long Signal: {long_signal}")
 
         print(f"{self.tag}::: Short Signal Components:")
@@ -156,102 +156,16 @@ class MetaGO(MetaStrategy):
             except Exception as e:
                 print(f"Execution failed for {symbol}: {str(e)}")
 
-        elif self.state == -2:
-            if num_positions > 0:  # Avoid unnecessary API calls
+        elif self.state == -2: # If we have to close positions.
+            if num_positions > 0:
                 self.close_all_positions()
                 self.send_telegram_message(f"Closed all positions for {symbol}")
             else:
                 print(f"No positions to close for {symbol}")
 
     def fit(self, data=None):
-        # Define the UTC timezone
-        utc = pytz.timezone('UTC')
-        # Get the current time in UTC
-        end_time    = datetime.now(utc)
-        start_time  = end_time - timedelta(days=60)
-        # Set the time components to 0 (midnight) and maintain the timezone
-        end_time    = end_time.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(utc)
-        start_time  = start_time.astimezone(utc)
-        # Grab lookahead parameter
-        lookahead   = self.lookahead
-        hist_length = self.hist_length
-
-        # Pulling last days of data
-        if data is None:
-            self.loadData(start_time, end_time)
-            data = self.data[self.symbols[0]]
-        else:
-            data = data[self.symbols[0]]
-
-        returns     = data.loc[:, 'close'].apply(np.log) - data.loc[:, 'open'].apply(np.log)
-
-        # Compute rolling next returns series
-        T = returns.shape[0]
-        next_returns    = [np.sum(returns[i + 1: i + lookahead]) for i in range(T)]
-        next_returns    = pd.Series(next_returns, index=returns.index)
-
-        # Indicators
-        indicators      = self.retrieve_indicators(ohlc_df=data).dropna()
-        self.indicators = indicators
-        close           = data['close']
-
-        # Retrieve history
-        hist_indicators     = indicators[:hist_length]
-        hist_next_returns   = next_returns.loc[hist_indicators.index]
-        # indicators          = indicators.loc[indicators.index.difference(hist_indicators.index)]
-        # next_returns        = next_returns.loc[indicators.index]
-
-        # Demean from history
-        indicators     = (hist_indicators - hist_indicators.mean()) / hist_indicators.std()
-        next_returns   = (hist_next_returns - hist_next_returns.mean()) / hist_next_returns.std()
-
-        print(f"Before filtering: {indicators.shape[0]}")
-        # Mask for uptrend and close below true yearly open
-        uptrend = indicators['uptrend']
-        downtrend = indicators['downtrend']
-        true_open_monthly = indicators['true_open_monthly']
-
-        # Ensure all series are aligned to the same index
-        aligned_close, aligned_true_open_monthly = close.align(true_open_monthly, join='inner')
-        aligned_uptrend, aligned_close = uptrend.align(aligned_close, join='inner')
-        align_downtrend, aligned_close = downtrend.align(aligned_close, join='inner')
-
-        # Perform the comparison with aligned indices
-        mask_uptrend_below_yearly = ( aligned_uptrend > 0 ) & (aligned_close < aligned_true_open_monthly)
-        mask_downtrend_above_yearly = ( align_downtrend > 0 ) & (aligned_close > aligned_true_open_monthly)
-
-        # Combine masks with all other times as False
-        mask_combined = mask_uptrend_below_yearly | mask_downtrend_above_yearly
-
-        indicators = indicators[mask_combined]
-        print(f"After filtering: {indicators.shape[0]}")
-        dummy_next_five_returns = next_returns.loc[indicators.index].apply(assign_cat)
-
-        X, y = indicators.ffill(), dummy_next_five_returns
-
-        # Fit DecisionTreeClassifier
-        tree_dummy = DecisionTreeClassifier(max_depth=5).fit(X, y)
-        print(f"{self.tag}::: DecisionTree Model trained from {X.index[0]} to {X.index[-1]}.")
-
-        # Add line to log file to signal training completion
-        self.logger.info(f"DecisionTree Model trained from {X.index[0]} to {X.index[-1]}.")
-
-        # Save model, 1st and 2nd indicator moments
-        self.model = tree_dummy
-        self.indicators_mean = hist_indicators.mean()
-        self.indicators_std = hist_indicators.std()
-
-        # Save the 90% quantile of the closes
-        self.quantile = data['close'].quantile(0.9)
-
-        # Plot and save the decision tree
-        plt.figure(figsize=(20, 10))
-        plot_tree(tree_dummy, feature_names=X.columns, filled=True, rounded=True)
-        # plt.savefig("decision_tree.png")
-        plt.close()
-
-        print(f"{self.tag}::: DecisionTree Model and first/second moments saved.")
-
+        print(f"No model to fit for MetaGO(mano) pelo!")
+        return
 
     def position_sizing(self, percentage, symbol, account_balance=None):
         # Retrieve account balance if not provided

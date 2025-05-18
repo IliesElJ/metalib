@@ -39,32 +39,30 @@ class MetaGA(MetaStrategy):
         self.telegram       = True
 
     def signals(self):
-
         ohlc            = self.data[self.symbols[0]]
+        timestamp       = ohlc.index[-1]
         indicators      = self.retrieve_indicators(ohlc)
-        self.indicators = indicators
+        del ohlc
 
         # Demean Indicators
         indicators = indicators.tail(3)
         indicators = (indicators - self.indicators_mean) / self.indicators_std
 
-        dummy_extremes_indicators = abs(indicators) > 1.0
+        dummy_extremes_indicators = abs(indicators) > 1.5
 
-        y_hat = self.model.predict_proba(indicators)[:, 1]
-        vote = np.sum(dummy_extremes_indicators.iloc[-1])
+        y_hat   = self.model.predict_proba(indicators)[:, 1]
+        vote    = np.sum(dummy_extremes_indicators.iloc[-1])
+        quorum  = dummy_extremes_indicators.shape[1]
         mean_entry_price, num_positions = self.get_positions_info()
 
         if y_hat[-1] < 0.3 and self.are_positions_with_tag_open(position_type="buy"):
             self.state = -2
         elif y_hat[-1] > 0.7 and self.are_positions_with_tag_open(position_type="sell"):
             self.state = -2
-        elif vote >= 18 and y_hat[-1] > 1 - self.prob_bound and num_positions < 5:
+        elif vote >= quorum and y_hat[-1] > 1 - self.prob_bound and num_positions < 5:
             self.state = 1
-        elif vote >= 18 and y_hat[-1] < self.prob_bound and num_positions < 5:
-            if ohlc.iloc[-1]['close'] < self.quantile:
-                self.state = -1
-            else:
-                self.state = 0
+        elif vote >= quorum and y_hat[-1] < self.prob_bound and num_positions < 5:
+            self.state = -1
         else:
             self.state = 0
 
@@ -74,7 +72,7 @@ class MetaGA(MetaStrategy):
         signal_line = indicators.iloc[-1]
         signal_line['vote'] = vote
         signal_line['predicted_proba'] = y_hat[-1]
-        signal_line['timestamp'] = ohlc.index[-1],
+        signal_line['timestamp'] = timestamp
 
         self.signalData = signal_line
 
@@ -119,7 +117,9 @@ class MetaGA(MetaStrategy):
 
         # Calculate daily volatility (standard deviation of daily returns)
         returns = np.log(ohlc['close'] / ohlc['close'].shift(1)).dropna()
+        del ohlc
         daily_vol = returns.rolling(window=24 * self.mid_length).std().iloc[-1]
+        del returns
 
         if np.isnan(daily_vol) or daily_vol == 0:
             print(f"Invalid daily volatility computed for {symbol}.")
@@ -160,11 +160,6 @@ class MetaGA(MetaStrategy):
             self.send_telegram_message(f"Closed all positions for {self.symbols[0]}")
 
     def fit(self):
-
-        # self.model = pickle.load(open("xgb_metaga.pkl", "rb"))
-        # self.indicators_mean = pickle.load(open("hist_ind_means.pkl", "rb"))
-        # self.indicators_std = pickle.load(open("hist_ind_stds.pkl", "rb"))
-
         # Define the UTC timezone
         utc = pytz.timezone('UTC')
         # Get the current time in UTC
@@ -176,8 +171,8 @@ class MetaGA(MetaStrategy):
 
         # Pulling last days of data
         self.loadData(start_time, end_time)
-        data = self.data[self.symbols[0]]
-        returns = data.loc[:, 'close'].apply(np.log) - data.loc[:, 'open'].apply(np.log)
+        data        = self.data[self.symbols[0]]
+        returns     = data.loc[:, 'close'].apply(np.log) - data.loc[:, 'open'].apply(np.log)
 
         # Compute rolling next returns series
         T = returns.shape[0]
@@ -188,33 +183,33 @@ class MetaGA(MetaStrategy):
         indicators = self.retrieve_indicators(ohlc_df=data)
 
         # Retrieve history
-        hist_len = int(0.5*indicators.shape[0])
+        hist_len        = int(0.5 * indicators.shape[0])
         hist_indicators = indicators[:hist_len]
         hist_next_five_returns = next_five_returns.loc[hist_indicators.index]
-        indicators = indicators.loc[indicators.index.difference(hist_indicators.index)]
+        indicators      = indicators.loc[indicators.index.difference(hist_indicators.index)]
         next_five_returns = next_five_returns.loc[indicators.index]
+        next_five_returns = next_five_returns / indicators["vol_session"].iloc[-1] # Using Vol-adjusted returns
 
         # Demean from history
         indicators = (indicators - hist_indicators.mean()) / hist_indicators.std()
         next_five_returns = (next_five_returns - hist_next_five_returns.mean()) / hist_next_five_returns.std()
 
         # Transform to dummy
-        dummy_extremes_indicators = abs(indicators) > 1.0
-        indicators = indicators[dummy_extremes_indicators.sum(axis=1) > 18]
+        dummy_extremes_indicators = abs(indicators) > 1.5
+        quorum  = dummy_extremes_indicators.shape[1]
+        indicators = indicators[dummy_extremes_indicators.sum(axis=1) > quorum]
         dummy_extremes_next_five_returns = next_five_returns.loc[indicators.index].apply(assign_cat)
 
         X, y = indicators.ffill(), dummy_extremes_next_five_returns
 
         xgb_dummy = xgb.XGBClassifier().fit(X, y)
-        print(f"{self.tag}::: XGBoost Model trained from {X.index[0]} to {X.index[-1]}.")
+        print(f"{self.tag}::: XGBoost Model trained from {X.index[0]} to {X.index[-1]} pelo.")
         # Add line to log file to signal training completion
 
         # Save model, 1st and 2nd indicator moments
         self.model = xgb_dummy
         self.indicators_mean = hist_indicators.mean()
         self.indicators_std = hist_indicators.std()
-        # Save the 90% quantile of the closes
-        self.quantile = data['close'].quantile(0.9)
 
         print(f"{self.tag}::: XGBoost Model and first/second moments saved.")
 
@@ -318,8 +313,15 @@ class MetaGA(MetaStrategy):
         print(f"{self.tag}::: Computed technical indicators")
 
         # Merge Features
-        indicators = [emas, vols_rollings, skewness_rollings, kurtosis_rollings, tval_rollings, crossings_rollings,
-                      technical_indicators]
+        indicators = [  emas,
+                        vols_rollings,
+                        skewness_rollings,
+                        kurtosis_rollings,
+                        tval_rollings,
+                        crossings_rollings,
+                        technical_indicators
+                        ]
+
         indicators = pd.concat(indicators, axis=1).iloc[1:]
         indicators.index = pd.to_datetime(indicators.index)
         indicators.columns = indicators.columns.astype(str)
