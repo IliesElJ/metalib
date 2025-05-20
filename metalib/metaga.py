@@ -52,7 +52,7 @@ class MetaGA(MetaStrategy):
 
         y_hat   = self.model.predict_proba(indicators)[:, 1]
         vote    = np.sum(dummy_extremes_indicators.iloc[-1])
-        quorum  = dummy_extremes_indicators.shape[1]
+        quorum  = int( dummy_extremes_indicators.shape[1] / 2 )
         mean_entry_price, num_positions = self.get_positions_info()
 
         if y_hat[-1] < 0.3 and self.are_positions_with_tag_open(position_type="buy"):
@@ -196,7 +196,7 @@ class MetaGA(MetaStrategy):
 
         # Transform to dummy
         dummy_extremes_indicators = abs(indicators) > 1.5
-        quorum  = dummy_extremes_indicators.shape[1]
+        quorum  = int( dummy_extremes_indicators.shape[1] / 2 )
         indicators = indicators[dummy_extremes_indicators.sum(axis=1) > quorum]
         dummy_extremes_next_five_returns = next_five_returns.loc[indicators.index].apply(assign_cat)
 
