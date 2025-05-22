@@ -268,7 +268,7 @@ class MetaStrategy(ABC):
             return False
             
         finally:
-            self.data = None
+            self.data = {}
             # Ensure resources are properly closed
             if log_file:
                 sys.stdout = sys.__stdout__  # Restore original stdout

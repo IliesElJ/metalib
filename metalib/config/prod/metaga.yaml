@@ -10,35 +10,11 @@ EURUSD_H1_GA:
   high_length: 1440
   prob_bound: 0.05
 
-USDJPY_H1_GA:
+AUDJPY_H1_GA:
   strategy_type: metaga
-  symbols: [ "USDJPY" ]
+  symbols: [ "AUDJPY" ]
   timeframe: mt5.TIMEFRAME_M1
   tag: metaga_f2
-  active_hours: None
-  risk_factor: 0.005
-  low_length: 60
-  mid_length: 480
-  high_length: 1440
-  prob_bound: 0.05
-
-USDCHF_H1_GA:
-  strategy_type: metaga
-  symbols: [ "USDCHF" ]
-  timeframe: mt5.TIMEFRAME_M1
-  tag: metaga_f4
-  active_hours: None
-  risk_factor: 0.005
-  low_length: 60
-  mid_length: 480
-  high_length: 1440
-  prob_bound: 0.05
-
-AUDUSD_H1_GA:
-  strategy_type: metaga
-  symbols: [ "AUDUSD" ]
-  timeframe: mt5.TIMEFRAME_M1
-  tag: metaga_f6
   active_hours: None
   risk_factor: 0.005
   low_length: 60
