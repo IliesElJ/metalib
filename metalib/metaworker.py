@@ -3,6 +3,7 @@ import schedule
 import pytz
 import time
 from datetime import datetime, timedelta
+import MetaTrader5 as mt5
 
 # Registry maps a keyword to a strategy class and expected init keys
 from metalib.metado2 import MetaDO
@@ -59,6 +60,18 @@ strategy_registry = {
     }
 }
 
+timeframe_mapping = {
+    mt5.TIMEFRAME_M1: 1,
+    mt5.TIMEFRAME_M2: 2,
+    mt5.TIMEFRAME_M3: 3,
+    mt5.TIMEFRAME_M10: 10,
+    mt5.TIMEFRAME_M15: 15,
+    mt5.TIMEFRAME_M30: 30,
+    mt5.TIMEFRAME_H1: 60,
+    mt5.TIMEFRAME_H4: 240,
+    mt5.TIMEFRAME_D1: 60*24,
+}
+
 def run_strategy_loop(strategy_type, init_args):
     strategy_info = strategy_registry.get(strategy_type)
     if not strategy_info:
@@ -86,7 +99,8 @@ def run_strategy_loop(strategy_type, init_args):
         except Exception as e:
             print(f"Error running strategy: {e}")
 
-    schedule.every().minute.at(":00").do(run_wrapper)
+    schedule_time = timeframe_mapping[init_args["timeframe"]]
+    schedule.every(schedule_time).minute.at(":00").do(run_wrapper)
     schedule.every().day.do(instance.fit)
 
     # Loop

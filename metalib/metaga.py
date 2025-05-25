@@ -67,10 +67,11 @@ class MetaGA(MetaStrategy):
             self.state = 0
 
         print(f"{self.tag}::: Open positions for strategy: {self.tag}: {self.are_positions_with_tag_open()}")
-        print(f"{self.tag}::: Vote of indicators: {vote}, and last 3 predicted probabilities: {y_hat}")
+        print(f"{self.tag}::: Vote of indicators: {vote} and quorum: {quorum}, and last 3 predicted probabilities: {y_hat}")
 
         signal_line = indicators.iloc[-1]
         signal_line['vote'] = vote
+        signal_line["quorum"] = quorum
         signal_line['predicted_proba'] = y_hat[-1]
         signal_line['timestamp'] = timestamp
 
