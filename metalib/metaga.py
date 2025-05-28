@@ -196,9 +196,12 @@ class MetaGA(MetaStrategy):
         next_five_returns = (next_five_returns - hist_next_five_returns.mean()) / hist_next_five_returns.std()
 
         # Transform to dummy
-        dummy_extremes_indicators = abs(indicators) > 1.5
+        dummy_extremes_indicators = abs(indicators) > 0.5
         quorum  = int( dummy_extremes_indicators.shape[1] / 2 )
         indicators = indicators[dummy_extremes_indicators.sum(axis=1) > quorum]
+        print(f"{self.tag}::: Filter ratio: {indicators.shape[0]/dummy_extremes_indicators.shape[0]} ")
+        print(f"{self.tag}::: Number of rows after Filter: {indicators.shape[0]} ")
+
         dummy_extremes_next_five_returns = next_five_returns.loc[indicators.index].apply(assign_cat)
 
         X, y = indicators.ffill(), dummy_extremes_next_five_returns

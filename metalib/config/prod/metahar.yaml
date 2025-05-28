@@ -7,6 +7,7 @@ XAUUSD_M1_MIX:
   active_hours: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]
   short_factor: 15
   long_factor: 240
+
 US500_cash_M1_MIX:
   strategy_type: metahar
   symbols: ['BTCUSD', 'EURUSD', 'XAUUSD', 'US500.cash', 'GBPUSD']
@@ -16,6 +17,7 @@ US500_cash_M1_MIX:
   active_hours: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]
   short_factor: 15
   long_factor: 240
+
 GBPUSD_M1_MIX:
   strategy_type: metahar
   symbols: ['BTCUSD', 'EURUSD', 'XAUUSD', 'US500.cash', 'GBPUSD']

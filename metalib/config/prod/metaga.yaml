@@ -28,7 +28,7 @@ GER40CASH_H1_GA:
   timeframe: mt5.TIMEFRAME_M1
   tag: metaga_i1
   active_hours: None
-  risk_factor: 0.0025
+  risk_factor: 0.00025
   low_length: 60
   mid_length: 480
   high_length: 1440
@@ -40,7 +40,7 @@ US100CASH_H1_GA:
   timeframe: mt5.TIMEFRAME_M1
   tag: metaga_i2
   active_hours: None
-  risk_factor: 0.0025
+  risk_factor: 0.00025
   low_length: 60
   mid_length: 480
   high_length: 1440
