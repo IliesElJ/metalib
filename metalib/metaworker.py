@@ -100,7 +100,7 @@ def run_strategy_loop(strategy_type, init_args):
             print(f"Error running strategy: {e}")
 
     schedule_time = timeframe_mapping[init_args["timeframe"]]
-    schedule.every(schedule_time).minute.at(":00").do(run_wrapper)
+    schedule.every(schedule_time).minutes.at(":00").do(run_wrapper)
     schedule.every().day.do(instance.fit)
 
     # Loop
