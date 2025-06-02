@@ -137,7 +137,8 @@ class MetaGA(MetaStrategy):
 
         print(f"Adjusted Position Size for {symbol}: {adjusted_lots} lots based on daily volatility: {daily_vol:.4f}")
 
-        return adjusted_lots
+        # return adjusted_lots
+        return symbol_info.volume_min
 
     def check_conditions(self):
         volume = self.position_sizing_vol_adjusted()

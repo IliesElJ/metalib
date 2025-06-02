@@ -194,8 +194,8 @@ class MetaGO(MetaStrategy):
         lots            = position_size / (contract_size * price)        
 
         # Ensure it meets the broker's minimum lot size requirement
-        return max(round(self.risk_factor * 5 * lots, 2), symbol_info.volume_min)
-
+     #    return max(round(self.risk_factor * 5 * lots, 2), symbol_info.volume_min)
+        return symbol_info.volume_min
 
     def retrieve_indicators(self, ohlc_df):
         ohlc = ohlc_df.copy()

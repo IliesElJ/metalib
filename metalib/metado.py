@@ -303,7 +303,8 @@ class MetaDO(MetaStrategy):
         price = mt5.symbol_info_tick(symbol).ask
         lots = position_size / (contract_size * price)
 
-        return round(self.risk_factor * 5 * lots, 2)
+#        return round(self.risk_factor * 5 * lots, 2)
+        return symbol_info.volume_min
 
     def retrieve_indicators(self, ohlc_df):
 
