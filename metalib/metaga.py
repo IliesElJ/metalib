@@ -37,6 +37,7 @@ class MetaGA(MetaStrategy):
         self.state          = None
         self.risk_factor    = risk_factor
         self.telegram       = True
+        self.indicator_extrema_bound  = 0.5
 
     def signals(self):
         ohlc            = self.data[self.symbols[0]]
@@ -48,7 +49,7 @@ class MetaGA(MetaStrategy):
         indicators = indicators.tail(3)
         indicators = (indicators - self.indicators_mean) / self.indicators_std
 
-        dummy_extremes_indicators = abs(indicators) > 1.5
+        dummy_extremes_indicators = abs(indicators) > self.indicator_extrema_bound
 
         y_hat   = self.model.predict_proba(indicators)[:, 1]
         vote    = np.sum(dummy_extremes_indicators.iloc[-1])
@@ -197,7 +198,7 @@ class MetaGA(MetaStrategy):
         next_five_returns = (next_five_returns - hist_next_five_returns.mean()) / hist_next_five_returns.std()
 
         # Transform to dummy
-        dummy_extremes_indicators = abs(indicators) > 0.5
+        dummy_extremes_indicators = abs(indicators) > self.indicator_extrema_bound
         quorum  = int( dummy_extremes_indicators.shape[1] / 2 )
         indicators = indicators[dummy_extremes_indicators.sum(axis=1) > quorum]
         print(f"{self.tag}::: Filter ratio: {indicators.shape[0]/dummy_extremes_indicators.shape[0]} ")
