@@ -21,7 +21,7 @@ class MetaGA(MetaStrategy):
                     risk_factor=1, 
                 ):
         super().__init__(symbols, timeframe, tag, active_hours)
-        
+
         if not (low_length < mid_length < high_length):
             raise ValueError("Length parameters should be ordered.")
         
@@ -37,7 +37,7 @@ class MetaGA(MetaStrategy):
         self.state          = None
         self.risk_factor    = risk_factor
         self.telegram       = True
-        self.indicator_extrema_bound  = 0.5
+        self.target_filter_ratio = 0.2
 
     def signals(self):
         ohlc            = self.data[self.symbols[0]]
