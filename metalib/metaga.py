@@ -198,11 +198,42 @@ class MetaGA(MetaStrategy):
         next_five_returns = (next_five_returns - hist_next_five_returns.mean()) / hist_next_five_returns.std()
 
         # Transform to dummy
+        def solve_extrema_bound_for_ratio(indicators, target_filter_ratio=0.1, quorum_fraction=0.5):
+            """
+            Solve for the extrema bound that achieves a target filter ratio
+            """
+            quorum = int(indicators.shape[1] * quorum_fraction)
+
+            # Try different bounds to find the one that gives us the target ratio
+            bounds_to_try = np.linspace(0.1, 5.0, 100)  # Adjust range as needed
+
+            best_bound = None
+            best_ratio_diff = float('inf')
+
+            for bound in bounds_to_try:
+                dummy_extremes_indicators = abs(indicators) > bound
+                filtered_count = (dummy_extremes_indicators.sum(axis=1) > quorum).sum()
+                actual_ratio = filtered_count / indicators.shape[0]
+
+                ratio_diff = abs(actual_ratio - target_filter_ratio)
+                if ratio_diff < best_ratio_diff:
+                    best_ratio_diff = ratio_diff
+                    best_bound = bound
+
+            return best_bound
+
+        # Updated main logic
+        self.indicator_extrema_bound = solve_extrema_bound_for_ratio(indicators, self.target_filter_ratio)
+
         dummy_extremes_indicators = abs(indicators) > self.indicator_extrema_bound
-        quorum  = int( dummy_extremes_indicators.shape[1] / 2 )
+        quorum = int(dummy_extremes_indicators.shape[1] / 2)
         indicators = indicators[dummy_extremes_indicators.sum(axis=1) > quorum]
-        print(f"{self.tag}::: Filter ratio: {indicators.shape[0]/dummy_extremes_indicators.shape[0]} ")
-        print(f"{self.tag}::: Number of rows after Filter: {indicators.shape[0]} ")
+
+        actual_ratio = indicators.shape[0] / dummy_extremes_indicators.shape[0]
+        print(f"{self.tag}::: Target filter ratio: {self.target_filter_ratio}")
+        print(f"{self.tag}::: Actual filter ratio: {actual_ratio:.4f}")
+        print(f"{self.tag}::: Solved extrema bound: {self.indicator_extrema_bound:.4f}")
+        print(f"{self.tag}::: Number of rows after filter: {indicators.shape[0]}")
 
         dummy_extremes_next_five_returns = next_five_returns.loc[indicators.index].apply(assign_cat)
 
