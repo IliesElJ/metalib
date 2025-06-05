@@ -59,6 +59,10 @@ class MetaGO(MetaStrategy):
             self.state = 1
         elif short_signal and not self.are_positions_with_tag_open(position_type="sell"):
             self.state = -1
+        elif downtrend and self.are_positions_with_tag_open(position_type="buy"):
+            self.state = -2
+        elif uptrend and self.are_positions_with_tag_open(position_type="sell"):
+            self.state = -2
         else:
             self.state = 0
 
