@@ -1,6 +1,28 @@
 # Metalib
 
 Should add:
+- Event Driven Architecture transform:
+
+Phase 1: Add Event Bus
+
+Implement basic event system
+Keep existing code but add event publishing
+
+Phase 2: Extract Components
+
+Move risk management to separate component
+Extract execution logic
+Add event subscriptions
+
+Phase 3: Full Migration
+
+Convert all strategies to event-driven
+Remove direct method calls between components
+Add advanced features (retries, circuit breakers, monitoring)
+
+
+Nearly Finished:
+
 - Mapping for each strategy in the following manner: mt5.TF => Stategy params (short.sma = .., lookback = .., ...)
 - Send telegram plots for Metagomano
 - MetaDO: add an arg, either -1 (mean-reversion) or 1 (trend following) and add to config a column for that arg.
