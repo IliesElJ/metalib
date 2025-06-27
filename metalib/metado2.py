@@ -13,6 +13,7 @@ class MetaDO(MetaStrategy):
                  active_hours,
                  mode="mean_rev",
                  risk_factor=1,
+                 rr_ratio = 1,
                  lookahead=24,
                  ):
         super().__init__(symbols, timeframe, tag, active_hours)
@@ -22,6 +23,7 @@ class MetaDO(MetaStrategy):
         self.mode               = mode
         self.risk_factor        = risk_factor
         self.lookahead          = lookahead
+        self.rr_ratio           = rr_ratio
         self.telegram           = True
         self.vol                = None
 
@@ -143,14 +145,14 @@ class MetaDO(MetaStrategy):
         
         print(f"{self.tag}::: Rounding for {symbol}: {digits}")
         print(f"{self.tag}::: Strategy Risk factor: {self.risk_factor}")
-        print(f"{self.tag}::: Vol times Risk factor: {self.vol * self.risk_factor}")
+        print(f"{self.tag}::: Vol times Risk factor: {self.vol * self.rr_ratio}")
 
         positions_mean_entry_price, num_positions = self.get_positions_info()
 
         # Take-Profit and Stop-Loss calculations (keeping your SL formula)
         price_mid = (symbol_info.ask + symbol_info.bid) / 2
 
-        tp = price_mid * (1 + self.state * self.vol * self.risk_factor)
+        tp = price_mid * (1 + self.state * self.vol * self.rr_ratio)
         sl = price_mid * (1 - self.state * self.vol)
 
         # Proper rounding

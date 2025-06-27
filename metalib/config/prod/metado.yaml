@@ -5,6 +5,7 @@ EURUSD_M1:
   tag: metado_f1
   active_hours: null
   risk_factor: 0.3
+  rr_ratio: 2
   mode: mean_rev
 
 USDJPY_M1:
@@ -14,6 +15,7 @@ USDJPY_M1:
   tag: metado_f2
   active_hours: null
   risk_factor: 0.3
+  rr_ratio: 2
   mode: mean_rev
 
 USDCAD_M1:
@@ -23,6 +25,7 @@ USDCAD_M1:
   tag: metado_f5
   active_hours: null
   risk_factor: 0.3
+  rr_ratio: 2
   mode: mean_rev
 
 NZDUSD_M1:
@@ -32,6 +35,7 @@ NZDUSD_M1:
   tag: metado_f7
   active_hours: null
   risk_factor: 0.3
+  rr_ratio: 2
   mode: mean_rev
 
 EURUSD_H1:
@@ -41,6 +45,7 @@ EURUSD_H1:
   tag: metado_f1t
   active_hours: null
   risk_factor: 0.3
+  rr_ratio: 2
   mode: trend_follow
 
 USDJPY_H1:
@@ -50,6 +55,7 @@ USDJPY_H1:
   tag: metado_f2t
   active_hours: null
   risk_factor: 0.3
+  rr_ratio: 2
   mode: trend_follow
 
 GBPUSD_H1:
@@ -59,6 +65,7 @@ GBPUSD_H1:
   tag: metado_f3t
   active_hours: null
   risk_factor: 0.3
+  rr_ratio: 2
   mode: trend_follow
 
 USDCHF_H1:
@@ -68,4 +75,5 @@ USDCHF_H1:
   tag: metado_f4t
   active_hours: null
   risk_factor: 0.3
+  rr_ratio: 2
   mode: trend_follow
