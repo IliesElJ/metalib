@@ -33,19 +33,19 @@ class MetaGO(MetaStrategy):
         self.logger             = logging.getLogger(__name__)
 
     def signals(self):
-        ohlc        = self.data[self.symbols[0]]
-        indicators  = self.retrieve_indicators(ohlc)
-        close       = ohlc['close']
+        ohlc = self.data[self.symbols[0]]
+        indicators = self.retrieve_indicators(ohlc)
+        close = ohlc['close']
         del ohlc
 
-        self.vol        = close.pct_change().std()*np.sqrt(48)
+        self.vol = close.pct_change().std() * np.sqrt(48)
         self.indicators = indicators
 
-        uptrend     = indicators['uptrend'].iloc[-1]
-        downtrend   = indicators['downtrend'].iloc[-1]
+        uptrend = indicators['uptrend'].iloc[-1]
+        downtrend = indicators['downtrend'].iloc[-1]
         true_open_monthly = indicators['true_open_monthly'].iloc[-1]
 
-        mask_uptrend_below_yearly   = (uptrend > 0) & (close < true_open_monthly)
+        mask_uptrend_below_yearly = (uptrend > 0) & (close < true_open_monthly)
         mask_downtrend_above_yearly = (downtrend > 0) & (close > true_open_monthly)
 
         close_last_4 = close.tail(3).head(2)  # Extract last 3 values, then take first 2 candles
@@ -54,6 +54,10 @@ class MetaGO(MetaStrategy):
 
         long_signal = close_positive_condition & mask_uptrend_below_yearly.iloc[-1]
         short_signal = close_negative_condition & mask_downtrend_above_yearly.iloc[-1]
+
+        self.sl = close.iloc[-1] - 6 * indicators['atr'].iloc[-1] if short_signal else close.iloc[-1] + 6 * \
+                                                                                       indicators['atr'].iloc[-1]
+        self.tp = float(true_open_monthly)
 
         if long_signal and not self.are_positions_with_tag_open(position_type="buy"):
             self.state = 1
@@ -142,11 +146,8 @@ class MetaGO(MetaStrategy):
         # Take-Profit and Stop-Loss calculations (keeping your SL formula)
         price_mid = (symbol_info.ask + symbol_info.bid) / 2
 
-        tp = price_mid * (1 + self.state * self.vol * self.risk_factor)
-        sl = price_mid * (1 - self.state * self.vol)
-
         # Proper rounding
-        tp, sl = round(tp, digits), round(sl, digits)
+        tp, sl = round(self.tp, digits), round(self.sl, digits)
 
         print(
             f"Mid Price: {price_mid}, Positions: {num_positions}, Vol: {self.vol}%, State: {self.state}, TP: {tp}, SL: {sl}")
@@ -208,49 +209,61 @@ class MetaGO(MetaStrategy):
                                               'low': 'min',
                                               'close': 'last',
                                               }, closed="right", label="right")
-        closes  = ohlc.loc[:, 'close']
-        short_sma   = closes.rolling(12).mean()
-        long_sma    = closes.rolling(24).mean()
+        closes = ohlc.loc[:, 'close']
+        short_sma = closes.rolling(12).mean()
+        long_sma = closes.rolling(24).mean()
 
-        uptrend     = (closes > short_sma) & (short_sma > long_sma)
-        downtrend   = (closes < short_sma) & (short_sma < long_sma)
-        sideways    = ~(uptrend | downtrend)
+        uptrend = (closes > short_sma) & (short_sma > long_sma)
+        downtrend = (closes < short_sma) & (short_sma < long_sma)
+        sideways = ~(uptrend | downtrend)  #
         print(f"{self.tag}::: Computed Trend indicators")
 
-        true_open_weekly    = get_last_monday_6pm_open_ffill(ohlc, ohlc.index)
-        true_open_monthly   = get_second_monday_open_ffill(ohlc_daily, ohlc.index)
-        true_open_yearly    = get_first_monday_of_april_open_ffill(ohlc_daily, ohlc.index)
+        true_open_weekly = get_last_monday_6pm_open_ffill(ohlc, ohlc.index)
+        true_open_monthly = get_second_monday_open_ffill(ohlc_daily, ohlc.index)
+        true_open_yearly = get_first_monday_of_april_open_ffill(ohlc_daily, ohlc.index)
         print(f"{self.tag}::: Computed True opens (weekly, monthly) ")
         del ohlc
         del ohlc_daily
 
         # Compute differences between various true open prices
-        crossed_diff_monthly_weekly     = true_open_monthly - true_open_weekly
-        above_true_open_monthly_diff    = closes - true_open_monthly
-        above_true_open_weekly_diff     = closes - true_open_weekly
+        crossed_diff_monthly_weekly = true_open_monthly - true_open_weekly
+        above_true_open_monthly_diff = closes - true_open_monthly
+        above_true_open_weekly_diff = closes - true_open_weekly
         print(f"{self.tag}::: Computed True opens diffs (weekly, monthly) ")
 
+        # Compute ATR
+        highs = ohlc_df['high']
+        lows = ohlc_df['low']
+        prev_closes = ohlc_df['close'].shift(1)
+        tr = pd.concat([
+            highs - lows,
+            (highs - prev_closes).abs(),
+            (lows - prev_closes).abs()
+        ], axis=1).max(axis=1)
+        atr = tr.rolling(window=14).mean()
+        print(f"{self.tag}::: Computed ATR")
+
         # Merge Features
-        indicators =  [ uptrend, downtrend, sideways,
-                        true_open_weekly, true_open_monthly,
-                        crossed_diff_monthly_weekly,
-                        above_true_open_monthly_diff, above_true_open_weekly_diff,
-                        short_sma, long_sma,
-                        closes
-                        ]
+        indicators = [uptrend, downtrend, sideways,
+                      true_open_weekly, true_open_monthly,
+                      crossed_diff_monthly_weekly,
+                      above_true_open_monthly_diff, above_true_open_weekly_diff,
+                      short_sma, long_sma,
+                      closes, atr
+                      ]
 
-        indicators          = pd.concat(indicators, axis=1).iloc[1:]
-        indicators.columns  = [ 'uptrend', 'downtrend', 'sideways',
-                                'true_open_weekly', 'true_open_monthly',
-                                'crossed_diff_monthly_weekly',
-                                'above_true_open_monthly_diff', 'above_true_open_weekly_diff',
-                                'short_sma', 'long_sma',
-                                'close' ]
+        indicators = pd.concat(indicators, axis=1).iloc[1:]
+        indicators.columns = ['uptrend', 'downtrend', 'sideways',
+                              'true_open_weekly', 'true_open_monthly',
+                              'crossed_diff_monthly_weekly',
+                              'above_true_open_monthly_diff', 'above_true_open_weekly_diff',
+                              'short_sma', 'long_sma',
+                              'close', 'atr']
 
-        indicators.index    = pd.to_datetime(indicators.index)
-        indicators.columns  = indicators.columns.astype(str)
+        indicators.index = pd.to_datetime(indicators.index)
+        indicators.columns = indicators.columns.astype(str)
         print(f"{self.tag}::: Merged indicators")
-
+        
         return indicators
 
     def get_positions_info(self):
