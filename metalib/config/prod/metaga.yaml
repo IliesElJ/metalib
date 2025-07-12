@@ -46,26 +46,3 @@ US100CASH_H1_GA:
   high_length: 1440
   prob_bound: 0.05
 
-BTCUSD_H1_GA:
-  strategy_type: metaga
-  symbols: [ "BTCUSD" ]
-  timeframe: mt5.TIMEFRAME_M1
-  tag: metaga_c1
-  active_hours: None
-  risk_factor: 0.0025
-  low_length: 60
-  mid_length: 480
-  high_length: 1440
-  prob_bound: 0.05
-
-XRPUSD_H1_GA:
-  strategy_type: metaga
-  symbols: [ "XRPUSD" ]
-  timeframe: mt5.TIMEFRAME_M1
-  tag: metaga_c2
-  active_hours: None
-  risk_factor: 0.0025
-  low_length: 60
-  mid_length: 480
-  high_length: 1440
-  prob_bound: 0.05
