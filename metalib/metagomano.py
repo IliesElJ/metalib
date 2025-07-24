@@ -55,8 +55,9 @@ class MetaGO(MetaStrategy):
         long_signal = close_positive_condition & mask_uptrend_below_yearly.iloc[-1]
         short_signal = close_negative_condition & mask_downtrend_above_yearly.iloc[-1]
 
-        self.sl = close.iloc[-1] - 6 * indicators['atr'].iloc[-1] if short_signal else close.iloc[-1] + 6 * \
+        sl = close.iloc[-1] - 6 * indicators['atr'].iloc[-1] if short_signal else close.iloc[-1] + 6 * \
                                                                                        indicators['atr'].iloc[-1]
+        self.sl = float(sl)
         self.tp = float(true_open_monthly)
 
         if long_signal and not self.are_positions_with_tag_open(position_type="buy"):
