@@ -116,8 +116,18 @@ class MetaStrategy(ABC):
         """
         pass
 
-    def execute(self, symbol, volume, sl=None, tp=None, short=False, is_stop=False, is_limit=False, entry=None,
-                expiration_date=None):
+    def execute(self,
+                symbol,
+                volume,
+                sl=None,
+                tp=None,
+                short=False,
+                is_stop=False,
+                is_limit=False,
+                entry=None,
+                expiration_date=None,
+                is_eod=False
+            ):
         """
         Places an order based on the given parameters.
 
@@ -130,6 +140,7 @@ class MetaStrategy(ABC):
         :param is_limit: Whether the order is a limit order (bool).
         :param entry: Entry price for limit or stop orders (float), required if is_limit or is_stop is True.
         :param expiration_date: Expiration date of the order, optional (datetime).
+        :param is_eod: Order expire at the end of days (bool).
         """
         # Determine order type
         if short:
@@ -155,7 +166,7 @@ class MetaStrategy(ABC):
             "comment": self.tag,
             "deviation": 0,
             "magic": 0,
-            "type_time": mt5.ORDER_TIME_GTC,  # Good till cancelled
+            "type_time": mt5.ORDER_TIME_GTC,  # Good till cancelled or End of Day
             "type_filling": mt5.ORDER_FILLING_IOC,  # Immediate or cancel
         }
 
