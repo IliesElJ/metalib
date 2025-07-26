@@ -1,7 +1,7 @@
 import MetaTrader5 as mt5
 import pytz
 from datetime import timedelta, datetime
-from typing import List, Dict
+from typing import List, Dict, Tuple
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
@@ -46,7 +46,7 @@ class MetaFVG(MetaStrategy):
         # The following argument will be multiplied by 2 when filtering.
         self.max_htf_number_crossings = 3
 
-    def detect_fvg_momentum_tres_strong(self, ohlc_df: pd.DataFrame) -> List[Dict]:
+    def detect_fvg_momentum_tres_strong(self, ohlc_df: pd.DataFrame, direction) -> List[Dict]:
         """
         Detect FVG Pattern 1: Momentum très strong
         - Strong momentum with significant gap
@@ -55,38 +55,56 @@ class MetaFVG(MetaStrategy):
         patterns = []
 
         for i in range(len(ohlc_df) - 2):
-            candle_i = ohlc_df.iloc[i]
-            candle_i1 = ohlc_df.iloc[i + 1]  # Gap candle
-            candle_i2 = ohlc_df.iloc[i + 2]
+            candle_i        = ohlc_df.iloc[i]
+            candle_i1       = ohlc_df.iloc[i + 1]  # Gap candle
+            candle_i2       = ohlc_df.iloc[i + 2]
+
+            body_i1         = abs(candle_i1['close'] - candle_i1['open'])
+            range_i1        = abs(candle_i1['high'] - candle_i1['low'])
+            momentum_cond   = body_i1 / range_i1 > 0.7
 
             # Check for bullish FVG: gap between high of i and low of i+2
-            if candle_i['high'] < candle_i2['low']:
-                # Additional momentum checks for "très strong"
-                body_i1 = abs(candle_i1['close'] - candle_i1['open'])
-                range_i1 = candle_i1['high'] - candle_i1['low']
+            if direction:
+                if candle_i['high'] < candle_i2['low']:
+                    # Strong momentum conditions
+                    if (candle_i1['close'] > candle_i1['open'] and  # Bullish candle
+                        momentum_cond): # Strong body ratio
 
-                # Strong momentum conditions
-                if (candle_i1['close'] > candle_i1['open'] and  # Bullish candle
-                        body_i1 / range_i1 > 0.7): # Strong body ratio
+                        pattern = {
+                            'timestamp': candle_i1.name,  # i+1 candle timestamp
+                            'gap_low': candle_i2['low'],  # Low of i+2 candle
+                            'gap_high': candle_i['high'],  # High of i candle
+                            'pattern_type': 'MOMENTUM_FVG',
+                            'candle_indices': [i, i + 1, i + 2],
+                            'direction': 'bullish'
+                        }
+                        patterns.append(pattern)
+            else:
+                # Check for bearish FVG: gap between low of i and high of i+2
+                if candle_i['low'] > candle_i2['high']:
+                    if (candle_i1['open'] > candle_i1['close'] and  # Bearish candle
+                        momentum_cond): # Strong body ratio
 
-                    pattern = {
-                        'timestamp': candle_i1.name,  # i+1 candle timestamp
-                        'gap_low': candle_i2['low'],  # Low of i+2 candle
-                        'gap_high': candle_i['high'],  # High of i candle
-                        'pattern_type': 'MOMENTUM_FVG',
-                        'candle_indices': [i, i + 1, i + 2]
-                    }
-                    patterns.append(pattern)
+                        pattern = {
+                            'timestamp': candle_i1.name,  # i+1 candle timestamp
+                            'gap_low': candle_i2['low'],  # Low of i+2 candle
+                            'gap_high': candle_i['high'],  # High of i candle
+                            'pattern_type': 'MOMENTUM_FVG',
+                            'candle_indices': [i, i + 1, i + 2],
+                            'direction': 'bearish'
+                        }
+                        patterns.append(pattern)
 
         return patterns
 
-    def detect_fvg_htf(self, ohlc_df):
+    def detect_fvg_htf(self, ohlc_df: pd.DataFrame) -> Tuple[List[Dict], List[Dict]]:
         """
         Detect FVG Pattern 1: Momentum très strong
         - Strong momentum with significant gap
         - Target hit fast
         """
-        patterns = []
+        bullish_patterns = []
+        bearish_patterns = []
         print(f"{self.tag}::    Started Momentum FVG detection... pelo")
 
         for i in tqdm(range(len(ohlc_df) - 2)):
@@ -96,21 +114,33 @@ class MetaFVG(MetaStrategy):
 
             # Check for bullish FVG: gap between high of i and low of i+2
             if candle_i['high'] < candle_i2['low']:
-                # Additional momentum checks for "très strong"
-                body_i1 = abs(candle_i1['close'] - candle_i1['open'])
-                range_i1 = candle_i1['high'] - candle_i1['low']
                 # Strong momentum conditions
-                if (candle_i1['close'] > candle_i1['open']):
+                if candle_i1['close'] > candle_i1['open']:
                     pattern = {
                         'timestamp': candle_i1.name,  # i+1 candle timestamp
                         'gap_low': candle_i2['low'],  # Low of i+2 candle
                         'gap_high': candle_i['high'],  # High of i candle
                         'pattern_type': 'FVG_HTF',
-                        'candle_indices': [i, i + 1, i + 2]
+                        'candle_indices': [i, i + 1, i + 2],
+                        'direction': 'bullish'
                     }
-                    patterns.append(pattern)
+                    bullish_patterns.append(pattern)
 
-        return patterns
+            # Check for bearish FVG: gap between low of i and high of i+2
+            if candle_i['low'] > candle_i2['high']:
+                # Strong momentum conditions
+                if candle_i1['close'] < candle_i1['open']:
+                    pattern = {
+                        'timestamp': candle_i1.name,  # i+1 candle timestamp
+                        'gap_low': candle_i['low'],  # Low of i candle
+                        'gap_high': candle_i2['high'],  # High of i+2 candle
+                        'pattern_type': 'FVG_HTF',
+                        'candle_indices': [i, i + 1, i + 2],
+                        'direction': 'bearish'
+                    }
+                    bearish_patterns.append(pattern)
+
+        return bullish_patterns, bearish_patterns
 
     def check_conditions(self):
         """Check trading conditions and execute trades based on current state"""
@@ -151,6 +181,7 @@ class MetaFVG(MetaStrategy):
 
     def signals(self):
         """Generate trading signals based on FVG patterns"""
+        self.state = 0
         print(f"{self.tag}::    Generating trading signals")
 
         _, current_open_position = self.get_positions_info()
@@ -162,43 +193,65 @@ class MetaFVG(MetaStrategy):
 
         ohlc_ltf        = self.data[self.symbols[0]]
         ohlc_ltf_vals   = ohlc_ltf.values
-        print(f"{self.tag}::    Pulled data for symbol: {self.symbols[0]}")
+        last_price = ohlc_ltf['close'][-1]
 
-        if len(self.filt_htf_fvg_patterns) == 0:
+        print(f"{self.tag}::    Pulled data for symbol: {self.symbols[0]}")
+        print(f"{self.tag}::    Last Price for symbol:  ${last_price}")
+
+
+        if len(self.filt_bearish_htf_fvg_patterns) == 0 and len(self.filt_bearish_htf_fvg_patterns) == 0:
             print(f"{self.tag}::    No HTF FVG patterns detected, no action required")
             return
 
-        last_price = ohlc_ltf['close'][-1]
-        momentum_fvg_patterns = self.detect_fvg_momentum_tres_strong(ohlc_ltf.iloc[-4:-1])
+        bullish_htf_fvgs = self.filt_bullish_htf_fvg_patterns
+        in_bullish_htf_fvg = bullish_htf_fvgs.apply(lambda x: (last_price < x["gap_low"]) and (last_price > x["gap_high"]), axis=1)
+
+        bearish_htf_fvgs = self.filt_bearish_htf_fvg_patterns
+        in_bearish_htf_fvg = bearish_htf_fvgs.apply(lambda x: (last_price < x["gap_low"]) and (last_price > x["gap_high"]), axis=1)
+
+        if not in_bullish_htf_fvg.any() and not in_bearish_htf_fvg.any():
+            print(f"{self.tag}::    Price not in any Bullish OR Bearish FVG H4, no action required")
+            return
+        else:
+            if in_bearish_htf_fvg.any() and in_bearish_htf_fvg.any():
+                print(f"{self.tag}::    Price in both bearish and bullish FVG H4, not looking for setups")
+                return
+            if in_bullish_htf_fvg.any():
+                print(f"{self.tag}::    Price in Bullish FVG H4, looking for long setups")
+                direction = 1
+            elif in_bearish_htf_fvg.any():
+                print(f"{self.tag}::    Price in Bearish FVG H4, looking for short setups")
+                direction = 0
+
+        momentum_fvg_patterns = self.detect_fvg_momentum_tres_strong(ohlc_ltf.iloc[-4:-1], direction)
 
         if len(momentum_fvg_patterns) == 0:
             print(f"{self.tag}::    No LTF FVG patterns detected, no action required")
             return
 
-
         current_momentum    = momentum_fvg_patterns[0]
-        higher_band         = current_momentum["gap_low"]
 
-        htf_fvgs = self.filt_htf_fvg_patterns
-        in_htf_fvg = htf_fvgs.apply(lambda x: (last_price < x["gap_low"]) and (last_price > x["gap_high"]), axis=1)
-
-        if not in_htf_fvg.any():
-            print(f"{self.tag}::    Price not in any FVG H4, no action required")
+        if (current_momentum['direction'] != 'bullish') == direction:
+            print(f"{self.tag}::    Price not in the correct direction for FVG H4, no action required")
             return
 
-        print(f"{self.tag}:: We are in FV H4 pello !!")
+        higher_band         = current_momentum["gap_low"]
+        lower_band          = current_momentum["gap_high"]
+        future_state        = 2 * direction - 1 # If direction is 1, state is 1 (long) else it's -1 (short)
+
+        print(f"{self.tag}:: We are in FVG H4 pello !!")
 
         atr_value   = atr(ohlc_ltf_vals[:, 0], ohlc_ltf_vals[:, 1], ohlc_ltf_vals[:, 2], 14)[-1]
         print(f"{self.tag}:: ATR value: {round(atr_value, 2)}$")
 
-        self.entry  = higher_band
-        self.sl     = self.entry - atr_value * self.atr_sensitivity
-        self.tp     = self.entry + atr_value * self.atr_sensitivity * self.risk_reward
-        self.state  = 1
+        self.entry  = higher_band if direction else lower_band
+        self.sl     = self.entry - atr_value * self.atr_sensitivity * future_state
+        self.tp     = self.entry + atr_value * self.atr_sensitivity * self.risk_reward * future_state
+        self.state  = future_state
 
     def retrieve_fvg_crosses(self, fvg_pattern, price_ts, fill_pct):
         # On calcule le niveau sur lequel on veut verifier les croisements
-        fvg_level = fill_pct*fvg_pattern["gap_low"] + (1-fill_pct)*fvg_pattern["gap_high"]
+        fvg_level = fill_pct*fvg_pattern["gap_low"] + (1 - fill_pct) * fvg_pattern["gap_high"]
         # On filtre la time series pour trouver uniquement les croisements formes apres la fvg
         idx_fvg = fvg_pattern["candle_indices"][-1]
 
@@ -210,9 +263,7 @@ class MetaFVG(MetaStrategy):
         return np.sum(filt_price_ts)
 
     def fit(self):
-        print(f"{self.tag}::     Starting the FVG Detection pelo!!")
-
-        # Define the UTC timezone
+        print(f"{self.tag}::     Starting the FVG Detection pelo!!")        # Define the UTC timezone
         utc = pytz.timezone('UTC')
         # Get the current time in UTC
         end_time = datetime.now(utc)
@@ -231,25 +282,47 @@ class MetaFVG(MetaStrategy):
                            label="right",
                            closed="right")
 
-        htf_fvg_patterns = self.detect_fvg_htf(ohlc_resampled_df)
+        bullish_htf_fvg_patterns, bearish_htf_fvg_patterns = self.detect_fvg_htf(ohlc_resampled_df)
 
-        if len(htf_fvg_patterns) == 0:
+        if len(bearish_htf_fvg_patterns) == 0 and len(bullish_htf_fvg_patterns) == 0:
             print(f"{self.tag}::     No FVG patterns found in the last 14 days on H4")
             return
 
-        print(f"{self.tag}::     Found {len(htf_fvg_patterns)} FVG patterns in the last 14 days on H4.")
-        htf_fvg_patterns = pd.DataFrame(htf_fvg_patterns)
-        htf_fvg_patterns.loc[:, "crossings"] = htf_fvg_patterns.apply(lambda fvg_pattern: self.retrieve_fvg_crosses(fvg_pattern,
-                                                                                                                    ohlc_resampled_df['low'],
-                                                                                                                    self.htf_fill_pct),
-                                                                      axis=1)
+        compute_crossing_bullish_fvg = lambda fvg_pattern: self.retrieve_fvg_crosses(fvg_pattern,
+                                                                                     ohlc_resampled_df['low'],
+                                                                                     self.htf_fill_pct)
 
-        filt_htf_fvg_patterns       = htf_fvg_patterns[htf_fvg_patterns["crossings"] < self.max_htf_number_crossings * 2]
-        self.all_htf_fvg_patterns   = htf_fvg_patterns
-        self.filt_htf_fvg_patterns  = filt_htf_fvg_patterns
+        compute_crossing_bearish_fvg = lambda fvg_pattern: self.retrieve_fvg_crosses(fvg_pattern,
+                                                                                     ohlc_resampled_df['high'],
+                                                                                     1 - self.htf_fill_pct)
 
-        print(f"{self.tag}::     Finished FVG detection and fitting pelo!!")
-        print(f"{self.tag}::     Number of FVG patterns before crossing filtering:  {self.all_htf_fvg_patterns.shape[0]}")
-        print(f"{self.tag}::     Numver of FVG patterns after crossing filtering:   {self.filt_htf_fvg_patterns.shape[0]}")
+        # Filter Bullish FVG patterns:
+        print(f"{self.tag}::     Found {len(bullish_htf_fvg_patterns)} Bullish FVG patterns in the last 14 days on H4.")
+        bullish_htf_fvg_patterns = pd.DataFrame(bullish_htf_fvg_patterns)
+
+        bullish_htf_fvg_patterns.loc[:, "crossings"] = bullish_htf_fvg_patterns.apply(compute_crossing_bullish_fvg, axis=1)
+        filt_htf_fvg_patterns               = bullish_htf_fvg_patterns[bullish_htf_fvg_patterns["crossings"] < self.max_htf_number_crossings * 2]
+        self.all_bullish_htf_fvg_patterns   = bullish_htf_fvg_patterns
+        self.filt_bullish_htf_fvg_patterns   = filt_htf_fvg_patterns
+
+        print(f"{self.tag}::     Finished Bulish FVG detection and fitting pelo!!")
+        print(f"{self.tag}::     Number of Bulish FVG patterns before crossing filtering:  {self.all_bullish_htf_fvg_patterns.shape[0]}")
+        print(f"{self.tag}::     Numver of Bulish FVG patterns after crossing filtering:   {self.filt_bullish_htf_fvg_patterns.shape[0]}")
+
+
+
+        # Filter Bearish FVG patterns:
+        print(f"{self.tag}::     Found {len(bearish_htf_fvg_patterns)} Bearish FVG patterns in the last 14 days on H4.")
+        bearish_htf_fvg_patterns = pd.DataFrame(bearish_htf_fvg_patterns)
+
+        bearish_htf_fvg_patterns.loc[:, "crossings"] = bearish_htf_fvg_patterns.apply(compute_crossing_bearish_fvg, axis=1)
+        filt_htf_fvg_patterns             = bearish_htf_fvg_patterns[bearish_htf_fvg_patterns["crossings"] < self.max_htf_number_crossings * 2]
+        self.all_bearish_htf_fvg_patterns = bearish_htf_fvg_patterns
+        self.filt_bearish_htf_fvg_patterns = filt_htf_fvg_patterns
+
+        print(f"{self.tag}::     Finished Bearish FVG detection and fitting pelo!!")
+        print(f"{self.tag}::     Number of Bearish FVG patterns before crossing filtering:  {self.all_bearish_htf_fvg_patterns.shape[0]}")
+        print(f"{self.tag}::     Numver of Bearish FVG patterns after crossing filtering:   {self.filt_bearish_htf_fvg_patterns.shape[0]}")
+
         return
 

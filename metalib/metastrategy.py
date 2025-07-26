@@ -5,6 +5,8 @@ from requests import get
 import sys
 from datetime import datetime
 from metalib.constants import SIGNALS_FILE, LOG_EXTENSION
+import os
+
 
 class MetaStrategy(ABC):
     """
@@ -36,6 +38,7 @@ class MetaStrategy(ABC):
         self.long_only = long_only
         self.short_only = short_only
         self.signalData = None
+        self.debug = False
 
     def connect(self):
         """
@@ -203,18 +206,17 @@ class MetaStrategy(ABC):
         """
         log_file = None
         try:
-            # Setup logging
-            today = datetime.today().strftime('%Y-%m-%d')
-            log_path = f"logs/output_{self.tag}_{today}{LOG_EXTENSION}"
-            
-            # Ensure logs directory exists
-            import os
-            os.makedirs(os.path.dirname(log_path), exist_ok=True)
-            
             # Save original stdout to restore later
             original_stdout = sys.stdout
-            log_file = open(log_path, 'a')
-            sys.stdout = log_file
+            if not self.debug:
+                # Setup logging
+                today = datetime.today().strftime('%Y-%m-%d')
+                log_path = f"logs/output_{self.tag}_{today}{LOG_EXTENSION}"
+
+                # Ensure logs directory exists
+                os.makedirs(os.path.dirname(log_path), exist_ok=True)
+                log_file = open(log_path, 'a')
+                sys.stdout = log_file
             
             # Data preparation phase
             try:
