@@ -3,6 +3,7 @@ import pytz
 from datetime import timedelta, datetime
 from typing import List, Dict
 import pandas as pd
+import numpy as np
 from tqdm import tqdm
 
 from metalib.metastrategy import MetaStrategy
@@ -41,6 +42,9 @@ class MetaFVG(MetaStrategy):
         self.htf_fvg = None
         self.risk_reward = 3
         self.atr_sensitivity = 2
+        self.htf_fill_pct = 1
+        # The following argument will be multiplied by 2 when filtering.
+        self.max_htf_number_crossings = 3
 
     def detect_fvg_momentum_tres_strong(self, ohlc_df: pd.DataFrame) -> List[Dict]:
         """
@@ -113,14 +117,37 @@ class MetaFVG(MetaStrategy):
         print(f"Checking conditions with state: {self.state}")
 
         if self.state == 0:
-            print("State is 0, no action required")
-            pass
-        elif self.state == 1:
-            print(f"Long setup valid - SL: {self.sl},ENTRY : {self.entry},TP : {self.tp}, VOLUME: {self.volume}")
-            self.execute(symbol=self.symbols[0], volume=self.volume, sl=self.sl, tp=self.tp,
-                         entry = self.entry, is_limit = True, is_eod=True)
+            print(f"{self.tag}::    State is 0, no action required")
+            return
+
+        symbol = self.symbols[0]
+        symbol_info = mt5.symbol_info(symbol)
+        digits = symbol_info.digits + 1  # Use symbol_info.digits for proper rounding + add one because its after the decimal
+
+        if symbol_info is None:
+            print(f"Failed to get symbol info for {symbol}")
+            return
+
+        print(f"{self.tag}::    Rounding for {symbol}:  {digits}")
+        print(f"{self.tag}::    Strategy Volume:        {self.volume}")
+        print(f"{self.tag}::    Strategy RRR:           {self.risk_reward}")
+
+        # Proper rounding
+        tp, sl, entry = round(self.tp, digits), round(self.sl, digits), round(self.entry, digits)
+
+
+        if self.state == 1:
+            print(f"{self.tag}::    Long setup is valid - SL: ${sl}, ENTRY : ${entry},TP : ${tp}, VOLUME: {self.volume}")
+            self.execute(symbol =   self.symbols[0],
+                         volume =   self.volume,
+                         sl =       sl,
+                         tp =       tp,
+                         entry =    entry,
+                         is_limit = True,
+                         is_eod =   True
+                         )
         else:
-            print(f"Unknown state: {self.state}")
+            print(f"{self.tag}::    Unknown state: {self.state}")
 
     def signals(self):
         """Generate trading signals based on FVG patterns"""
@@ -137,31 +164,50 @@ class MetaFVG(MetaStrategy):
         ohlc_ltf_vals   = ohlc_ltf.values
         print(f"{self.tag}::    Pulled data for symbol: {self.symbols[0]}")
 
+        if len(self.filt_htf_fvg_patterns) == 0:
+            print(f"{self.tag}::    No HTF FVG patterns detected, no action required")
+            return
+
         last_price = ohlc_ltf['close'][-1]
         momentum_fvg_patterns = self.detect_fvg_momentum_tres_strong(ohlc_ltf.iloc[-4:-1])
 
         if len(momentum_fvg_patterns) == 0:
-            print(f"{self.tag}::    No fvg patterns detected, no action required")
+            print(f"{self.tag}::    No LTF FVG patterns detected, no action required")
             return
+
 
         current_momentum    = momentum_fvg_patterns[0]
         higher_band         = current_momentum["gap_low"]
 
-        htf_fvgs = self.htf_fvg
+        htf_fvgs = self.filt_htf_fvg_patterns
         in_htf_fvg = htf_fvgs.apply(lambda x: (last_price < x["gap_low"]) and (last_price > x["gap_high"]), axis=1)
 
         if not in_htf_fvg.any():
             print(f"{self.tag}::    Price not in any FVG H4, no action required")
             return
+
         print(f"{self.tag}:: We are in FV H4 pello !!")
 
         atr_value   = atr(ohlc_ltf_vals[:, 0], ohlc_ltf_vals[:, 1], ohlc_ltf_vals[:, 2], 14)[-1]
+        print(f"{self.tag}:: ATR value: {round(atr_value, 2)}$")
 
-        self.entry = higher_band
-        self.sl = atr_value * self.atr_sensitivity - self.entry
-        self.tp = self.risk_reward
+        self.entry  = higher_band
+        self.sl     = self.entry - atr_value * self.atr_sensitivity
+        self.tp     = self.entry + atr_value * self.atr_sensitivity * self.risk_reward
         self.state  = 1
 
+    def retrieve_fvg_crosses(self, fvg_pattern, price_ts, fill_pct):
+        # On calcule le niveau sur lequel on veut verifier les croisements
+        fvg_level = fill_pct*fvg_pattern["gap_low"] + (1-fill_pct)*fvg_pattern["gap_high"]
+        # On filtre la time series pour trouver uniquement les croisements formes apres la fvg
+        idx_fvg = fvg_pattern["candle_indices"][-1]
+
+        # On calcule le nombre de croisements
+        filt_price_ts = price_ts.iloc[idx_fvg:].values
+        filt_price_ts = filt_price_ts - fvg_level
+        filt_price_ts = filt_price_ts[1:] * filt_price_ts[:-1] < 0
+
+        return np.sum(filt_price_ts)
 
     def fit(self):
         print(f"{self.tag}::     Starting the FVG Detection pelo!!")
@@ -185,47 +231,25 @@ class MetaFVG(MetaStrategy):
                            label="right",
                            closed="right")
 
-        htf_fvg_pattern = self.detect_fvg_htf(ohlc_resampled_df)
+        htf_fvg_patterns = self.detect_fvg_htf(ohlc_resampled_df)
 
-        if len(htf_fvg_pattern) == 0:
-            print(f"No FVG patterns found in the last 14 days on H4")
-        else:
+        if len(htf_fvg_patterns) == 0:
+            print(f"{self.tag}::     No FVG patterns found in the last 14 days on H4")
+            return
 
-            print(f"Found {len(htf_fvg_pattern)} FVG patterns in the last 14 days on H4.")
+        print(f"{self.tag}::     Found {len(htf_fvg_patterns)} FVG patterns in the last 14 days on H4.")
+        htf_fvg_patterns = pd.DataFrame(htf_fvg_patterns)
+        htf_fvg_patterns.loc[:, "crossings"] = htf_fvg_patterns.apply(lambda fvg_pattern: self.retrieve_fvg_crosses(fvg_pattern,
+                                                                                                                    ohlc_resampled_df['low'],
+                                                                                                                    self.htf_fill_pct),
+                                                                      axis=1)
 
-        self.htf_fvg = pd.DataFrame(htf_fvg_pattern)
+        filt_htf_fvg_patterns       = htf_fvg_patterns[htf_fvg_patterns["crossings"] < self.max_htf_number_crossings * 2]
+        self.all_htf_fvg_patterns   = htf_fvg_patterns
+        self.filt_htf_fvg_patterns  = filt_htf_fvg_patterns
 
         print(f"{self.tag}::     Finished FVG detection and fitting pelo!!")
+        print(f"{self.tag}::     Number of FVG patterns before crossing filtering:  {self.all_htf_fvg_patterns.shape[0]}")
+        print(f"{self.tag}::     Numver of FVG patterns after crossing filtering:   {self.filt_htf_fvg_patterns.shape[0]}")
         return
-
-    def check_positions_and_orders(self):
-        """Check if there are open positions and orders for the symbol"""
-        print(f"Checking positions and orders for {self.symbols[0]}")
-
-        try:
-            open_positions = mt5.positions_get(symbol=self.symbols[0])
-            if open_positions is None:
-                print(f"Failed to get open positions for symbol: {self.symbols[0]}")
-                return False
-
-            filtered_open_positions = [position for position in open_positions if position.comment == self.tag]
-            open_positions_count = len(filtered_open_positions)
-            print(f"Open positions with tag '{self.tag}': {open_positions_count}")
-
-            orders = mt5.orders_get(symbol=self.symbols[0])
-            if orders is None:
-                print(f"Failed to get orders for symbol: {self.symbols[0]}")
-                return False
-
-            filtered_orders = [order for order in orders if order.comment == self.tag]
-            pending_orders_count = len(filtered_orders)
-            print(f"Pending orders with tag '{self.tag}': {pending_orders_count}")
-
-            result = open_positions_count == 0 and pending_orders_count <= 1
-            print(f"Position check result: {result}")
-            return result
-
-        except Exception as e:
-            print(f"Error in check_positions_and_orders: {e}")
-            return False
 
