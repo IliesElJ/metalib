@@ -343,7 +343,6 @@ class MetaGA(MetaStrategy):
         rsi_compute(ohlc)
         pivot_points_compute(ohlc)
         bollinger_bands_compute(ohlc)
-        ewa_compute(ohlc)
         macd_compute1(ohlc)
         ohlc = ohlc.iloc[19:]
         technical_indicators = ohlc.drop(axis=1, columns=['open', 'high', 'low', 'close', 'spread', 'real_volume'])

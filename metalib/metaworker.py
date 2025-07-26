@@ -10,6 +10,7 @@ from metalib.metado2 import MetaDO
 from metalib.metaga import MetaGA
 from metalib.metagomano import MetaGO
 from metalib.metahar import MetaHAR
+from metalib.metafvg import MetaFVG
 
 strategy_registry = {
     "metado": {
@@ -57,7 +58,17 @@ strategy_registry = {
             "short_factor",
             "long_factor"
         ]
-    }
+    },
+    "metafvg": {
+        "class": MetaFVG,
+        "init_keys": [
+            "symbols",
+            "timeframe",
+            "size_position",
+            "tag",
+            "limit_number_position",
+        ]
+    },
 }
 
 timeframe_mapping = {
@@ -92,7 +103,7 @@ def run_strategy_loop(strategy_type, init_args):
     # Schedule to run every minute and fit daily
     def run_wrapper():
         end_time = datetime.now(pytz.utc) + timedelta(hours=3)
-        start_time = end_time - timedelta(days=40)
+        start_time = end_time - timedelta(days=5)
 
         try:
             instance.run(start_time, end_time)

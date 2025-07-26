@@ -163,6 +163,9 @@ class MetaStrategy(ABC):
         if expiration_date is not None:
             request["expiration"] = expiration_date
 
+        if is_eod:
+            request["type_time"] = mt5.ORDER_TIME_DAY
+
         # Execute the order
         result = mt5.order_send(request)
 
