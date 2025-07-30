@@ -1,7 +1,0 @@
-BTCUSD_M1:
-  strategy_type: metafvg
-  symbols: ["BTCUSD"]
-  size_position: 0.05
-  timeframe: mt5.TIMEFRAME_M1
-  tag: metafvg_crypto_btc
-  limit_number_position: 5

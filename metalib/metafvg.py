@@ -31,7 +31,7 @@ class MetaFVG(MetaStrategy):
             limit_number_position: Maximum number of positions
         """
         super().__init__(symbols, timeframe, tag)
-        print(f"Initializing MetaFvg strategy with symbols: {symbols}, timeframe: {timeframe}")
+        print(f"{self.tag}::    Initializing MetaFVG strategy with {symbols[0]}")
 
         self.volume = size_position
         self.state = None
