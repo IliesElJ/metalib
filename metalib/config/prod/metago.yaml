@@ -1,79 +1,79 @@
-EURUSD_H1_GO:
+EURUSD_M15_GO:
   strategy_type: metago
   symbols: [ "EURUSD" ]
-  timeframe: mt5.TIMEFRAME_H1
+  timeframe: mt5.TIMEFRAME_M15
   tag: metago_f1
   active_hours: None
   risk_factor: 0.01
   lookahead: 48
 
-USDJPY_H1_GO:
+USDJPY_M15_GO:
   strategy_type: metago
   symbols: [ "USDJPY" ]
-  timeframe: mt5.TIMEFRAME_H1
+  timeframe: mt5.TIMEFRAME_M15
   tag: metago_f2
   active_hours: None
   risk_factor: 0.01
   lookahead: 48
 
-USDCHF_H1_GO:
+USDCHF_M15_GO:
   strategy_type: metago
   symbols: [ "USDCHF" ]
-  timeframe: mt5.TIMEFRAME_H1
+  timeframe: mt5.TIMEFRAME_M15
   tag: metago_f4
   active_hours: None
   risk_factor: 0.01
   lookahead: 48
 
-USDCAD_H1_GO:
+USDCAD_M15_GO:
   strategy_type: metago
   symbols: [ "USDCAD" ]
-  timeframe: mt5.TIMEFRAME_H1
+  timeframe: mt5.TIMEFRAME_M15
   tag: metago_f5
   active_hours: None
   risk_factor: 0.01
   lookahead: 48
 
-AUDUSD_H1_GO:
+AUDUSD_M15_GO:
   strategy_type: metago
   symbols: [ "AUDUSD" ]
-  timeframe: mt5.TIMEFRAME_H1
+  timeframe: mt5.TIMEFRAME_M15
   lookahead: 48
   tag: metago_f6
   active_hours: None
   risk_factor: 0.01
 
-GER40CASH_H1_GO:
+GER40CASH_M15_GO:
   strategy_type: metago
   symbols: [ "GER40.cash" ]
-  timeframe: mt5.TIMEFRAME_H1
+  timeframe: mt5.TIMEFRAME_M15
   tag: metago_i1
   active_hours: None
   risk_factor: 0.01
   lookahead: 48
 
-US100CASH_H1_GO:
+US100CASH_M15_GO:
   strategy_type: metago
   symbols: [ "US100.cash" ]
-  timeframe: mt5.TIMEFRAME_H1
+  timeframe: mt5.TIMEFRAME_M15
   tag: metago_i2
   active_hours: None
   risk_factor: 0.01
   lookahead: 48
 
-BTCUSD_H1_GO:
+BTCUSD_M15_GO:
   strategy_type: metago
   symbols: [ "BTCUSD" ]
-  timeframe: mt5.TIMEFRAME_H1
+  timeframe: mt5.TIMEFRAME_M15
   tag: metago_c1
   active_hours: None
   risk_factor: 0.01
   lookahead: 48
 
-XRPUSD_H1_GO:
+XRPUSD_M15_GO:
   strategy_type: metago
   symbols: [ "XRPUSD" ]
-  timeframe: mt5.TIMEFRAME_H1
+  timeframe: mt5.TIMEFRAME_M15
   tag: metago_c2
   active_hours: None
   risk_factor: 0.01
