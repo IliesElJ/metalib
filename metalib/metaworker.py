@@ -103,7 +103,11 @@ def run_strategy_loop(strategy_type, init_args):
     # Schedule to run every minute and fit daily
     def run_wrapper():
         end_time = datetime.now(pytz.utc) + timedelta(hours=3)
-        start_time = end_time - timedelta(days=5)
+
+        if strategy_type == "metago":
+            start_time = end_time - timedelta(days=30)
+        else:
+            start_time = end_time - timedelta(days=5)
 
         try:
             instance.run(start_time, end_time)

@@ -198,7 +198,6 @@ class MetaFVG(MetaStrategy):
         print(f"{self.tag}::    Pulled data for symbol: {self.symbols[0]}")
         print(f"{self.tag}::    Last Price for symbol:  ${last_price}")
 
-
         if len(self.filt_bearish_htf_fvg_patterns) == 0 and len(self.filt_bearish_htf_fvg_patterns) == 0:
             print(f"{self.tag}::    No HTF FVG patterns detected, no action required")
             return

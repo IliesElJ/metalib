@@ -92,32 +92,6 @@ class MetaGO(MetaStrategy):
         signal_line = indicators.reset_index(drop=True).iloc[[-1]]
         signal_line["timestamp"] = indicators.index[-1]
         self.signalData = signal_line
-
-
-            
-    def plot_signals(self, indicators, long_signal, short_signal):
-        plt.figure(figsize=(12, 6))
-        
-        plt.plot(indicators.index, indicators['close'], label='Close Price', color='black', linewidth=1.5)
-        plt.plot(indicators.index, indicators['true_open_monthly'], label='True Open Monthly', linestyle='dashed', color='blue')
-        plt.plot(indicators.index, indicators['true_open_weekly'], label='True Open Weekly', linestyle='dashed', color='purple')
-        plt.plot(indicators.index, indicators['long_sma'], label='Long SMA', linestyle='solid', color='green')
-        plt.plot(indicators.index, indicators['short_sma'], label='Short SMA', linestyle='solid', color='green')
-
-        # Mark long and short signals
-        if long_signal:
-            plt.scatter(indicators.index[-1], indicators['close'].iloc[-1], color='green', s=100, label='Long Signal', edgecolors='black')
-        if short_signal:
-            plt.scatter(indicators.index[-1], indicators['close'].iloc[-1], color='red', s=100, label='Short Signal', edgecolors='black')
-
-        plt.title('Market Context and Trading Signals')
-        plt.xlabel('Time')
-        plt.ylabel('Price')
-        plt.legend()
-        plt.grid()
-        plt.savefig(f"../charts/trading_signals_{self.symbols[0]}.png")
-        plt.close()
-        print("Trading signals chart saved as 'trading_signals.png'")
         
     def check_conditions(self):
         if not self.vol:
@@ -157,7 +131,7 @@ class MetaGO(MetaStrategy):
             try:
                 self.execute(symbol=symbol, volume=volume, short=(self.state == -1), sl=sl, tp=tp)
                 trade_type = "BUY" if self.state == 1 else "SELL"
-                self.send_telegram_message(
+                print(
                     f"Entered {trade_type} order for {symbol} with volume: {volume}. Mean Entry Price: {positions_mean_entry_price}, Positions: {num_positions}."
                 )
             except Exception as e:
