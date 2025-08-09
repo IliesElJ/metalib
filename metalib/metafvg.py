@@ -214,8 +214,12 @@ class MetaFVG(MetaStrategy):
             return
         else:
             if in_bearish_htf_fvg.any() and in_bearish_htf_fvg.any():
-                print(f"{self.tag}::    Price in both bearish and bullish FVG H4, not looking for setups")
-                return
+                last_fvg_bull = in_bullish_htf_fvg[in_bullish_htf_fvg].iloc[-1]["timestamp"]
+                last_fvg_bear = in_bearish_htf_fvg[in_bearish_htf_fvg].iloc[-1]["timestamp"]
+                direction = 1 if last_fvg_bull > last_fvg_bear else 0
+                print(f"{self.tag}::    Price in both bearish and bullish FVG H4, direction: {direction}")
+                print(f"{self.tag}::    Time of last bullish FVG H4: {last_fvg_bull}")
+                print(f"{self.tag}::    Time of last bearish FVG H4: {last_fvg_bear}")
             if in_bullish_htf_fvg.any():
                 print(f"{self.tag}::    Price in Bullish FVG H4, looking for long setups")
                 direction = 1

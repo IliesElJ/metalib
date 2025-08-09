@@ -34,7 +34,7 @@ US100CASH_H1_GA:
   strategy_type: metafvg
   symbols: [ "US100.cash" ]
   timeframe: mt5.TIMEFRAME_M1
-  size_position: 0.05
+  size_position: 0.5
   tag: metafvg_nas
   limit_number_position: 5
 
