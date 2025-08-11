@@ -56,7 +56,7 @@ class MetaGO(MetaStrategy):
         short_signal = close_negative_condition & mask_downtrend_above_yearly.iloc[-1]
 
         sl = close.iloc[-1] - 6 * indicators['atr'].iloc[-1] if short_signal else close.iloc[-1] + 6 * \
-                                                                                       indicators['atr'].iloc[-1]
+                                                                                  indicators['atr'].iloc[-1]
         self.sl = float(sl)
         self.tp = float(true_open_monthly)
 
@@ -71,21 +71,33 @@ class MetaGO(MetaStrategy):
         else:
             self.state = 0
 
-        # Detailed Logging
-        print(f"{self.tag}::: Open positions for strategy: {self.tag}: {self.are_positions_with_tag_open()}")
-        print(f"{self.tag}::: Long Signal Components:")
+        # Enhanced Detailed Logging
+        print(f"\n--- DEBUGGING INFORMATION ---")
+        print(f"{self.tag}::: Current Volatility: {self.vol:.4f}")
+        print(f"{self.tag}::: Current Close Prices: {close.tail(5).to_list()}")
+        print(f"{self.tag}::: True Open Monthly (last 3 values): {indicators['true_open_monthly'].tail(3).to_list()}")
+        print(f"{self.tag}::: Uptrend Indicator (last 3 values): {indicators['uptrend'].tail(3).to_list()}")
+        print(f"{self.tag}::: Downtrend Indicator (last 3 values): {indicators['downtrend'].tail(3).to_list()}")
+        print(f"{self.tag}::: ATR (last 3 values): {indicators['atr'].tail(3).to_list()}")
+
+        print(f"\n{self.tag}::: Open positions for strategy: {self.tag}: {self.are_positions_with_tag_open()}")
+        print(f"\n{self.tag}::: Long Signal Components:")
         print(f"    - All of last 4 (except last) are > 0: {close_positive_condition}")
         print(f"    - Uptrend > 0: {uptrend > 0}")
         print(f"    - Close < True Open Monthly: {close.iloc[-1] < true_open_monthly}")
         print(f"    - Mask Uptrend Below Monthly: {mask_uptrend_below_yearly.iloc[-1]}")
         print(f"    => Final Long Signal: {long_signal}")
 
-        print(f"{self.tag}::: Short Signal Components:")
+        print(f"\n{self.tag}::: Short Signal Components:")
         print(f"    - All of last 4 (except last) are < 0: {close_negative_condition}")
         print(f"    - Downtrend > 0: {downtrend > 0}")
         print(f"    - Close > True Open Monthly: {close.iloc[-1] > true_open_monthly}")
         print(f"    - Mask Downtrend Above Yearly: {mask_downtrend_above_yearly.iloc[-1]}")
         print(f"    => Final Short Signal: {short_signal}")
+
+        print(f"\n{self.tag}::: Stop Loss (SL): {self.sl}")
+        print(f"{self.tag}::: Take Profit (TP): {self.tp}")
+        print(f"--- END OF DEBUGGING INFORMATION ---\n")
 
         print(f"{self.tag}::: Saved Vol which is currently: {self.vol}%")
 

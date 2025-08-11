@@ -2,7 +2,7 @@ BTCUSD_H1_GO:
   strategy_type: metaga
   symbols: [ "BTCUSD" ]
   timeframe: mt5.TIMEFRAME_M1
-  tag: metag0_c1
+  tag: metaga_test_c1
   active_hours: None
   risk_factor: 0.005
   low_length: 60

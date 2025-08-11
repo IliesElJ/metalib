@@ -113,14 +113,16 @@ class MetaGA(MetaStrategy):
 
         # Retrieve OHLC data for volatility calculation
         ohlc = self.data[symbol]
-        if ohlc is None or len(ohlc) < 24 * self.mid_length:
+        print(f"Current shape of OHLC data {ohlc.shape}")
+
+        if ohlc is None or len(ohlc) < 24 * 60:
             print(f"Not enough data to compute daily volatility for {symbol}.")
             return
 
         # Calculate daily volatility (standard deviation of daily returns)
         returns = np.log(ohlc['close'] / ohlc['close'].shift(1)).dropna()
         del ohlc
-        daily_vol = returns.rolling(window=24 * self.mid_length).std().iloc[-1]
+        daily_vol = returns.rolling(window=24*60).std().iloc[-1]
         del returns
 
         if np.isnan(daily_vol) or daily_vol == 0:
