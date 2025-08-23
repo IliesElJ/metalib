@@ -218,7 +218,7 @@ def pivot_points_compute(df):
     return df
 
 
-def macd_compute1(df):
+def macd_compute(df):
     # print(df)
     df.loc[:, 'return'] = df.close - df.open
     df['return_sq'] = df['return'].apply(np.square)
