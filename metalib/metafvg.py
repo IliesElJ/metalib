@@ -87,8 +87,8 @@ class MetaFVG(MetaStrategy):
 
                         pattern = {
                             'timestamp': candle_i1.name,  # i+1 candle timestamp
-                            'gap_low': candle_i2['low'],  # Low of i+2 candle
-                            'gap_high': candle_i['high'],  # High of i candle
+                            'gap_low': candle_i2['high'],  # Low of i+2 candle
+                            'gap_high': candle_i['low'],  # High of i candle
                             'pattern_type': 'MOMENTUM_FVG',
                             'candle_indices': [i, i + 1, i + 2],
                             'direction': 'bearish'
