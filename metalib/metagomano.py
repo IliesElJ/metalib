@@ -48,9 +48,9 @@ class MetaGO(MetaStrategy):
         mask_uptrend_below_yearly = (uptrend > 0) & (close < true_open_monthly)
         mask_downtrend_above_yearly = (downtrend > 0) & (close > true_open_monthly)
 
-        close_last_4 = close.diff().tail(3).head(2)  # Extract last 3 values, then take first 2 candles
-        close_positive_condition = np.all(close_last_4 > 0)
-        close_negative_condition = np.all(close_last_4 < 0)
+        close_last = close.diff().tail(3).head(2)  # Extract last 3 values, then take first 2 candles
+        close_positive_condition = np.all(close_last > 0)
+        close_negative_condition = np.all(close_last < 0)
 
         long_signal = close_positive_condition & mask_uptrend_below_yearly.iloc[-1]
         short_signal = close_negative_condition & mask_downtrend_above_yearly.iloc[-1]
@@ -186,8 +186,7 @@ class MetaGO(MetaStrategy):
         lots            = position_size / (contract_size * price)        
 
         # Ensure it meets the broker's minimum lot size requirement
-     #    return max(round(self.risk_factor * 5 * lots, 2), symbol_info.volume_min)
-        return symbol_info.volume_min
+        return max(round(self.risk_factor * 5 * lots, 2), symbol_info.volume_min)
 
     def retrieve_indicators(self, ohlc_df):
         ohlc = ohlc_df.copy()
