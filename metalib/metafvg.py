@@ -40,8 +40,8 @@ class MetaFVG(MetaStrategy):
         self.tp = None
         self.limit_number_position = limit_number_position
         self.htf_fvg = None
-        self.risk_reward = 3
-        self.atr_sensitivity = 2
+        self.risk_reward = 2
+        self.atr_sensitivity = 4
         self.htf_fill_pct = 1
         # The following argument will be multiplied by 2 when filtering.
         self.max_htf_number_crossings = 3
@@ -270,7 +270,7 @@ class MetaFVG(MetaStrategy):
         utc = pytz.timezone('UTC')
         # Get the current time in UTC
         end_time = datetime.now(utc)
-        start_time = end_time - timedelta(days=14)
+        start_time = end_time - timedelta(days=7)
         # Set the time components to 0 (midnight) and maintain the timezone
         end_time = end_time.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(utc)
         start_time = start_time.astimezone(utc)

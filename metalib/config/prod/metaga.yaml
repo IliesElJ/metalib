@@ -4,11 +4,11 @@ EURUSD_H1_GA:
   timeframe: mt5.TIMEFRAME_M1
   tag: metaga_f1
   active_hours: None
-  risk_factor: 0.09
+  risk_factor: 0.9
   low_length: 60
   mid_length: 480
   high_length: 1440
-  prob_bound: 0.05
+  prob_bound: 0.15
 
 AUDJPY_H1_GA:
   strategy_type: metaga
@@ -16,11 +16,11 @@ AUDJPY_H1_GA:
   timeframe: mt5.TIMEFRAME_M1
   tag: metaga_f2
   active_hours: None
-  risk_factor: 0.00
+  risk_factor: 0.5
   low_length: 60
   mid_length: 480
   high_length: 1440
-  prob_bound: 0.05
+  prob_bound: 0.15
 
 GER40CASH_H1_GA:
   strategy_type: metaga
@@ -32,7 +32,7 @@ GER40CASH_H1_GA:
   low_length: 60
   mid_length: 480
   high_length: 1440
-  prob_bound: 0.05
+  prob_bound: 0.15
 
 US100CASH_H1_GA:
   strategy_type: metaga
@@ -40,9 +40,9 @@ US100CASH_H1_GA:
   timeframe: mt5.TIMEFRAME_M1
   tag: metaga_i2
   active_hours: None
-  risk_factor: 0.009
+  risk_factor: 0.09
   low_length: 60
   mid_length: 480
   high_length: 1440
-  prob_bound: 0.05
+  prob_bound: 0.15
 

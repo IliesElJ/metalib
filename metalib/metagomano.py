@@ -101,7 +101,7 @@ class MetaGO(MetaStrategy):
 
         print(f"{self.tag}::: Saved Vol which is currently: {self.vol}%")
 
-        signal_line = indicators.reset_index(drop=True).iloc[[-1]]
+        signal_line = indicators.reset_index(drop=True).iloc[-1]
         signal_line["timestamp"] = indicators.index[-1]
         self.signalData = signal_line
         
