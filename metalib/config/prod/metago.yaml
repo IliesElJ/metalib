@@ -1,80 +1,80 @@
-EURUSD_M15_GO:
+EURUSD_H1_GO:
   strategy_type: metago
   symbols: [ "EURUSD" ]
-  timeframe: mt5.TIMEFRAME_M15
+  timeframe: mt5.TIMEFRAME_H1
   tag: metago_f1
   active_hours: None
-  risk_factor: 0.01
+  risk_factor: 0.001
   lookahead: 48
 
-USDJPY_M15_GO:
+USDJPY_H1_GO:
   strategy_type: metago
   symbols: [ "USDJPY" ]
-  timeframe: mt5.TIMEFRAME_M15
+  timeframe: mt5.TIMEFRAME_H1
   tag: metago_f2
   active_hours: None
-  risk_factor: 0.01
+  risk_factor: 0.001
   lookahead: 48
 
-USDCHF_M15_GO:
+USDCHF_H1_GO:
   strategy_type: metago
   symbols: [ "USDCHF" ]
-  timeframe: mt5.TIMEFRAME_M15
+  timeframe: mt5.TIMEFRAME_H1
   tag: metago_f4
   active_hours: None
-  risk_factor: 0.01
+  risk_factor: 0.001
   lookahead: 48
 
-USDCAD_M15_GO:
+USDCAD_H1_GO:
   strategy_type: metago
   symbols: [ "USDCAD" ]
-  timeframe: mt5.TIMEFRAME_M15
+  timeframe: mt5.TIMEFRAME_H1
   tag: metago_f5
   active_hours: None
-  risk_factor: 0.01
+  risk_factor: 0.001
   lookahead: 48
 
-AUDUSD_M15_GO:
+AUDUSD_H1_GO:
   strategy_type: metago
   symbols: [ "AUDUSD" ]
-  timeframe: mt5.TIMEFRAME_M15
+  timeframe: mt5.TIMEFRAME_H1
   lookahead: 48
   tag: metago_f6
   active_hours: None
-  risk_factor: 0.01
+  risk_factor: 0.001
 
-GER40CASH_M15_GO:
+GER40CASH_H1_GO:
   strategy_type: metago
   symbols: [ "GER40.cash" ]
-  timeframe: mt5.TIMEFRAME_M15
+  timeframe: mt5.TIMEFRAME_H1
   tag: metago_i1
   active_hours: None
-  risk_factor: 0.01
+  risk_factor: 0.001
   lookahead: 48
 
-US100CASH_M15_GO:
+US100CASH_H1_GO:
   strategy_type: metago
   symbols: [ "US100.cash" ]
-  timeframe: mt5.TIMEFRAME_M15
+  timeframe: mt5.TIMEFRAME_H1
   tag: metago_i2
   active_hours: None
-  risk_factor: 0.01
+  risk_factor: 0.001
   lookahead: 48
 
-BTCUSD_M15_GO:
+BTCUSD_H1_GO:
   strategy_type: metago
   symbols: [ "BTCUSD" ]
-  timeframe: mt5.TIMEFRAME_M15
+  timeframe: mt5.TIMEFRAME_H1
   tag: metago_c1
   active_hours: None
-  risk_factor: 0.01
+  risk_factor: 0.001
   lookahead: 48
 
-XRPUSD_M15_GO:
+XRPUSD_H1_GO:
   strategy_type: metago
   symbols: [ "XRPUSD" ]
-  timeframe: mt5.TIMEFRAME_M15
+  timeframe: mt5.TIMEFRAME_H1
   tag: metago_c2
   active_hours: None
-  risk_factor: 0.01
+  risk_factor: 0.001
   lookahead: 48

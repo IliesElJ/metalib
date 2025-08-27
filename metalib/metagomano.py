@@ -48,14 +48,14 @@ class MetaGO(MetaStrategy):
         mask_uptrend_below_yearly = (uptrend > 0) & (close < true_open_monthly)
         mask_downtrend_above_yearly = (downtrend > 0) & (close > true_open_monthly)
 
-        close_last = close.diff().tail(3).head(2)  # Extract last 3 values, then take first 2 candles
+        close_last = close.diff().tail(4).head(3)  # Extract last 4 values, then take first 3 candles
         close_positive_condition = np.all(close_last > 0)
         close_negative_condition = np.all(close_last < 0)
 
         long_signal = close_positive_condition & mask_uptrend_below_yearly.iloc[-1]
         short_signal = close_negative_condition & mask_downtrend_above_yearly.iloc[-1]
 
-        sl = close.iloc[-1] - 6 * indicators['atr'].iloc[-1] if long_signal else close.iloc[-1] + 6 * \
+        sl = close.iloc[-1] - 12 * indicators['atr'].iloc[-1] if long_signal else close.iloc[-1] + 12 * \
                                                                                   indicators['atr'].iloc[-1]
         self.sl = float(sl)
         self.tp = float(true_open_monthly)
@@ -206,7 +206,7 @@ class MetaGO(MetaStrategy):
 
         true_open_weekly = get_last_monday_6pm_open_ffill(ohlc, ohlc.index)
         true_open_monthly = get_second_monday_open_ffill(ohlc_daily, ohlc.index)
-        true_open_yearly = get_first_monday_of_april_open_ffill(ohlc_daily, ohlc.index)
+        # true_open_yearly = get_first_monday_of_april_open_ffill(ohlc_daily, ohlc.index)
         print(f"{self.tag}::: Computed True opens (weekly, monthly) ")
         del ohlc
         del ohlc_daily
