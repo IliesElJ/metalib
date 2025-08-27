@@ -45,8 +45,11 @@ class MetaGO(MetaStrategy):
         downtrend = indicators['downtrend'].iloc[-1]
         true_open_monthly = indicators['true_open_monthly'].iloc[-1]
 
-        mask_uptrend_below_yearly = (uptrend > 0) & (close < true_open_monthly)
-        mask_downtrend_above_yearly = (downtrend > 0) & (close > true_open_monthly)
+        # mask_uptrend_below_yearly = (uptrend > 0) & (close < true_open_monthly)
+        # mask_downtrend_above_yearly = (downtrend > 0) & (close > true_open_monthly)
+
+        mask_uptrend_below_yearly = close < true_open_monthly
+        mask_downtrend_above_yearly = close > true_open_monthly
 
         close_last = close.diff().tail(4).head(3)  # Extract last 4 values, then take first 3 candles
         close_positive_condition = np.all(close_last > 0)
