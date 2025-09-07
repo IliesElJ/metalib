@@ -22,6 +22,26 @@ def convolve(data, kernel):
         out[i] = sum([window[j] * kernel[j] for j in range(size_kernel)])
     return out
 
+@njit
+def retrieve_low_pivot_point(self, low_arr: np.ndarray):
+    if low_arr.shape[0] % 2 == 0:
+        return np.nan
+    mid_point = low_arr.shape[0] // 2 + 1
+    min_low = np.min(low_arr)
+    if low_arr[mid_point] == min_low:
+        return low_arr[mid_point]
+    return np.nan
+
+@njit
+def retrieve_high_pivot_point(self, high_arr: np.ndarray):
+    if high_arr.shape[0] % 2 == 0:
+        return np.nan
+    mid_point = high_arr.shape[0] // 2 + 1
+    min_low = np.max(high_arr)
+    if high_arr[mid_point] == min_low:
+        return high_arr[mid_point]
+    return np.nan
+
 
 @njit
 def ewma(data, period, alpha=1.0):

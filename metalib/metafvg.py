@@ -8,6 +8,7 @@ from tqdm import tqdm
 
 from metalib.metastrategy import MetaStrategy
 from metalib.fastfinance import atr
+from metalib.indicators import retrieve_high_pivot_point, retrieve_low_pivot_point
 
 class MetaFVG(MetaStrategy):
     """MetaTrader FVG (Fair Value Gap) Trading Strategy"""
@@ -96,6 +97,14 @@ class MetaFVG(MetaStrategy):
                         patterns.append(pattern)
 
         return patterns
+
+    def _retrieve_last_pivots(self, ohlc: pd.DataFrame):
+        last_pivot_low = ohlc.loc[:, "low"].rolling(7).apply(retrieve_low_pivot_point, engine="numba", raw=True)
+        last_pivot_low = last_pivot_low.dropna().iloc[-1]
+
+        last_pivot_high = ohlc.loc[:, "high"].rolling(7).apply(retrieve_high_pivot_point, engine="numba", raw=True)
+        last_pivot_high = last_pivot_high.dropna().iloc[-1]
+        return last_pivot_low, last_pivot_high
 
     def detect_fvg_htf(self, ohlc_df: pd.DataFrame) -> Tuple[List[Dict], List[Dict]]:
         """
@@ -241,6 +250,7 @@ class MetaFVG(MetaStrategy):
         higher_band         = current_momentum["gap_low"]
         lower_band          = current_momentum["gap_high"]
         future_state        = 2 * direction - 1 # If direction is 1, state is 1 (long) else it's -1 (short)
+        last_pivot_low, last_pivot_high = self._retrieve_last_pivots(ohlc_ltf)
 
         print(f"{self.tag}:: We are in FVG H4 pello !!")
 
@@ -248,7 +258,7 @@ class MetaFVG(MetaStrategy):
         print(f"{self.tag}:: ATR value: {round(atr_value, 2)}$")
 
         self.entry  = higher_band if direction else lower_band
-        self.sl     = self.entry - atr_value * self.atr_sensitivity * future_state
+        self.sl     = last_pivot_low if direction else last_pivot_high
         self.tp     = self.entry + atr_value * self.atr_sensitivity * self.risk_reward * future_state
         self.state  = future_state
 

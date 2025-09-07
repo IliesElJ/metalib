@@ -6,3 +6,4 @@ gh.exe
 metalib/__pycache__/metagomano.cpython-313.pyc
 metalib/__pycache__/metagomano.cpython-313.pyc
 /metalib/logs/
+/metalib/historical_merged_deals.pkl
