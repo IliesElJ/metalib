@@ -23,7 +23,7 @@ def convolve(data, kernel):
     return out
 
 @njit
-def retrieve_low_pivot_point(self, low_arr: np.ndarray):
+def retrieve_low_pivot_point(low_arr: np.ndarray):
     if low_arr.shape[0] % 2 == 0:
         return np.nan
     mid_point = low_arr.shape[0] // 2 + 1
@@ -33,7 +33,7 @@ def retrieve_low_pivot_point(self, low_arr: np.ndarray):
     return np.nan
 
 @njit
-def retrieve_high_pivot_point(self, high_arr: np.ndarray):
+def retrieve_high_pivot_point(high_arr: np.ndarray):
     if high_arr.shape[0] % 2 == 0:
         return np.nan
     mid_point = high_arr.shape[0] // 2 + 1
