@@ -11,6 +11,7 @@ from metalib.metaga import MetaGA
 from metalib.metagomano import MetaGO
 from metalib.metahar import MetaHAR
 from metalib.metafvg import MetaFVG
+from metalib.metane import MetaNE
 
 strategy_registry = {
     "metado": {
@@ -22,6 +23,25 @@ strategy_registry = {
             "active_hours",
             "risk_factor",
             "mode"
+        ]
+    },
+    "metane": {
+        "class": MetaNE,
+        "init_keys": [
+            "symbols",
+            "timeframe",
+            "tag",
+            "active_hours",
+            "lookahead",
+            "volume",
+            "rrr",
+            "long_threshold",
+            "tz",
+            "don_window",
+            "don_lag",
+            "ewma_ewm_span",
+            "time_ewm_span",
+            "ols_window"
         ]
     },
     "metaga": {

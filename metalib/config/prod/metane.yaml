@@ -1,0 +1,84 @@
+BTCUSD_M1_NE:
+  strategy_type: metane
+  symbols: ["BTCUSD"]
+  timeframe: mt5.TIMEFRAME_M1
+  tag: metane_btc
+  active_hours: None
+  lookahead: 30
+  volume: 0.025
+  rrr: 4
+  long_threshold: 0.5
+  tz: "UTC"
+  don_window: 240
+  don_lag: 60
+  ewma_ewm_span: 15
+  time_ewm_span: 30
+  ols_window: 120
+
+EURUSD_M1_NE:
+  strategy_type: metane
+  symbols: ["EURUSD"]
+  timeframe: mt5.TIMEFRAME_M1
+  tag: metane_eurusd
+  active_hours: None
+  lookahead: 30
+  volume: 0.5
+  rrr: 4
+  long_threshold: 0.5
+  tz: "UTC"
+  don_window: 240
+  don_lag: 60
+  ewma_ewm_span: 15
+  time_ewm_span: 30
+  ols_window: 120
+
+AUDJPY_M1_NE:
+  strategy_type: metane
+  symbols: ["AUDJPY"]
+  timeframe: mt5.TIMEFRAME_M1
+  active_hours: None
+  tag: metane_audjpy
+  lookahead: 30
+  volume: 0.5
+  rrr: 4
+  long_threshold: 0.5
+  tz: "UTC"
+  don_window: 240
+  don_lag: 60
+  ewma_ewm_span: 15
+  time_ewm_span: 30
+  ols_window: 120
+
+GER40CASH_M1_NE:
+  strategy_type: metane
+  symbols: ["GER40.cash"]
+  timeframe: mt5.TIMEFRAME_M1
+  active_hours: None
+  tag: metane_dax
+  lookahead: 30
+  volume: 0.5
+  rrr: 4
+  long_threshold: 0.5
+  tz: "UTC"
+  don_window: 240
+  don_lag: 60
+  ewma_ewm_span: 15
+  time_ewm_span: 30
+  ols_window: 120
+
+US100CASH_M1_NE:
+  strategy_type: metane
+  symbols: ["US100.cash"]
+  timeframe: mt5.TIMEFRAME_M1
+  active_hours: None
+  tag: metane_nas
+  lookahead: 30
+  volume: 0.5
+  rrr: 4
+  long_threshold: 0.5
+  tz: "UTC"
+  don_window: 240
+  don_lag: 60
+  ewma_ewm_span: 15
+  time_ewm_span: 30
+  ols_window: 120
