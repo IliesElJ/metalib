@@ -144,6 +144,7 @@ class MetaNE(MetaStrategy):
         self.ewma_ewm_span      = ewma_ewm_span
         self.time_ewm_span      = time_ewm_span
         self.ols_window         = ols_window
+        self.fwd_returns_ser    = pd.Series()
         self.logger             = logging.getLogger(__name__)
 
     def retrieve_indicators(
@@ -254,15 +255,26 @@ class MetaNE(MetaStrategy):
 
     def signals(self):
         ohlc            = self.data[self.symbols[0]]
+        close           = ohlc["close"].reset_index(drop=True)
+        ema_fast        = close.ewm(span=self.lookahead*10).mean()
+
         indicators      = self.retrieve_indicators(ohlc)[self.selected_features]
         del ohlc
         model           = self.clb_result["model"]
         y_hat           = model.predict(indicators)[-1] / self.historical_vol
+
+        self.fwd_returns_ser = self.fwd_returns_ser.append(y_hat, ignore_index=True)
+
+        y_hat_smoothed = self.fwd_returns_ser.ewm(self.lookahead).mean().iloc[-1]
+
+        if np.isnan(y_hat_smoothed):
+            y_hat_smoothed = 0.0
+
         mean_entry_price, num_positions = self.get_positions_info()
 
-        if y_hat < -0.2 and self.are_positions_with_tag_open(position_type="buy"):
+        if close.iloc[-1] < ema_fast.iloc[-1] and self.are_positions_with_tag_open(position_type="buy"):
             self.state = -2
-        elif y_hat > 0.2 and self.are_positions_with_tag_open(position_type="sell"):
+        elif close.iloc[-1] > ema_fast.iloc[-1] and self.are_positions_with_tag_open(position_type="sell"):
             self.state = -2
         elif y_hat > self.long_threshold and not num_positions:
             self.state = 1
@@ -279,7 +291,9 @@ class MetaNE(MetaStrategy):
         signal_line = indicators.iloc[-1]
         signal_line['predicted_fwd_return'] = y_hat
 
+
         self.signalData = signal_line
+
         return
 
     def check_conditions(self):
