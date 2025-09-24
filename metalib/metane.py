@@ -263,9 +263,11 @@ class MetaNE(MetaStrategy):
         model           = self.clb_result["model"]
         y_hat           = model.predict(indicators)[-1] / self.historical_vol
 
-        self.fwd_returns_ser = self.fwd_returns_ser.append(y_hat, ignore_index=True)
-
+        self.fwd_returns_ser = pd.concat([self.fwd_returns_ser, pd.Series([y_hat])])
         y_hat_smoothed = self.fwd_returns_ser.ewm(self.lookahead).mean().iloc[-1]
+
+        print(f"Predicted returns: {y_hat}")
+        print(f"Smoothed predicted returns: {y_hat_smoothed}")
 
         if np.isnan(y_hat_smoothed):
             y_hat_smoothed = 0.0
@@ -290,7 +292,6 @@ class MetaNE(MetaStrategy):
 
         signal_line = indicators.iloc[-1]
         signal_line['predicted_fwd_return'] = y_hat
-
 
         self.signalData = signal_line
 

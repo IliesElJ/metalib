@@ -7,7 +7,7 @@ BTCUSD_M1_NE:
   lookahead: 30
   volume: 0.025
   rrr: 4
-  long_threshold: 0.5
+  long_threshold: 0.01
   tz: "UTC"
   don_window: 240
   don_lag: 60
@@ -24,7 +24,7 @@ EURUSD_M1_NE:
   lookahead: 30
   volume: 0.5
   rrr: 4
-  long_threshold: 0.5
+  long_threshold: 0.01
   tz: "UTC"
   don_window: 240
   don_lag: 60
@@ -41,7 +41,7 @@ AUDJPY_M1_NE:
   lookahead: 30
   volume: 0.5
   rrr: 4
-  long_threshold: 0.5
+  long_threshold: 0.01
   tz: "UTC"
   don_window: 240
   don_lag: 60
@@ -58,7 +58,7 @@ GER40CASH_M1_NE:
   lookahead: 30
   volume: 0.5
   rrr: 4
-  long_threshold: 0.5
+  long_threshold: 0.01
   tz: "UTC"
   don_window: 240
   don_lag: 60
@@ -75,7 +75,7 @@ US100CASH_M1_NE:
   lookahead: 30
   volume: 0.5
   rrr: 4
-  long_threshold: 0.5
+  long_threshold: 0.01
   tz: "UTC"
   don_window: 240
   don_lag: 60
