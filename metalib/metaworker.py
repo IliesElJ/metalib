@@ -133,8 +133,8 @@ def run_strategy_loop(strategy_type, init_args):
     schedule_time = timeframe_mapping[init_args["timeframe"]]
 
     schedule.every(schedule_time).minutes.at(":00").do(run_wrapper)
-    schedule.every().day.do(instance.connect)
-    schedule.every().day.do(instance.fit)
+    schedule.every().day.at("00:00").do(instance.connect)
+    schedule.every().day.at("00:01").do(instance.fit)
 
     # Fpr MetaDo, let us close all the positions every day
     # at 8 PM UTC time (3 PM NYC)
