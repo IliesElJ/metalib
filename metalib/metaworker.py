@@ -65,6 +65,7 @@ strategy_registry = {
             "timeframe",
             "tag",
             "active_hours",
+            "mean_rev_tf"
         ]
     },
     "metahar": {
