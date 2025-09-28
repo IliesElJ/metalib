@@ -8,7 +8,7 @@ EURUSD_H1_GA:
   low_length: 60
   mid_length: 480
   high_length: 1440
-  prob_bound: 0.15
+  prob_bound: 0.075
 
 AUDJPY_H1_GA:
   strategy_type: metaga
@@ -20,7 +20,7 @@ AUDJPY_H1_GA:
   low_length: 60
   mid_length: 480
   high_length: 1440
-  prob_bound: 0.15
+  prob_bound: 0.075
 
 GER40CASH_H1_GA:
   strategy_type: metaga
@@ -32,7 +32,7 @@ GER40CASH_H1_GA:
   low_length: 60
   mid_length: 480
   high_length: 1440
-  prob_bound: 0.15
+  prob_bound: 0.075
 
 US100CASH_H1_GA:
   strategy_type: metaga
@@ -44,5 +44,5 @@ US100CASH_H1_GA:
   low_length: 60
   mid_length: 480
   high_length: 1440
-  prob_bound: 0.15
+  prob_bound: 0.075
 
