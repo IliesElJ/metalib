@@ -207,7 +207,7 @@ class MetaFVG(MetaStrategy):
         print(f"{self.tag}::    Pulled data for symbol: {self.symbols[0]}")
         print(f"{self.tag}::    Last Price for symbol:  ${last_price}")
 
-        if len(self.filt_bearish_htf_fvg_patterns) == 0 and len(self.filt_bearish_htf_fvg_patterns) == 0:
+        if len(self.filt_bearish_htf_fvg_patterns) == 0 and len(self.filt_bullish_htf_fvg_patterns) == 0:
             print(f"{self.tag}::    No HTF FVG patterns detected, no action required")
             return
 
@@ -221,7 +221,7 @@ class MetaFVG(MetaStrategy):
             print(f"{self.tag}::    Price not in any Bullish OR Bearish FVG H4, no action required")
             return
         else:
-            if in_bearish_htf_fvg.any() and in_bearish_htf_fvg.any():
+            if in_bearish_htf_fvg.any() and in_bullish_htf_fvg.any():
                 last_fvg_bull = in_bullish_htf_fvg[in_bullish_htf_fvg].iloc[-1]["timestamp"]
                 last_fvg_bear = in_bearish_htf_fvg[in_bearish_htf_fvg].iloc[-1]["timestamp"]
                 direction = 1 if last_fvg_bull > last_fvg_bear else 0
@@ -243,7 +243,7 @@ class MetaFVG(MetaStrategy):
 
         current_momentum    = momentum_fvg_patterns[0]
 
-        if (current_momentum['direction'] != 'bullish') == direction:
+        if (current_momentum['direction'] != 'bullish') == bool(direction):
             print(f"{self.tag}::    Price not in the correct direction for FVG H4, no action required")
             return
 
