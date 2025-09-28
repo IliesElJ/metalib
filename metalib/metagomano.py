@@ -14,6 +14,7 @@ class MetaGO(MetaStrategy):
                  timeframe,
                  tag,
                  active_hours,
+                 mean_rev_tf,
                  risk_factor=1,
                  lookahead=24,
                  hist_length=10000,
@@ -25,6 +26,7 @@ class MetaGO(MetaStrategy):
         self.indicators_std     = None
         self.indicators_mean    = None
         self.state              = None
+        self.mean_rev_tf        = mean_rev_tf
         self.risk_factor        = risk_factor
         self.lookahead          = lookahead
         self.hist_length        = hist_length
@@ -43,13 +45,18 @@ class MetaGO(MetaStrategy):
 
         uptrend = indicators['uptrend'].iloc[-1]
         downtrend = indicators['downtrend'].iloc[-1]
-        true_open_monthly = indicators['true_open_monthly'].iloc[-1]
 
-        # mask_uptrend_below_yearly = (uptrend > 0) & (close < true_open_monthly)
-        # mask_downtrend_above_yearly = (downtrend > 0) & (close > true_open_monthly)
+        if self.mean_rev_tf == "monthly":
+            true_open_level = indicators['true_open_monthly'].iloc[-1]
+        elif self.mean_rev_tf == "weekly":
+            true_open_level = indicators['true_open_weekly'].iloc[-1]
 
-        mask_uptrend_below_yearly = close < true_open_monthly
-        mask_downtrend_above_yearly = close > true_open_monthly
+
+        # mask_uptrend_below_yearly = (uptrend > 0) & (close < true_open_level)
+        # mask_downtrend_above_yearly = (downtrend > 0) & (close > true_open_level)
+
+        mask_uptrend_below_yearly = close < true_open_level
+        mask_downtrend_above_yearly = close > true_open_level
 
         close_last = close.diff().tail(4).head(3)  # Extract last 4 values, then take first 3 candles
         close_positive_condition = np.all(close_last > 0)
@@ -61,7 +68,7 @@ class MetaGO(MetaStrategy):
         sl = close.iloc[-1] - 12 * indicators['atr'].iloc[-1] if long_signal else close.iloc[-1] + 12 * \
                                                                                   indicators['atr'].iloc[-1]
         self.sl = float(sl)
-        self.tp = float(true_open_monthly)
+        self.tp = float(true_open_level)
 
         if long_signal and not self.are_positions_with_tag_open(position_type="buy"):
             self.state = 1
@@ -78,7 +85,7 @@ class MetaGO(MetaStrategy):
         print(f"\n--- DEBUGGING INFORMATION ---")
         print(f"{self.tag}::: Current Volatility: {self.vol:.4f}")
         print(f"{self.tag}::: Current Close Prices: {close.tail(5).to_list()}")
-        print(f"{self.tag}::: True Open Monthly (last 3 values): {indicators['true_open_monthly'].tail(3).to_list()}")
+        print(f"{self.tag}::: True Open Monthly (last 3 values): {indicators['true_open_level'].tail(3).to_list()}")
         print(f"{self.tag}::: Uptrend Indicator (last 3 values): {indicators['uptrend'].tail(3).to_list()}")
         print(f"{self.tag}::: Downtrend Indicator (last 3 values): {indicators['downtrend'].tail(3).to_list()}")
         print(f"{self.tag}::: ATR (last 3 values): {indicators['atr'].tail(3).to_list()}")
@@ -87,14 +94,14 @@ class MetaGO(MetaStrategy):
         print(f"\n{self.tag}::: Long Signal Components:")
         print(f"    - All of last 4 returns (except last) are > 0: {close_positive_condition}")
         print(f"    - Uptrend > 0: {uptrend > 0}")
-        print(f"    - Close < True Open Monthly: {close.iloc[-1] < true_open_monthly}")
+        print(f"    - Close < True Open Monthly: {close.iloc[-1] < true_open_level}")
         print(f"    - Mask Uptrend Below Monthly: {mask_uptrend_below_yearly.iloc[-1]}")
         print(f"    => Final Long Signal: {long_signal}")
 
         print(f"\n{self.tag}::: Short Signal Components:")
         print(f"    - All of last 4 returns (except last) are < 0: {close_negative_condition}")
         print(f"    - Downtrend > 0: {downtrend > 0}")
-        print(f"    - Close > True Open Monthly: {close.iloc[-1] > true_open_monthly}")
+        print(f"    - Close > True Open Monthly: {close.iloc[-1] > true_open_level}")
         print(f"    - Mask Downtrend Above Yearly: {mask_downtrend_above_yearly.iloc[-1]}")
         print(f"    => Final Short Signal: {short_signal}")
 
