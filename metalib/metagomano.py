@@ -85,7 +85,7 @@ class MetaGO(MetaStrategy):
         print(f"\n--- DEBUGGING INFORMATION ---")
         print(f"{self.tag}::: Current Volatility: {self.vol:.4f}")
         print(f"{self.tag}::: Current Close Prices: {close.tail(5).to_list()}")
-        print(f"{self.tag}::: True Open Monthly (last 3 values): {indicators['true_open_level'].tail(3).to_list()}")
+        print(f"{self.tag}::: True Open Monthly (last 3 values): {indicators['true_open_monthly'].tail(3).to_list()}")
         print(f"{self.tag}::: Uptrend Indicator (last 3 values): {indicators['uptrend'].tail(3).to_list()}")
         print(f"{self.tag}::: Downtrend Indicator (last 3 values): {indicators['downtrend'].tail(3).to_list()}")
         print(f"{self.tag}::: ATR (last 3 values): {indicators['atr'].tail(3).to_list()}")
