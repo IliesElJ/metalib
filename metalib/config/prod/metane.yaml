@@ -1,7 +1,7 @@
 BTCUSD_M1_NE:
   strategy_type: metane
   symbols: ["BTCUSD"]
-  timeframe: mt5.TIMEFRAME_M1
+  timeframe: mt5.TIMEFRAME_M5
   tag: metane_btc
   active_hours: None
   lookahead: 30
@@ -18,7 +18,7 @@ BTCUSD_M1_NE:
 EURUSD_M1_NE:
   strategy_type: metane
   symbols: ["EURUSD"]
-  timeframe: mt5.TIMEFRAME_M1
+  timeframe: mt5.TIMEFRAME_M5
   tag: metane_eurusd
   active_hours: None
   lookahead: 30
@@ -35,7 +35,7 @@ EURUSD_M1_NE:
 AUDJPY_M1_NE:
   strategy_type: metane
   symbols: ["AUDJPY"]
-  timeframe: mt5.TIMEFRAME_M1
+  timeframe: mt5.TIMEFRAME_M5
   active_hours: None
   tag: metane_audjpy
   lookahead: 30
@@ -52,7 +52,7 @@ AUDJPY_M1_NE:
 GER40CASH_M1_NE:
   strategy_type: metane
   symbols: ["GER40.cash"]
-  timeframe: mt5.TIMEFRAME_M1
+  timeframe: mt5.TIMEFRAME_M5
   active_hours: None
   tag: metane_dax
   lookahead: 30
@@ -69,7 +69,7 @@ GER40CASH_M1_NE:
 US100CASH_M1_NE:
   strategy_type: metane
   symbols: ["US100.cash"]
-  timeframe: mt5.TIMEFRAME_M1
+  timeframe: mt5.TIMEFRAME_M5
   active_hours: None
   tag: metane_nas
   lookahead: 30
