@@ -48,16 +48,6 @@ EURHUF_H1_GO:
   mean_rev_tf: "monthly"
   risk_factor: 0.0001
 
-EURNOK_H1_GO:
-  strategy_type: metago
-  symbols: [ "EURNOK" ]
-  timeframe: mt5.TIMEFRAME_H1
-  lookahead: 48
-  tag: metago_f8
-  active_hours: None
-  mean_rev_tf: "monthly"
-  risk_factor: 0.0001
-
 USDCNH_H1_GO:
   strategy_type: metago
   symbols: [ "USDCNH" ]

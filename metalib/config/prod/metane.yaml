@@ -32,23 +32,6 @@ EURUSD_M1_NE:
   time_ewm_span: 30
   ols_window: 120
 
-AUDJPY_M1_NE:
-  strategy_type: metane
-  symbols: ["AUDJPY"]
-  timeframe: mt5.TIMEFRAME_M5
-  active_hours: None
-  tag: metane_audjpy
-  lookahead: 30
-  volume: 0.5
-  rrr: 4
-  long_threshold: 0.01
-  tz: "UTC"
-  don_window: 240
-  don_lag: 60
-  ewma_ewm_span: 15
-  time_ewm_span: 30
-  ols_window: 120
-
 GER40CASH_M1_NE:
   strategy_type: metane
   symbols: ["GER40.cash"]
