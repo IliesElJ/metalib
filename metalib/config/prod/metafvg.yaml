@@ -14,14 +14,6 @@ EURUSD_H1:
   tag: metafvg_eurusd
   limit_number_position: 5
 
-AUDJPY_H1_GA:
-  strategy_type: metafvg
-  symbols: [ "AUDJPY" ]
-  timeframe: mt5.TIMEFRAME_M1
-  size_position: 0.5
-  tag: metafvg_audjpy
-  limit_number_position: 5
-
 GER40CASH_H1_GA:
   strategy_type: metafvg
   symbols: [ "GER40.cash" ]
