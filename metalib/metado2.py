@@ -174,35 +174,6 @@ class MetaDO(MetaStrategy):
         print(f"{self.tag}::: No fitted content to save.")
         return
 
-
-    def position_sizing(self, percentage, symbol, account_balance=None):
-        # Retrieve account balance if not provided
-        if account_balance is None:
-            account_info = mt5.account_info()
-            if account_info is None:
-                print(f"{self.tag}::: Failed to get account balance, error code =", mt5.last_error())
-                mt5.shutdown()
-                return
-            account_balance = account_info.balance
-
-        # Calculate the position size
-        position_size = abs(account_balance * percentage)
-
-        # Get the symbol info
-        symbol_info = mt5.symbol_info(symbol)
-        if symbol_info is None:
-            print(f"{self.tag}::: Failed to get symbol info for {symbol}, error code =", mt5.last_error())
-            mt5.shutdown()
-            return
-
-        # Calculate the number of lots
-        contract_size   = symbol_info.trade_contract_size  # Use trade_contract_size instead of lot_size
-        price           = mt5.symbol_info_tick(symbol).ask
-        lots            = position_size / (contract_size * price)        
-
-        # Ensure it meets the broker's minimum lot size requirement
-        return max(round(self.risk_factor * 5 * lots, 2), symbol_info.volume_min)
-
     def retrieve_indicators(self, ohlc_df):
         print(f"{self.tag}::: No indicators to compute indicators")
         return

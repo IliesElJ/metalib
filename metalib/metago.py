@@ -175,34 +175,6 @@ class MetaGO(MetaStrategy):
 
         print(f"{self.tag}::: DecisionTree Model and first/second moments saved.")
 
-
-    def position_sizing(self, percentage, symbol, account_balance=None):
-        # Retrieve account balance if not provided
-        if account_balance is None:
-            account_info = mt5.account_info()
-            if account_info is None:
-                print("Failed to get account balance, error code =", mt5.last_error())
-                mt5.shutdown()
-                return
-            account_balance = account_info.balance
-
-        # Calculate the position size
-        position_size = abs(account_balance * percentage)
-
-        # Get the symbol info
-        symbol_info = mt5.symbol_info(symbol)
-        if symbol_info is None:
-            print(f"Failed to get symbol info for {symbol}, error code =", mt5.last_error())
-            mt5.shutdown()
-            return
-
-        # Calculate the number of lots
-        contract_size   = symbol_info.trade_contract_size  # Use trade_contract_size instead of lot_size
-        price           = mt5.symbol_info_tick(symbol).ask
-        lots            = position_size / (contract_size * price)
-
-        return round(self.risk_factor * 5 * lots, 2)
-
     def retrieve_indicators(self, ohlc_df):
         ohlc = ohlc_df.copy()
         ohlc_daily = ohlc.resample('1D').agg({'open': 'first',

@@ -201,7 +201,6 @@ class MetaHAR(MetaStrategy):
 
         # Load and prepare data
         self.loadData(start_time, end_time)
-
         features, target = self.prepare_training_data(self.data)
 
         # Train model
@@ -212,9 +211,6 @@ class MetaHAR(MetaStrategy):
         print(f"{self.tag}::: Lasso Model trained {training_period}.")
         self.logger.info(f"Lasso Model trained {training_period}.")
         print(f"{self.tag}::: Lasso Model and coefficients saved.")
-
-    def position_sizing(self, percentage, symbol, account_balance=None):
-        return 0
 
     def retrieve_indicators(self, close_df):
         # Constants

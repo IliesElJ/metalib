@@ -34,7 +34,6 @@ class MetaMA(MetaStrategy):
         self.telegram = True
 
     def signals(self):
-
         returns = pd.concat(map(lambda x: x['close'], self.data.values()), axis=1).apply(np.log).diff()
         returns.columns = self.symbols
         indicators = self.retrieve_indicators(returns=returns)
@@ -110,7 +109,6 @@ class MetaMA(MetaStrategy):
             self.send_telegram_message(f"Closed all positions for {self.symbols[0]}")
 
     def fit(self):
-
         # Define the UTC timezone
         utc = pytz.timezone('UTC')
         # Get the current time in UTC
@@ -172,38 +170,8 @@ class MetaMA(MetaStrategy):
         self.indicators_std = hist_indicators.std()
         print(f"{self.tag}::: XGBoost Model and first/second moments saved.")
 
-    def position_sizing(self, percentage, symbol, account_balance=None):
-
-        # Retrieve account balance if not provided
-        if account_balance is None:
-            account_info = mt5.account_info()
-            if account_info is None:
-                print("Failed to get account balance, error code =", mt5.last_error())
-                mt5.shutdown()
-                return
-            account_balance = account_info.balance
-
-        # Calculate the position size
-        position_size = abs(account_balance * percentage)
-
-        # Get the symbol info
-        symbol_info = mt5.symbol_info(symbol)
-        if symbol_info is None:
-            print(f"Failed to get symbol info for {symbol}, error code =", mt5.last_error())
-            mt5.shutdown()
-            return
-
-        # Calculate the number of lots
-        contract_size = symbol_info.trade_contract_size  # Use trade_contract_size instead of lot_size
-        price = mt5.symbol_info_tick(symbol).ask
-        lots = position_size / (contract_size * price)
-
-        return round(self.risk_factor * 5 * lots, 2)
-
     def retrieve_indicators(self, returns):
-
         returns_ = returns.copy()
-        closes = returns.vbt.returns.cumulative(1)
 
         # Rolling Covariance Matrices
         cov_matrices_hour = rolling_covariance_nb(returns_.values, window_size=60)
