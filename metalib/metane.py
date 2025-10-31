@@ -122,7 +122,7 @@ class MetaNE(MetaStrategy):
                tag,
                active_hours,
                lookahead,
-               volume,
+               size_position,
                rrr,
                long_threshold,
                tz = "UTC",
@@ -132,10 +132,9 @@ class MetaNE(MetaStrategy):
                time_ewm_span = 30,
                ols_window = 120 ):
 
-        super().__init__(symbols, timeframe, tag, active_hours)
+        super().__init__(symbols, timeframe, tag, size_position, active_hours)
         self.indicators         = None
         self.lookahead          = lookahead
-        self.volume             = volume
         self.rrr                = rrr
         self.long_threshold     = long_threshold
         self.tz                 = tz
@@ -303,12 +302,12 @@ class MetaNE(MetaStrategy):
         if self.state == 0:
             pass
         elif self.state == 1:
-            self.execute(symbol=self.symbols[0], volume=self.volume, short=False)
+            self.execute(symbol=self.symbols[0], short=False)
             # Send a message when an order is entered
             self.send_telegram_message(
                 f"Entered BUY order for {self.symbols[0]} with volume: {self.volume} et pelo sa achete! Mean Entry Price: {mean_entry_price}, Number of Positions: {num_positions}")
         elif self.state == -1:
-            self.execute(symbol=self.symbols[0], volume=self.volume, short=True)
+            self.execute(symbol=self.symbols[0], short=True)
             # Send a message when an order is entered
             self.send_telegram_message(
                 f"Entered SELL order for {self.symbols[0]} with volume: {self.volume}et pelo ca vend: Mean Entry Price: {mean_entry_price}, Number of Positions: {num_positions}")

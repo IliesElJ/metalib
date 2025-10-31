@@ -13,13 +13,13 @@ class MetaGO(MetaStrategy):
                  symbols,
                  timeframe,
                  tag,
+                 size_position,
                  active_hours,
                  mean_rev_tf,
-                 risk_factor=1,
                  lookahead=24,
                  hist_length=10000,
                  ):
-        super().__init__(symbols, timeframe, tag, active_hours)
+        super().__init__(symbols, timeframe, tag, size_position, active_hours, size_position)
         self.indicators         = None
         self.quantile           = None
         self.model              = None
@@ -27,7 +27,6 @@ class MetaGO(MetaStrategy):
         self.indicators_mean    = None
         self.state              = None
         self.mean_rev_tf        = mean_rev_tf
-        self.risk_factor        = risk_factor
         self.lookahead          = lookahead
         self.hist_length        = hist_length
         self.telegram           = True
@@ -120,24 +119,16 @@ class MetaGO(MetaStrategy):
             print(f"Warning: self.vol is None or 0, skipping trade execution.")
             return
 
-        volume = self.position_sizing(
-            percentage=self.risk_factor, 
-            symbol=self.symbols[0]
-        )
-
+        volume = self.size_position
         symbol = self.symbols[0]
         symbol_info = mt5.symbol_info(symbol)
         digits = symbol_info.digits + 1  # Use symbol_info.digits for proper rounding + add one because its after the decimal
-        tick_size = symbol_info.point
 
         if symbol_info is None:
             print(f"Failed to get symbol info for {symbol}")
             return
 
         print(f"Rounding for {symbol}: {digits}")
-        print(f"Strategy Risk factor: {self.risk_factor}")
-        print(f"Vol times Risk factor: {self.vol * self.risk_factor}")
-
         positions_mean_entry_price, num_positions = self.get_positions_info()
 
         # Take-Profit and Stop-Loss calculations (keeping your SL formula)
@@ -151,7 +142,7 @@ class MetaGO(MetaStrategy):
 
         if self.state in [1, -1]:  # If a trade signal is active
             try:
-                self.execute(symbol=symbol, volume=volume, short=(self.state == -1), sl=sl, tp=tp)
+                self.execute(symbol=symbol, short=(self.state == -1), sl=sl, tp=tp)
                 trade_type = "BUY" if self.state == 1 else "SELL"
                 print(
                     f"Entered {trade_type} order for {symbol} with volume: {volume}. Mean Entry Price: {positions_mean_entry_price}, Positions: {num_positions}."

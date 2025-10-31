@@ -119,12 +119,12 @@ class MetaDO(MetaStrategy):
         if self.state == 0:
             pass
         elif self.state == 1:
-            self.execute(symbol=self.symbols[0], volume=volume, short=False)
+            self.execute(symbol=self.symbols[0], short=False)
             # Send a message when an order is entered
             self.send_telegram_message(
                 f"Entered BUY order for {self.symbols[0]} with volume: {volume} et pelo sa achete! Mean Entry Price: {mean_entry_price}, Number of Positions: {num_positions}")
         elif self.state == -1:
-            self.execute(symbol=self.symbols[0], volume=volume, short=True)
+            self.execute(symbol=self.symbols[0], short=True)
             # Send a message when an order is entered
             self.send_telegram_message(
                 f"Entered SELL order for {self.symbols[0]} with volume: {volume}et pelo ca vend: Mean Entry Price: {mean_entry_price}, Number of Positions: {num_positions}")

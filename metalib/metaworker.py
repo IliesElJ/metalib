@@ -20,6 +20,7 @@ strategy_registry = {
             "symbols",
             "timeframe",
             "tag",
+            "size_position",
             "active_hours",
             "risk_factor",
             "mode"
@@ -31,9 +32,9 @@ strategy_registry = {
             "symbols",
             "timeframe",
             "tag",
+            "size_position",
             "active_hours",
             "lookahead",
-            "volume",
             "rrr",
             "long_threshold",
             "tz",
@@ -50,8 +51,8 @@ strategy_registry = {
             "symbols",
             "timeframe",
             "tag",
+            "size_position",
             "active_hours",
-            "risk_factor",
             "low_length",
             "mid_length",
             "high_length",
@@ -64,6 +65,7 @@ strategy_registry = {
             "symbols",
             "timeframe",
             "tag",
+            "size_position",
             "active_hours",
             "mean_rev_tf"
         ]
@@ -75,6 +77,7 @@ strategy_registry = {
             "predicted_symbol",
             "timeframe",
             "tag",
+            "size_position",
             "active_hours",
             "short_factor",
             "long_factor"
@@ -85,8 +88,8 @@ strategy_registry = {
         "init_keys": [
             "symbols",
             "timeframe",
-            "size_position",
             "tag",
+            "size_position",
             "limit_number_position",
         ]
     },

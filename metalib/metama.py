@@ -96,11 +96,11 @@ class MetaMA(MetaStrategy):
         if self.state == 0:
             pass
         elif self.state == 1:
-            self.execute(symbol=self.asset, volume=volume, short=False)
+            self.execute(symbol=self.asset, short=False)
             # Send a message when an order is entered
             self.send_telegram_message(f"Entered order for {self.symbols[0]} with volume: {volume}")
         elif self.state == -1:
-            self.execute(symbol=self.asset, volume=volume, short=True)
+            self.execute(symbol=self.asset, short=True)
             # Send a message when an order is entered
             self.send_telegram_message(f"Entered order for {self.symbols[0]} with volume: {volume}")
         elif self.state == -2:

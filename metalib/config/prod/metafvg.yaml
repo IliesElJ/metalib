@@ -1,32 +1,32 @@
 BTCUSD_M1:
+  limit_number_position: 5
+  size_position: 0.01
   strategy_type: metafvg
-  symbols: ["BTCUSD"]
-  size_position: 0.025
-  timeframe: mt5.TIMEFRAME_M1
+  symbols:
+  - BTCUSD
   tag: metafvg_btc
-  limit_number_position: 5
-
+  timeframe: mt5.TIMEFRAME_M1
 EURUSD_H1:
+  limit_number_position: 5
+  size_position: 0.06
   strategy_type: metafvg
-  symbols: [ "EURUSD" ]
-  timeframe: mt5.TIMEFRAME_M1
-  size_position: 0.5
+  symbols:
+  - EURUSD
   tag: metafvg_eurusd
-  limit_number_position: 5
-
+  timeframe: mt5.TIMEFRAME_M1
 GER40CASH_H1_GA:
+  limit_number_position: 5
+  size_position: 0.09
   strategy_type: metafvg
-  symbols: [ "GER40.cash" ]
-  timeframe: mt5.TIMEFRAME_M1
-  size_position: 0.5
+  symbols:
+  - GER40.cash
   tag: metafvg_dax
-  limit_number_position: 5
-
-US100CASH_H1_GA:
-  strategy_type: metafvg
-  symbols: [ "US100.cash" ]
   timeframe: mt5.TIMEFRAME_M1
-  size_position: 0.5
-  tag: metafvg_nas
+US100CASH_H1_GA:
   limit_number_position: 5
-
+  size_position: 0.04
+  strategy_type: metafvg
+  symbols:
+  - US100.cash
+  tag: metafvg_nas
+  timeframe: mt5.TIMEFRAME_M1

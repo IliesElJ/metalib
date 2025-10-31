@@ -1,48 +1,52 @@
-EURUSD_H1_GA:
-  strategy_type: metaga
-  symbols: [ "EURUSD" ]
-  timeframe: mt5.TIMEFRAME_M1
-  tag: metaga_f1
-  active_hours: None
-  risk_factor: 0.9
-  low_length: 60
-  mid_length: 480
-  high_length: 1440
-  prob_bound: 0.075
-
 AUDJPY_H1_GA:
-  strategy_type: metaga
-  symbols: [ "AUDJPY" ]
-  timeframe: mt5.TIMEFRAME_M1
-  tag: metaga_f2
   active_hours: None
+  high_length: 1440
+  low_length: 60
+  mid_length: 480
+  prob_bound: 0.075
   risk_factor: 0.5
+  size_position: 0.09
+  strategy_type: metaga
+  symbols:
+  - AUDJPY
+  tag: metaga_f2
+  timeframe: mt5.TIMEFRAME_M1
+EURUSD_H1_GA:
+  active_hours: None
+  high_length: 1440
   low_length: 60
   mid_length: 480
-  high_length: 1440
   prob_bound: 0.075
-
+  risk_factor: 0.9
+  size_position: 0.08
+  strategy_type: metaga
+  symbols:
+  - EURUSD
+  tag: metaga_f1
+  timeframe: mt5.TIMEFRAME_M1
 GER40CASH_H1_GA:
-  strategy_type: metaga
-  symbols: [ "GER40.cash" ]
-  timeframe: mt5.TIMEFRAME_M1
-  tag: metaga_i1
   active_hours: None
+  high_length: 1440
+  low_length: 60
+  mid_length: 480
+  prob_bound: 0.075
   risk_factor: 0.009
-  low_length: 60
-  mid_length: 480
-  high_length: 1440
-  prob_bound: 0.075
-
-US100CASH_H1_GA:
+  size_position: 0.11
   strategy_type: metaga
-  symbols: [ "US100.cash" ]
+  symbols:
+  - GER40.cash
+  tag: metaga_i1
   timeframe: mt5.TIMEFRAME_M1
-  tag: metaga_i2
+US100CASH_H1_GA:
   active_hours: None
-  risk_factor: 0.09
+  high_length: 1440
   low_length: 60
   mid_length: 480
-  high_length: 1440
   prob_bound: 0.075
-
+  risk_factor: 0.09
+  size_position: 0.06
+  strategy_type: metaga
+  symbols:
+  - US100.cash
+  tag: metaga_i2
+  timeframe: mt5.TIMEFRAME_M1

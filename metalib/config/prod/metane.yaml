@@ -1,67 +1,68 @@
 BTCUSD_M1_NE:
+  active_hours: None
+  don_lag: 60
+  don_window: 240
+  ewma_ewm_span: 15
+  long_threshold: 0.015
+  lookahead: 30
+  ols_window: 120
+  rrr: 4
+  size_position: 0.01
   strategy_type: metane
-  symbols: ["BTCUSD"]
-  timeframe: mt5.TIMEFRAME_M5
+  symbols:
+  - BTCUSD
   tag: metane_btc
-  active_hours: None
-  lookahead: 30
-  volume: 0.025
-  rrr: 4
-  long_threshold: 0.015
-  tz: "UTC"
-  don_window: 240
-  don_lag: 60
-  ewma_ewm_span: 15
   time_ewm_span: 30
-  ols_window: 120
-
+  timeframe: mt5.TIMEFRAME_M5
+  tz: UTC
 EURUSD_M1_NE:
+  active_hours: None
+  don_lag: 60
+  don_window: 240
+  ewma_ewm_span: 15
+  long_threshold: 0.015
+  lookahead: 30
+  ols_window: 120
+  rrr: 4
+  size_position: 0.06
   strategy_type: metane
-  symbols: ["EURUSD"]
-  timeframe: mt5.TIMEFRAME_M5
+  symbols:
+  - EURUSD
   tag: metane_eurusd
-  active_hours: None
-  lookahead: 30
-  volume: 0.5
-  rrr: 4
-  long_threshold: 0.015
-  tz: "UTC"
-  don_window: 240
-  don_lag: 60
-  ewma_ewm_span: 15
   time_ewm_span: 30
-  ols_window: 120
-
+  timeframe: mt5.TIMEFRAME_M5
+  tz: UTC
 GER40CASH_M1_NE:
-  strategy_type: metane
-  symbols: ["GER40.cash"]
-  timeframe: mt5.TIMEFRAME_M5
   active_hours: None
+  don_lag: 60
+  don_window: 240
+  ewma_ewm_span: 15
+  long_threshold: 0.015
+  lookahead: 30
+  ols_window: 120
+  rrr: 4
+  size_position: 0.09
+  strategy_type: metane
+  symbols:
+  - GER40.cash
   tag: metane_dax
-  lookahead: 30
-  volume: 0.5
-  rrr: 4
-  long_threshold: 0.015
-  tz: "UTC"
-  don_window: 240
-  don_lag: 60
-  ewma_ewm_span: 15
   time_ewm_span: 30
-  ols_window: 120
-
-US100CASH_M1_NE:
-  strategy_type: metane
-  symbols: ["US100.cash"]
   timeframe: mt5.TIMEFRAME_M5
+  tz: UTC
+US100CASH_M1_NE:
   active_hours: None
-  tag: metane_nas
-  lookahead: 30
-  volume: 0.5
-  rrr: 4
-  long_threshold: 0.015
-  tz: "UTC"
-  don_window: 240
   don_lag: 60
+  don_window: 240
   ewma_ewm_span: 15
-  time_ewm_span: 30
+  long_threshold: 0.015
+  lookahead: 30
   ols_window: 120
+  rrr: 4
+  size_position: 0.04
+  strategy_type: metane
+  symbols:
+  - US100.cash
+  tag: metane_nas
+  time_ewm_span: 30
+  timeframe: mt5.TIMEFRAME_M5
+  tz: UTC

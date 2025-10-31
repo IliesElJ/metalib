@@ -31,10 +31,9 @@ class MetaFVG(MetaStrategy):
             tp: Take profit level
             limit_number_position: Maximum number of positions
         """
-        super().__init__(symbols, timeframe, tag)
+        super().__init__(symbols, timeframe, tag, size_position)
         print(f"{self.tag}::    Initializing MetaFVG strategy with {symbols[0]}")
 
-        self.volume = size_position
         self.state = None
         self.entry = None
         self.sl = None
@@ -168,7 +167,7 @@ class MetaFVG(MetaStrategy):
             return
 
         print(f"{self.tag}::    Rounding for {symbol}:  {digits}")
-        print(f"{self.tag}::    Strategy Volume:        {self.volume}")
+        print(f"{self.tag}::    Strategy Volume:        {self.size_position}")
         print(f"{self.tag}::    Strategy RRR:           {self.risk_reward}")
 
         # Proper rounding

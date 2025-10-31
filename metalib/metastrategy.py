@@ -16,7 +16,8 @@ class MetaStrategy(ABC):
     def __init__(self,
                  symbols,
                  timeframe,
-                 tag, 
+                 tag,
+                 size_position,
                  active_hours=None,
                  long_only=False,
                  short_only=False,
@@ -33,6 +34,7 @@ class MetaStrategy(ABC):
         self.timeframe = timeframe
         self.data = {}
         self.tag = tag
+        self.size_position = size_position
         self.active_hours = active_hours if isinstance(active_hours, list) else None
         self.state = 0
         self.long_only = long_only
@@ -121,7 +123,6 @@ class MetaStrategy(ABC):
 
     def execute(self,
                 symbol,
-                volume,
                 sl=None,
                 tp=None,
                 short=False,
@@ -163,7 +164,7 @@ class MetaStrategy(ABC):
             "symbol": symbol,
             "sl": sl if sl else 0.0,
             "tp": tp if tp else 0.0,
-            "volume": float(volume),
+            "volume": float(self.size_position),
             "type": order_type,
             "price": entry if is_limit or is_stop else price,
             "comment": self.tag,

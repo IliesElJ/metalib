@@ -161,7 +161,7 @@ class MetaDO(MetaStrategy):
 
         if self.state in [1, -1]:  # If a trade signal is active
             try:
-                self.execute(symbol=symbol, volume=volume, short=(self.state == -1), sl=sl, tp=tp)
+                self.execute(symbol=symbol, short=(self.state == -1), sl=sl, tp=tp)
                 trade_type = "BUY" if self.state == 1 else "SELL"
                 self.send_telegram_message(
                     f"Entered {trade_type} order for {symbol} with volume: {volume}. Mean Entry Price: {positions_mean_entry_price}, Positions: {num_positions}."

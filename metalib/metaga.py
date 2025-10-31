@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-import MetaTrader5 as mt5
 import pytz as pytz
 import xgboost as xgb
 
@@ -13,14 +12,14 @@ class MetaGA(MetaStrategy):
                     symbols, 
                     timeframe, 
                     tag, 
-                    active_hours, 
+                    active_hours,
+                    size_position,
                     low_length=60, 
                     mid_length=8*60,
                     high_length=24*60,
                     prob_bound=0.05,
-                    risk_factor=1, 
                 ):
-        super().__init__(symbols, timeframe, tag, active_hours)
+        super().__init__(symbols, timeframe, tag, size_position, active_hours)
 
         if not (low_length < mid_length < high_length):
             raise ValueError("Length parameters should be ordered.")
@@ -35,7 +34,6 @@ class MetaGA(MetaStrategy):
         self.high_length    = high_length
         self.prob_bound     = prob_bound
         self.state          = None
-        self.risk_factor    = risk_factor
         self.telegram       = True
         self.target_filter_ratio = 0.2
 
@@ -78,87 +76,22 @@ class MetaGA(MetaStrategy):
 
         self.signalData = signal_line
 
-    def position_sizing_vol_adjusted(self, risk_percentage=0.01, account_balance=None):
-        """
-        Adjusts position size based on daily volatility to dollar-scale positions.
-
-        Parameters:
-            symbol (str): Trading symbol.
-            risk_percentage (float): Percentage of account balance to risk per trade (default is 1%).
-            account_balance (float): Optional, current account balance. If None, retrieved from MetaTrader5.
-
-        Returns:
-            float: Adjusted position size (in lots).
-        """
-        
-        # Retrieve account balance if not provided
-        if account_balance is None:
-            account_info = mt5.account_info()
-            if account_info is None:
-                print("Failed to get account balance, error code =", mt5.last_error())
-                mt5.shutdown()
-                return
-            account_balance = account_info.balance
-
-        # Calculate dollar risk per trade
-        dollar_risk = account_balance * risk_percentage
-
-        # Get the symbol info
-        symbol = self.symbols[0]
-        symbol_info = mt5.symbol_info(symbol)
-        if symbol_info is None:
-            print(f"Failed to get symbol info for {symbol}, error code =", mt5.last_error())
-            mt5.shutdown()
-            return
-
-        # Retrieve OHLC data for volatility calculation
-        ohlc = self.data[symbol]
-        print(f"Current shape of OHLC data {ohlc.shape}")
-
-        if ohlc is None or len(ohlc) < 24 * 60:
-            print(f"Not enough data to compute daily volatility for {symbol}.")
-            return
-
-        # Calculate daily volatility (standard deviation of daily returns)
-        returns = np.log(ohlc['close'] / ohlc['close'].shift(1)).dropna()
-        del ohlc
-        daily_vol = returns.rolling(window=24*60).std().iloc[-1]
-        del returns
-
-        if np.isnan(daily_vol) or daily_vol == 0:
-            print(f"Invalid daily volatility computed for {symbol}.")
-            return
-
-        # Calculate position size based on volatility
-        price = mt5.symbol_info_tick(symbol).ask
-        contract_size = symbol_info.trade_contract_size
-
-        position_size = dollar_risk / (daily_vol * price * contract_size)
-
-        # Apply risk factor scaling
-        adjusted_lots = round(self.risk_factor * position_size, 2)
-
-        print(f"Adjusted Position Size for {symbol}: {adjusted_lots} lots based on daily volatility: {daily_vol:.4f}")
-
-        # return adjusted_lots
-        return symbol_info.volume_min
-
     def check_conditions(self):
-        volume = self.position_sizing_vol_adjusted()
+        volume = self.size_position
         mean_entry_price, num_positions = self.get_positions_info()
         mean_entry_price = round(mean_entry_price, 4)
         if self.state == 0:
             pass
         elif self.state == 1:
-            self.execute(symbol=self.symbols[0], volume=volume, short=False)
+            self.execute(symbol=self.symbols[0], short=False)
             # Send a message when an order is entered
             self.send_telegram_message(
-                f"Entered BUY order for {self.symbols[0]} with volume: {volume} et pelo sa achete! Mean Entry Price: {mean_entry_price}, Number of Positions: {num_positions}")
+                f"Entered BUY order for {self.symbols[0]} with volume: {self.size_position} et pelo sa achete! Mean Entry Price: {mean_entry_price}, Number of Positions: {num_positions}")
         elif self.state == -1:
-            self.execute(symbol=self.symbols[0], volume=volume, short=True)
+            self.execute(symbol=self.symbols[0], short=True)
             # Send a message when an order is entered
             self.send_telegram_message(
-                f"Entered SELL order for {self.symbols[0]} with volume: {volume}et pelo ca vend: Mean Entry Price: {mean_entry_price}, Number of Positions: {num_positions}")
+                f"Entered SELL order for {self.symbols[0]} with volume: {self.size_position} et pelo ca vend: Mean Entry Price: {mean_entry_price}, Number of Positions: {num_positions}")
         elif self.state == -2:
             self.close_all_positions()
             # Send a message when positions are closed
