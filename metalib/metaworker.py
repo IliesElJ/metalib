@@ -99,6 +99,7 @@ timeframe_mapping = {
     mt5.TIMEFRAME_M1: 1,
     mt5.TIMEFRAME_M2: 2,
     mt5.TIMEFRAME_M3: 3,
+    mt5.TIMEFRAME_M5: 5,
     mt5.TIMEFRAME_M10: 10,
     mt5.TIMEFRAME_M15: 15,
     mt5.TIMEFRAME_M30: 30,
