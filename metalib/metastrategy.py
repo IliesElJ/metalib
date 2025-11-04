@@ -7,6 +7,7 @@ from datetime import datetime
 from metalib.constants import SIGNALS_FILE, LOG_EXTENSION
 import os
 
+MT5_MAX_TAG_LENGTH = 16
 
 class MetaStrategy(ABC):
     """
@@ -303,7 +304,7 @@ class MetaStrategy(ABC):
         else:
             # Check each position for the tag and optionally the position type
             for position in open_positions:
-                if position.comment != self.tag:
+                if position.comment != self.tag[:MT5_MAX_TAG_LENGTH]:
                     continue  # Skip if the tag does not match
 
                 # If position_type is specified, further filter by position type
