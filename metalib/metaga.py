@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import pytz as pytz
 import xgboost as xgb
+from sklearn.calibration import CalibratedClassifierCV
 
 from metalib.indicators import *
 from metalib.metastrategy import MetaStrategy
@@ -113,9 +114,10 @@ class MetaGA(MetaStrategy):
         returns     = data.loc[:, 'close'].apply(np.log) - data.loc[:, 'open'].apply(np.log)
 
         # Compute rolling next returns series
-        T = returns.shape[0]
-        next_five_returns = [np.sum(returns[i + 1: i + self.mid_length+1]) for i in range(T)]
-        next_five_returns = pd.Series(next_five_returns, index=returns.index)
+        ret_cc = np.log(data['close']).diff()
+        vol_sess = np.sqrt(ret_cc.rolling(self.mid_length).apply(lambda x: (x ** 2).sum(), raw=True))
+        y_raw = ret_cc.rolling(self.mid_length).sum().shift(-self.mid_length) / vol_sess
+        next_five_returns = (y_raw < 0).astype(int).dropna()
 
         # Indicators
         indicators = self.retrieve_indicators(ohlc_df=data)
@@ -126,7 +128,8 @@ class MetaGA(MetaStrategy):
         hist_next_five_returns = next_five_returns.loc[hist_indicators.index]
         indicators      = indicators.loc[indicators.index.difference(hist_indicators.index)]
         next_five_returns = next_five_returns.loc[indicators.index]
-        next_five_returns = next_five_returns / indicators["vol_session"].iloc[-1] # Using Vol-adjusted returns
+        vol_sess = np.sqrt(next_five_returns.rolling(self.mid_length).apply(lambda x: (x ** 2).sum(), raw=True))
+        next_five_returns = next_five_returns / vol_sess # Using Vol-adjusted returns
 
         # Demean from history
         indicators = (indicators - hist_indicators.mean()) / hist_indicators.std()
@@ -174,12 +177,19 @@ class MetaGA(MetaStrategy):
 
         X, y = indicators.ffill(), dummy_extremes_next_five_returns
 
-        xgb_dummy = xgb.XGBClassifier().fit(X, y)
+        base = xgb.XGBClassifier(
+            n_estimators=600, max_depth=5, learning_rate=0.03,
+            subsample=0.8, colsample_bytree=0.7, reg_lambda=2.0,
+            eval_metric='logloss', n_jobs=-1, random_state=42
+        )
+        cal = CalibratedClassifierCV(base, method='isotonic', cv=3)
+        cal.fit(X, y)
+
         print(f"{self.tag}::: XGBoost Model trained from {X.index[0]} to {X.index[-1]} pelo.")
         # Add line to log file to signal training completion
 
         # Save model, 1st and 2nd indicator moments
-        self.model = xgb_dummy
+        self.model = cal
         self.indicators_mean = hist_indicators.mean()
         self.indicators_std = hist_indicators.std()
 
@@ -241,7 +251,7 @@ class MetaGA(MetaStrategy):
         # Trend T-statistic
         tval_rolling_session = closes.rolling(mid_length).apply(ols_tval_nb, engine='numba', raw=True).rename(
             "tval_session")
-        tval_rolling_hour = closes.rolling(mid_length).apply(ols_tval_nb, engine='numba', raw=True).rename("tval_hour")
+        tval_rolling_hour = closes.rolling(low_length).apply(ols_tval_nb, engine='numba', raw=True).rename("tval_hour")
         tval_rolling_daily = closes.rolling(high_length).apply(ols_tval_nb, engine='numba', raw=True).rename("tval_daily")
         tval_rollings = pd.concat([tval_rolling_hour, tval_rolling_session, tval_rolling_daily], axis=1)
         print(f"{self.tag}::: Computed rolling OLS t-values")
