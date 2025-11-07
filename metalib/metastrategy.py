@@ -22,7 +22,6 @@ class MetaStrategy(ABC):
                  active_hours=None,
                  long_only=False,
                  short_only=False,
-                 save_to_sql_db=False, 
                 ):
         """
         Initializes the strategy with multiple symbols and a timeframe.
