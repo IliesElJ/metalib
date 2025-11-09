@@ -1,0 +1,384 @@
+/* MetaDAsh Custom Styles */
+
+/* Root variables for consistent theming */
+:root {
+    --primary-color: #0066cc;
+    --secondary-color: #28a745;
+    --danger-color: #dc3545;
+    --warning-color: #ffc107;
+    --dark-bg: #2c3e50;
+    --light-bg: #f8f9fa;
+    --border-radius: 8px;
+    --box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    --transition: all 0.3s ease;
+}
+
+/* Main container and body */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+}
+
+.main-container {
+    background: rgba(255, 255, 255, 0.95);
+    min-height: 100vh;
+    padding: 20px;
+}
+
+/* Header styling */
+.app-header {
+    background: linear-gradient(135deg, var(--primary-color), #004499);
+    color: white;
+    padding: 30px;
+    border-radius: var(--border-radius);
+    margin-bottom: 30px;
+    box-shadow: var(--box-shadow);
+    text-align: center;
+}
+
+.app-header h1 {
+    margin: 0;
+    font-size: 2.5rem;
+    font-weight: 700;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+}
+
+.app-header .subtitle {
+    margin-top: 10px;
+    opacity: 0.9;
+    font-size: 1.1rem;
+}
+
+/* Sidebar styling */
+.sidebar-container {
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    padding: 0;
+    height: fit-content;
+    position: sticky;
+    top: 20px;
+}
+
+.sidebar-header {
+    background: var(--dark-bg);
+    color: white;
+    padding: 20px;
+    border-radius: var(--border-radius) var(--border-radius) 0 0;
+    margin: 0;
+}
+
+.sidebar-header h4 {
+    margin: 0;
+    font-size: 1.3rem;
+}
+
+.sidebar-body {
+    padding: 20px;
+}
+
+.sidebar-body label {
+    font-weight: 600;
+    color: var(--dark-bg);
+    margin-bottom: 5px;
+    display: block;
+}
+
+.sidebar-body .form-control {
+    margin-bottom: 20px;
+    border-radius: var(--border-radius);
+    border: 2px solid #e0e0e0;
+    transition: var(--transition);
+}
+
+.sidebar-body .form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(0, 102, 204, 0.25);
+}
+
+/* Button styling */
+.btn-connect {
+    background: linear-gradient(135deg, var(--primary-color), #004499);
+    border: none;
+    color: white;
+    padding: 12px 24px;
+    border-radius: var(--border-radius);
+    font-weight: 600;
+    transition: var(--transition);
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+.btn-fetch {
+    background: linear-gradient(135deg, var(--secondary-color), #1e7e34);
+    border: none;
+    color: white;
+    padding: 12px 24px;
+    border-radius: var(--border-radius);
+    font-weight: 600;
+    transition: var(--transition);
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+.btn-connect:hover, .btn-fetch:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+/* Alert styling */
+.status-alert {
+    margin-top: 15px;
+    border-radius: var(--border-radius);
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Tabs styling */
+.nav-tabs {
+    border-bottom: 2px solid #dee2e6;
+    margin-bottom: 20px;
+}
+
+.nav-tabs .nav-link {
+    color: #495057;
+    font-weight: 600;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 12px 20px;
+    transition: var(--transition);
+}
+
+.nav-tabs .nav-link:hover {
+    color: var(--primary-color);
+    border-bottom-color: rgba(0, 102, 204, 0.3);
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--primary-color);
+    background-color: transparent;
+    border: none;
+    border-bottom: 3px solid var(--primary-color);
+}
+
+/* Content area styling */
+.content-container {
+    background: white;
+    border-radius: var(--border-radius);
+    padding: 30px;
+    box-shadow: var(--box-shadow);
+    min-height: 600px;
+}
+
+/* Metric cards styling */
+.metric-card {
+    background: white;
+    border-radius: var(--border-radius);
+    padding: 20px;
+    box-shadow: var(--box-shadow);
+    transition: var(--transition);
+    height: 100%;
+    border-left: 4px solid var(--primary-color);
+}
+
+.metric-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.metric-card h5 {
+    color: #6c757d;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+}
+
+.metric-card h4 {
+    color: var(--dark-bg);
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.metric-card.positive {
+    border-left-color: var(--secondary-color);
+}
+
+.metric-card.negative {
+    border-left-color: var(--danger-color);
+}
+
+/* Graph containers */
+.graph-container {
+    background: white;
+    border-radius: var(--border-radius);
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: var(--box-shadow);
+}
+
+.graph-container h3, .graph-container h4 {
+    color: var(--dark-bg);
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e9ecef;
+}
+
+/* Data table styling */
+.dash-table-container {
+    margin: 20px 0;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: var(--box-shadow);
+}
+
+.dash-spreadsheet-container .dash-spreadsheet-inner table {
+    border-collapse: collapse;
+    font-family: inherit;
+}
+
+.dash-table-container .dash-header {
+    background: linear-gradient(135deg, #f5f7fa, #e9ecef);
+    font-weight: 600;
+    color: var(--dark-bg);
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+}
+
+.dash-table-container .dash-cell {
+    border: 1px solid #dee2e6;
+    padding: 12px;
+}
+
+.dash-table-container .dash-cell-value {
+    white-space: normal !important;
+    line-height: 1.4;
+}
+
+/* Dropdown styling */
+.Select-control {
+    border-radius: var(--border-radius);
+    border: 2px solid #e0e0e0;
+    min-height: 40px;
+}
+
+.Select-control:hover {
+    border-color: var(--primary-color);
+}
+
+.Select.is-focused:not(.is-open) > .Select-control {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(0, 102, 204, 0.25);
+}
+
+/* Date picker styling */
+.DateInput_input {
+    border-radius: var(--border-radius);
+    border: 2px solid #e0e0e0;
+    padding: 8px 12px;
+    font-size: 1rem;
+}
+
+.DateInput_input__focused {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(0, 102, 204, 0.25);
+}
+
+/* Loading animation */
+.loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+}
+
+.loading-spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid var(--primary-color);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .sidebar-container {
+        position: relative;
+        top: 0;
+        margin-bottom: 20px;
+    }
+    
+    .app-header h1 {
+        font-size: 2rem;
+    }
+    
+    .metric-card h4 {
+        font-size: 1.5rem;
+    }
+    
+    .nav-tabs .nav-link {
+        padding: 10px 15px;
+        font-size: 0.9rem;
+    }
+}
+
+/* Utility classes */
+.mb-3 { margin-bottom: 1rem !important; }
+.mb-4 { margin-bottom: 1.5rem !important; }
+.mt-3 { margin-top: 1rem !important; }
+.mt-4 { margin-top: 1.5rem !important; }
+.text-center { text-align: center !important; }
+.text-success { color: var(--secondary-color) !important; }
+.text-danger { color: var(--danger-color) !important; }
+.text-primary { color: var(--primary-color) !important; }
+
+/* Animations */
+.fade-in {
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
