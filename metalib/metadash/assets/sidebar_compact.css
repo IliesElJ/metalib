@@ -1,0 +1,50 @@
+/* Compact, flat sidebar */
+.sidebar-compact .form-label.compact{
+  margin: 0 0 4px 0; font-size: 12px; color: var(--ink, #0f172a); font-weight: 600;
+}
+
+.w-100 { width: 100% !important; }
+
+/* Inputs: flat, full-width, consistent height */
+.flat-input,
+.flat-date .DateInput_input,
+.flat-ig .form-control{
+  height: 36px; padding: 6px 10px;
+  border: 1px solid rgba(15,23,42,0.10);
+  border-radius: 0; /* no rounding */
+  box-shadow: none;
+}
+.flat-input:focus,
+.flat-date .DateInput_input__focused,
+.flat-ig .form-control:focus{
+  border-color: #00712D; box-shadow: 0 0 0 3px rgba(0,113,45,.18);
+}
+
+/* Date picker wrapper width */
+.flat-date, .flat-date .DateInput, .flat-date .SingleDatePicker {
+  width: 100%;
+}
+.flat-date .DateInput_input{
+  width: 100%; font-size: 13px;
+}
+
+/* InputGroup (currency prefix) */
+.flat-ig, .flat-ig .input-group{
+  width: 100%;
+}
+.flat-ig-text{
+  border-radius: 0; border: 1px solid rgba(15,23,42,0.10); background: #fff;
+  font-weight: 700; color: #6b7280; padding: 0 10px; height: 36px; display: flex; align-items: center;
+}
+.flat-ig .form-control{
+  border-left: 0;
+}
+
+/* Buttons small */
+.btn-sm{
+  padding: 8px 12px; font-size: 13px; border-radius: 0;
+}
+
+/* Reduce sidebar paddings for compact feel */
+.sidebar-body{ padding: 14px; }
+.sidebar-header{ padding: 12px 14px; }

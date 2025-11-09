@@ -20,31 +20,20 @@ def render_overview_tab(merged_deals, account_size, account_info):
         lambda x: strategy_metrics(x, account_size)
     )
     
-    # Calculate daily performance
-    daily_profit = calculate_daily_performance(merged_deals)
-    
-    # Create daily performance figure
-    daily_fig = create_daily_performance_chart(daily_profit)
-    
     # Create strategy comparison figure
     comparison_fig = create_strategy_comparison_chart(grouped_metrics)
     
     return html.Div([
         # Account Overview Section
         html.Div([
-            html.H3("📊 Account Overview", className="section-title"),
+            html.H3("Account Overview", className="section-title"),
             dbc.Row([
                 dbc.Col([create_metric_card("Balance", f"${account_info['balance']:.2f}", "primary")], width=4),
                 dbc.Col([create_metric_card("Equity", f"${account_info['equity']:.2f}", "success")], width=4),
                 dbc.Col([create_metric_card("Margin", f"${account_info['margin']:.2f}", "info")], width=4),
             ], className="mb-4"),
         ]),
-        
-        # Daily Performance Chart
-        html.Div([
-            dcc.Graph(figure=daily_fig, className="graph-container")
-        ], className="mb-4"),
-        
+
         # Strategy Metrics Table
         html.Div([
             html.H3("Strategy Performance Metrics", className="section-title"),
@@ -65,33 +54,6 @@ def create_metric_card(title, value, color_type="primary"):
         html.H5(title, className="metric-title"),
         html.H4(value, className="metric-value")
     ], className=f"metric-card {color_type}")
-
-def create_daily_performance_chart(daily_profit):
-    """
-    Create daily performance line chart
-    """
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=daily_profit['date'],
-        y=daily_profit['profit'],
-        mode='lines+markers',
-        name='Daily Profit',
-        line=dict(color='#0066cc', width=2),
-        marker=dict(size=6),
-        hovertemplate='Date: %{x|%Y-%m-%d}<br>Profit: $%{y:,.2f}<extra></extra>'
-    ))
-    
-    fig.update_layout(
-        title="Daily Performance",
-        xaxis_title="Date",
-        yaxis_title="Profit ($)",
-        xaxis=dict(tickformat='%Y-%m-%d'),
-        hovermode='x unified',
-        template='plotly_white',
-        height=400
-    )
-    
-    return fig
 
 def create_strategy_comparison_chart(grouped_metrics):
     """
@@ -163,10 +125,6 @@ def create_metrics_table(grouped_metrics):
         },
         style_data_conditional=[
             {
-                'if': {'row_index': 'odd'},
-                'backgroundColor': 'rgba(0, 0, 0, 0.02)'
-            },
-            {
                 'if': {'column_id': 'Total Profit', 'filter_query': '{Total Profit} > 0'},
                 'color': '#28a745',
                 'fontWeight': 'bold'
@@ -182,5 +140,4 @@ def create_metrics_table(grouped_metrics):
             'fontWeight': 'bold',
             'textAlign': 'center'
         },
-        className="metrics-table"
     )

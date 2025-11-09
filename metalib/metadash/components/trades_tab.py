@@ -2,6 +2,7 @@
 Trades Table Tab Component
 """
 from dash import html, dcc, dash_table
+import dash_bootstrap_components as dbc
 
 def render_trades_tab(merged_deals):
     """
@@ -114,10 +115,6 @@ def create_trades_table(merged_deals, selected_bot):
             'height': 'auto',
         },
         style_data_conditional=[
-            {
-                'if': {'row_index': 'odd'},
-                'backgroundColor': 'rgba(0, 0, 0, 0.02)'
-            },
             {
                 'if': {
                     'filter_query': '{Total Profit} > 0',

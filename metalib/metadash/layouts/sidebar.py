@@ -2,79 +2,87 @@
 Sidebar Component
 Contains settings and controls for the application
 """
-from dash import dcc, html
-import dash_bootstrap_components as dbc
 from datetime import date
+from dash import html, dcc
+import dash_bootstrap_components as dbc
 
 def create_sidebar():
     """
-    Creates the sidebar with settings and controls
+    Compact, aligned sidebar with full-width controls (no rounded corners).
     """
     return html.Div([
         html.Div([
-            html.H4("Settings", className="sidebar-title")
+            html.H4("Settings", className="sidebar-title", style={"margin": 0})
         ], className="sidebar-header"),
-        
+
         html.Div([
-            # Date range selection
-            html.Div([
-                html.Label("Start Date", className="form-label"),
-                dcc.DatePickerSingle(
-                    id='start-date',
-                    date=date(2020, 1, 1),
-                    display_format='YYYY-MM-DD',
-                    className="date-picker"
+            dbc.Form([
+                # Date range (two columns on wide, stacked on narrow)
+                dbc.Row([
+                    dbc.Col([
+                        html.Label("Start Date", className="form-label compact"),
+                        dcc.DatePickerSingle(
+                            id='start-date',
+                            date=date(2025, 1, 1),
+                            display_format='YYYY-MM-DD',
+                            className="flat-date w-100"
+                        ),
+                    ], xs=12, md=6, className="mb-2"),
+                    dbc.Col([
+                        html.Label("End Date", className="form-label compact"),
+                        dcc.DatePickerSingle(
+                            id='end-date',
+                            date=date.today(),
+                            display_format='YYYY-MM-DD',
+                            className="flat-date w-100"
+                        ),
+                    ], xs=12, md=6, className="mb-2"),
+                ], className="g-2"),
+
+                # Account size
+                html.Div([
+                    html.Label("Account Size ($)", className="form-label compact"),
+                    dbc.InputGroup([
+                        dbc.InputGroupText("$", className="flat-ig-text"),
+                        dbc.Input(
+                            id='account-size',
+                            type='number',
+                            value=100000,
+                            min=10000,
+                            step=1000,
+                            size="sm",
+                            className="form-control flat-input w-100"
+                        ),
+                    ], className="flat-ig w-100"),
+                ], className="mb-2"),
+
+                # Buttons (side-by-side on wide, stacked on narrow)
+                dbc.Row([
+                    dbc.Col(dbc.Button(
+                        "Connect to MT5",
+                        id="connect-btn",
+                        n_clicks=0,
+                        className="btn-connect btn-sm w-100"
+                    ), xs=12, md=6, className="mb-2"),
+                    dbc.Col(dbc.Button(
+                        "Fetch Trading Data",
+                        id="fetch-btn",
+                        n_clicks=0,
+                        className="btn-fetch btn-sm w-100"
+                    ), xs=12, md=6, className="mb-2"),
+                ], className="g-2"),
+
+                # Status
+                html.Div(id="connection-status", className="status-container mb-1"),
+                html.Div(id="fetch-status", className="status-container mb-1"),
+
+                # Loading
+                dcc.Loading(
+                    id="loading-indicator",
+                    type="circle",
+                    color="#00712D",
+                    children=html.Div(id="loading-output"),
                 ),
-            ], className="mb-3"),
-            
-            html.Div([
-                html.Label("End Date", className="form-label"),
-                dcc.DatePickerSingle(
-                    id='end-date',
-                    date=date.today(),
-                    display_format='YYYY-MM-DD',
-                    className="date-picker"
-                ),
-            ], className="mb-3"),
-            
-            # Account size input
-            html.Div([
-                html.Label("Account Size ($)", className="form-label"),
-                dbc.Input(
-                    id='account-size',
-                    type='number',
-                    value=100000,
-                    min=10000,
-                    step=1000,
-                    className="form-control"
-                ),
-            ], className="mb-3"),
-            
-            # Action buttons
-            html.Div([
-                dbc.Button(
-                    "Connect to MT5",
-                    id="connect-btn",
-                    className="btn-connect",
-                    n_clicks=0
-                ),
-                dbc.Button(
-                    "Fetch Trading Data",
-                    id="fetch-btn",
-                    className="btn-fetch",
-                    n_clicks=0
-                ),
-            ], className="button-group"),
-            
-            # Status messages
-            html.Div(id="connection-status", className="status-container"),
-            html.Div(id="fetch-status", className="status-container"),
-            
-            # Loading indicator
-            dcc.Loading(
-                id="loading-indicator",
-                type="circle",
-                children=html.Div(id="loading-output")
-            )
+            ], className="sidebar-form sidebar-compact")
         ], className="sidebar-body")
     ], className="sidebar-container")

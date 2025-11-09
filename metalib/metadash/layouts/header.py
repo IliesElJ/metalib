@@ -9,5 +9,5 @@ def create_header():
     """
     return html.Div([
         html.H1("MetaDAsh", className="app-title"),
-        html.P("Professional MetaTrader 5 Trading Analytics Dashboard", className="subtitle")
+        html.P("Analytics Dashboard", className="subtitle")
     ], className="app-header")

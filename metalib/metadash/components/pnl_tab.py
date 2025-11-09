@@ -27,7 +27,7 @@ def render_pnl_tab(merged_deals, account_size):
     strategy_perf = calculate_strategy_performance(merged_deals)
     
     return html.Div([
-        html.H3("💰 PnL Performance Analysis", className="section-title"),
+        html.H3("PnL Performance Analysis", className="section-title"),
         
         # Three main charts in a row
         dbc.Row([
@@ -325,10 +325,6 @@ def create_strategy_table(strategy_perf):
         ],
         style_cell={'textAlign': 'left', 'padding': '10px'},
         style_data_conditional=[
-            {
-                'if': {'row_index': 'odd'},
-                'backgroundColor': 'rgba(0, 0, 0, 0.02)'
-            },
             {
                 'if': {'column_id': 'Total Profit', 'filter_query': '{Total Profit} > 0'},
                 'color': '#28a745',

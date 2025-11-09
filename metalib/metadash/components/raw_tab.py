@@ -92,12 +92,6 @@ def create_data_preview_table(df, table_id):
             'overflow': 'hidden',
             'textOverflow': 'ellipsis',
         },
-        style_data_conditional=[
-            {
-                'if': {'row_index': 'odd'},
-                'backgroundColor': 'rgba(0, 0, 0, 0.02)'
-            }
-        ],
         style_header={
             'backgroundColor': 'rgba(0, 102, 204, 0.1)',
             'fontWeight': 'bold',
