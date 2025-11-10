@@ -12,6 +12,7 @@ from metalib.metagomano import MetaGO
 from metalib.metahar import MetaHAR
 from metalib.metafvg import MetaFVG
 from metalib.metane import MetaNE
+from metalib.metaob import MetaOB
 
 strategy_registry = {
     "metado": {
@@ -93,6 +94,22 @@ strategy_registry = {
             "limit_number_position",
         ]
     },
+    "metaob": {
+            "class": MetaOB,
+            "init_keys": [
+                "symbols",
+                "timeframe",
+                "tag",
+                "size_position",
+                "pivot_window",
+                "breakout_lookback",
+                "sma_short_hours",
+                "sma_long_hours",
+                "atr_period",
+                "sl_atr_mult",
+                "tp_atr_mult"
+            ]
+        },
 }
 
 timeframe_mapping = {

@@ -6,14 +6,14 @@ import numpy as np
 from metalib.metastrategy import MetaStrategy
 
 
-class MetaOrderBlock(MetaStrategy):
+class MetaOB(MetaStrategy):
     def __init__(self,
                  symbols,
                  timeframe,
                  tag,
                  size_position,
                  active_hours=None,
-                 pivot_window=40,
+                     pivot_window=40,
                  breakout_lookback=3,
                  sma_short_hours=192,  # 8 days
                  sma_long_hours=1200,  # 50 days

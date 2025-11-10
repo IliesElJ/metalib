@@ -12,7 +12,7 @@ def create_sidebar():
     """
     return html.Div([
         html.Div([
-            html.H4("Settings", className="sidebar-title", style={"margin": 0})
+            html.H4("Settings", className="sidebar-title", style={"margin": 5})
         ], className="sidebar-header"),
 
         html.Div([
@@ -27,7 +27,7 @@ def create_sidebar():
                             display_format='YYYY-MM-DD',
                             className="flat-date w-100"
                         ),
-                    ], xs=12, md=6, className="mb-2"),
+                    ], className="mb-2"),
                     dbc.Col([
                         html.Label("End Date", className="form-label compact"),
                         dcc.DatePickerSingle(
@@ -36,14 +36,13 @@ def create_sidebar():
                             display_format='YYYY-MM-DD',
                             className="flat-date w-100"
                         ),
-                    ], xs=12, md=6, className="mb-2"),
+                    ], className="mb-2"),
                 ], className="g-2"),
 
                 # Account size
                 html.Div([
                     html.Label("Account Size ($)", className="form-label compact"),
                     dbc.InputGroup([
-                        dbc.InputGroupText("$", className="flat-ig-text"),
                         dbc.Input(
                             id='account-size',
                             type='number',

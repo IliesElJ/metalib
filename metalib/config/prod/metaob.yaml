@@ -1,0 +1,15 @@
+EURUSD_M15_OB:
+  active_hours: None
+  size_position: 0.06
+  strategy_type: metaob
+  symbols:
+  - EURUSD
+  tag: metaob_eurusd
+  timeframe: mt5.TIMEFRAME_M15
+  pivot_window: 60
+  breakout_lookback: 3
+  sma_short_hours: 50
+  sma_long_hours: 200
+  atr_period: 14
+  sl_atr_mult: 5
+  tp_atr_mult: 10
