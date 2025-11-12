@@ -72,8 +72,7 @@ class MetaStrategy(ABC):
                 self.data[symbol]["time"], unit="s"
             )
             self.data[symbol] = self.data[symbol].set_index("time")
-
-        print(f"Last time in the index: {self.data[symbol].index[-1]}")
+            print(f"Last time in the index: {self.data[symbol].index[-1]}")
 
     def save_signal_data_to_db(self):
         """
@@ -229,6 +228,7 @@ class MetaStrategy(ABC):
             True if the strategy executed successfully, False otherwise
         """
         log_file = None
+
         try:
             # Save original stdout to restore later
             original_stdout = sys.stdout
@@ -266,7 +266,8 @@ class MetaStrategy(ABC):
                 return False
 
             try:
-                self.save_signal_data_to_db()
+                # self.save_signal_data_to_db()
+                print("Signal data not saved to db")
             except Exception as e:
                 print(f"Error saving signal data: {str(e)}")
                 # Continue execution as this is not critical
