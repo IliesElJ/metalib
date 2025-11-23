@@ -119,3 +119,25 @@ USDZAR_H1_WEEKLY:
   - USDZAR
   tag: metago_weekly_zar
   timeframe: mt5.TIMEFRAME_H1
+AUDJPY_H1_GO:
+  active_hours: None
+  lookahead: 48
+  mean_rev_tf: monthly
+  risk_factor: 0.0001
+  size_position: 0.06
+  strategy_type: metago
+  symbols:
+  - AUDJPY
+  tag: metago_audjpy
+  timeframe: mt5.TIMEFRAME_H1
+AUDJPy_H1_WEEKLY:
+  active_hours: None
+  lookahead: 48
+  mean_rev_tf: weekly
+  risk_factor: 0.0001
+  size_position: 0.06
+  strategy_type: metago
+  symbols:
+  - AUDJPY
+  tag: metago_w_audjpy
+  timeframe: mt5.TIMEFRAME_H1
