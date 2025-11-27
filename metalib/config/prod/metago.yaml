@@ -31,6 +31,28 @@ EURUSD_H1_GO:
   - EURUSD
   tag: metago_f1
   timeframe: mt5.TIMEFRAME_H1
+EURNOK_H1_GO:
+  active_hours: None
+  lookahead: 48
+  mean_rev_tf: monthly
+  risk_factor: 0.0001
+  size_position: 0.02
+  strategy_type: metago
+  symbols:
+    - EURNOK
+  tag: metago_enok
+  timeframe: mt5.TIMEFRAME_H1
+USDNOK_H1_GO:
+  active_hours: None
+  lookahead: 48
+  mean_rev_tf: monthly
+  risk_factor: 0.0001
+  size_position: 0.02
+  strategy_type: metago
+  symbols:
+    - USDNOK
+  tag: metago_unok
+  timeframe: mt5.TIMEFRAME_H1
 EURUSD_H1_WEEKLY:
   active_hours: None
   lookahead: 48
