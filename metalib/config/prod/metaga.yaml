@@ -4,7 +4,6 @@ AUDJPY_H1_GA:
   low_length: 60
   mid_length: 480
   prob_bound: 0.075
-  risk_factor: 0.5
   size_position: 0.09
   strategy_type: metaga
   symbols:
@@ -17,7 +16,6 @@ EURUSD_H1_GA:
   low_length: 60
   mid_length: 480
   prob_bound: 0.075
-  risk_factor: 0.9
   size_position: 0.08
   strategy_type: metaga
   symbols:
@@ -30,7 +28,6 @@ GER40CASH_H1_GA:
   low_length: 60
   mid_length: 480
   prob_bound: 0.075
-  risk_factor: 0.009
   size_position: 0.11
   strategy_type: metaga
   symbols:
@@ -43,7 +40,6 @@ US100CASH_H1_GA:
   low_length: 60
   mid_length: 480
   prob_bound: 0.075
-  risk_factor: 0.09
   size_position: 0.06
   strategy_type: metaga
   symbols:

@@ -265,12 +265,13 @@ class MetaStrategy(ABC):
                 print(f"Error generating signals: {err_ctx}")
                 return False
 
-            try:
-                # self.save_signal_data_to_db()
-                print("Signal data not saved to db")
-            except Exception as e:
-                print(f"Error saving signal data: {str(e)}")
-                # Continue execution as this is not critical
+            # Let's re-enable this when we have a better way to save the signal data
+            # try:
+            #     # self.save_signal_data_to_db()
+            #     print("Signal data not saved to db")
+            # except Exception as e:
+            #     print(f"Error saving signal data: {str(e)}")
+            #     # Continue execution as this is not critical
 
             # Get current hour from the last data point
             try:
