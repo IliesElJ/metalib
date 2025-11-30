@@ -1,11 +1,3 @@
-BTCUSD_M1:
-  limit_number_position: 5
-  size_position: 0.01
-  strategy_type: metafvg
-  symbols:
-  - BTCUSD
-  tag: metafvg_btc
-  timeframe: mt5.TIMEFRAME_M1
 EURUSD_H1:
   limit_number_position: 5
   size_position: 0.06
@@ -13,6 +5,14 @@ EURUSD_H1:
   symbols:
   - EURUSD
   tag: metafvg_eurusd
+  timeframe: mt5.TIMEFRAME_M1
+AUDJPY_H1:
+  limit_number_position: 5
+  size_position: 0.06
+  strategy_type: metafvg
+  symbols:
+    - AUDJPY
+  tag: metafvg_audjpy
   timeframe: mt5.TIMEFRAME_M1
 GER40CASH_H1_GA:
   limit_number_position: 5
