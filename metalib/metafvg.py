@@ -633,7 +633,6 @@ class MetaFVG(MetaStrategy):
             )
             self.execute(
                 symbol=symbol,
-                volume=self.size_position,
                 sl=sl,
                 tp=tp,
                 entry=entry,
@@ -647,7 +646,6 @@ class MetaFVG(MetaStrategy):
             )
             self.execute(
                 symbol=symbol,
-                volume=self.size_position,
                 sl=sl,
                 tp=tp,
                 entry=entry,
