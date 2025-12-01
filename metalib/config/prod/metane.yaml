@@ -44,7 +44,7 @@ GER40CASH_M1_NE:
   size_position: 0.09
   strategy_type: metane
   symbols:
-  - GER40.cash
+  - GER40
   tag: metane_dax
   time_ewm_span: 30
   timeframe: mt5.TIMEFRAME_M5
@@ -61,7 +61,7 @@ US100CASH_M1_NE:
   size_position: 0.04
   strategy_type: metane
   symbols:
-  - US100.cash
+  - US100
   tag: metane_nas
   time_ewm_span: 30
   timeframe: mt5.TIMEFRAME_M5

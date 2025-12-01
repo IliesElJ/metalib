@@ -25,7 +25,10 @@ def main():
             init_args["active_hours"] = None
 
         # Start the strategy in its own process
-        p = Process(target=run_strategy_loop, args=(strategy_type, init_args))
+        p = Process(
+            target=run_strategy_loop,
+            args=(strategy_type, init_args),
+        )
         p.start()
         processes.append(p)
 

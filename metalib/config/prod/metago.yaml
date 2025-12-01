@@ -7,7 +7,7 @@ EURHUF_H1_GO:
   strategy_type: metago
   symbols:
   - EURHUF
-  tag: metago_f7
+  tag: metago_eurhuf
   timeframe: mt5.TIMEFRAME_H1
 EURHUF_H1_WEEKLY:
   active_hours: None
@@ -29,7 +29,7 @@ EURUSD_H1_GO:
   strategy_type: metago
   symbols:
   - EURUSD
-  tag: metago_f1
+  tag: metago_eurusd
   timeframe: mt5.TIMEFRAME_H1
 EURNOK_H1_GO:
   active_hours: None
@@ -73,7 +73,7 @@ USDCAD_H1_GO:
   strategy_type: metago
   symbols:
   - USDCAD
-  tag: metago_f5
+  tag: metago_usdcad
   timeframe: mt5.TIMEFRAME_H1
 USDCHF_H1_GO:
   active_hours: None
@@ -84,7 +84,7 @@ USDCHF_H1_GO:
   strategy_type: metago
   symbols:
   - USDCHF
-  tag: metago_f4
+  tag: metago_usdchf
   timeframe: mt5.TIMEFRAME_H1
 USDCNH_H1_GO:
   active_hours: None
@@ -117,7 +117,7 @@ USDJPY_H1_GO:
   strategy_type: metago
   symbols:
   - USDJPY
-  tag: metago_f2
+  tag: metago_usdjpy
   timeframe: mt5.TIMEFRAME_H1
 USDZAR_H1_GO:
   active_hours: None
@@ -128,7 +128,7 @@ USDZAR_H1_GO:
   strategy_type: metago
   symbols:
   - USDZAR
-  tag: metago_f10
+  tag: metago_usdzar
   timeframe: mt5.TIMEFRAME_H1
 USDZAR_H1_WEEKLY:
   active_hours: None

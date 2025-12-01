@@ -8,7 +8,7 @@ AUDJPY_H1_GA:
   strategy_type: metaga
   symbols:
   - AUDJPY
-  tag: metaga_f2
+  tag: metaga_audjpy
   timeframe: mt5.TIMEFRAME_M1
 EURUSD_H1_GA:
   active_hours: None
@@ -20,7 +20,7 @@ EURUSD_H1_GA:
   strategy_type: metaga
   symbols:
   - EURUSD
-  tag: metaga_f1
+  tag: metaga_eurusd
   timeframe: mt5.TIMEFRAME_M1
 GER40CASH_H1_GA:
   active_hours: None
@@ -31,8 +31,8 @@ GER40CASH_H1_GA:
   size_position: 0.11
   strategy_type: metaga
   symbols:
-  - GER40.cash
-  tag: metaga_i1
+  - GER40
+  tag: metaga_dax
   timeframe: mt5.TIMEFRAME_M1
 US100CASH_H1_GA:
   active_hours: None
@@ -43,6 +43,6 @@ US100CASH_H1_GA:
   size_position: 0.06
   strategy_type: metaga
   symbols:
-  - US100.cash
-  tag: metaga_i2
+  - US100
+  tag: metaga_nas
   timeframe: mt5.TIMEFRAME_M1

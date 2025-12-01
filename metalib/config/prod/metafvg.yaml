@@ -19,7 +19,7 @@ GER40CASH_H1_GA:
   size_position: 0.09
   strategy_type: metafvg
   symbols:
-  - GER40.cash
+  - GER40
   tag: metafvg_dax
   timeframe: mt5.TIMEFRAME_M1
 US100CASH_H1_GA:
@@ -27,6 +27,6 @@ US100CASH_H1_GA:
   size_position: 0.04
   strategy_type: metafvg
   symbols:
-  - US100.cash
+  - US100
   tag: metafvg_nas
   timeframe: mt5.TIMEFRAME_M1

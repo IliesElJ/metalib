@@ -77,3 +77,19 @@ USDCAD_M15_OB:
   atr_period: 14
   sl_atr_mult: 5
   tp_atr_mult: 10
+
+  NASDAQ_M15_OB:
+    active_hours: None
+    size_position: 0.05
+    strategy_type: metaob
+    symbols:
+      - US100
+    tag: metaob_nas
+    timeframe: mt5.TIMEFRAME_M15
+    pivot_window: 58
+    breakout_lookback: 4
+    sma_short_hours: 50
+    sma_long_hours: 190
+    atr_period: 14
+    sl_atr_mult: 5
+    tp_atr_mult: 10
