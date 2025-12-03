@@ -7,21 +7,24 @@ from metalib.metastrategy import MetaStrategy
 
 
 class MetaOB(MetaStrategy):
-    def __init__(self,
-                 symbols,
-                 timeframe,
-                 tag,
-                 size_position,
-                 active_hours=None,
-                     pivot_window=40,
-                 breakout_lookback=3,
-                 sma_short_hours=192,  # 8 days
-                 sma_long_hours=1200,  # 50 days
-                 atr_period=14,
-                 sl_atr_mult=2.0,
-                 tp_atr_mult=6.0,
-                 ):
-        super().__init__(symbols, timeframe, tag, size_position, active_hours, size_position)
+    def __init__(
+        self,
+        symbols,
+        timeframe,
+        tag,
+        size_position,
+        active_hours=None,
+        pivot_window=40,
+        breakout_lookback=3,
+        sma_short_hours=192,  # 8 days
+        sma_long_hours=1200,  # 50 days
+        atr_period=14,
+        sl_atr_mult=2.0,
+        tp_atr_mult=6.0,
+    ):
+        super().__init__(
+            symbols, timeframe, tag, size_position, active_hours, size_position
+        )
 
         # Strategy parameters
         self.pivot_window = pivot_window
@@ -58,7 +61,9 @@ class MetaOB(MetaStrategy):
         # Set state
         if long_signal and not self.are_positions_with_tag_open(position_type="buy"):
             self.state = 1
-        elif short_signal and not self.are_positions_with_tag_open(position_type="sell"):
+        elif short_signal and not self.are_positions_with_tag_open(
+            position_type="sell"
+        ):
             self.state = -1
         else:
             self.state = 0
@@ -78,50 +83,51 @@ class MetaOB(MetaStrategy):
         indicators = pd.DataFrame(index=ohlc.index)
 
         # Price data
-        o, h, l, c = ohlc['open'], ohlc['high'], ohlc['low'], ohlc['close']
-        indicators['close'] = c
+        o, h, l, c = ohlc["open"], ohlc["high"], ohlc["low"], ohlc["close"]
+        indicators["close"] = c
 
         # SMAs
-        indicators['sma_short'] = c.rolling(self.sma_short_hours).mean()
-        indicators['sma_long'] = c.rolling(self.sma_long_hours).mean()
-        indicators['uptrend'] = indicators['sma_short'] > indicators['sma_long']
+        indicators["sma_short"] = c.rolling(self.sma_short_hours).mean()
+        indicators["sma_long"] = c.rolling(self.sma_long_hours).mean()
+        indicators["uptrend"] = indicators["sma_short"] > indicators["sma_long"]
 
         # Pivot points
-        indicators['pivot_low'] = l.rolling(self.pivot_window).min().shift(1)
-        indicators['pivot_high'] = h.rolling(self.pivot_window).max().shift(1)
+        indicators["pivot_low"] = l.rolling(self.pivot_window).min().shift(1)
+        indicators["pivot_high"] = h.rolling(self.pivot_window).max().shift(1)
 
         # ATR
         prev_c = c.shift(1)
-        tr = pd.concat([
-            h - l,
-            (h - prev_c).abs(),
-            (l - prev_c).abs()
-        ], axis=1).max(axis=1)
-        indicators['atr'] = tr.rolling(window=self.atr_period).mean()
+        tr = pd.concat([h - l, (h - prev_c).abs(), (l - prev_c).abs()], axis=1).max(
+            axis=1
+        )
+        indicators["atr"] = tr.rolling(window=self.atr_period).mean()
 
         # Order blocks
         o_1, h_1, l_1, c_1 = o.shift(1), h.shift(1), l.shift(1), c.shift(1)
-        indicators['bull_ob'] = (c > o) & (o_1 > c_1) & (h > h_1)
-        indicators['bear_ob'] = (c < o) & (o_1 < c_1) & (l < l_1)
+        indicators["bull_ob"] = (c > o) & (o_1 > c_1) & (h > h_1)
+        indicators["bear_ob"] = (c < o) & (o_1 < c_1) & (l < l_1)
 
         # Pivot crosses
-        indicators['cross_below_pivot'] = l < indicators['pivot_low']
-        indicators['cross_above_pivot'] = h > indicators['pivot_high']
+        indicators["cross_below_pivot"] = l < indicators["pivot_low"]
+        indicators["cross_above_pivot"] = h > indicators["pivot_high"]
 
         return indicators
 
     def detect_long_signal(self, ohlc, indicators):
         """Detect long entry signal"""
         # Check if pivot low was crossed recently
-        cross_pivot = indicators['cross_below_pivot'].rolling(
-            self.breakout_lookback
-        ).apply(lambda x: np.any(x), raw=True).astype(bool)
+        cross_pivot = (
+            indicators["cross_below_pivot"]
+            .rolling(self.breakout_lookback)
+            .apply(lambda x: np.any(x), raw=True)
+            .astype(bool)
+        )
 
         # Order block pattern
-        bull_ob = indicators['bull_ob'].iloc[-1]
+        bull_ob = indicators["bull_ob"].iloc[-1]
 
         # Trend filter
-        uptrend = indicators['uptrend'].iloc[-1]
+        uptrend = indicators["uptrend"].iloc[-1]
 
         # Combine conditions
         return cross_pivot.iloc[-1] and bull_ob and uptrend
@@ -129,23 +135,26 @@ class MetaOB(MetaStrategy):
     def detect_short_signal(self, ohlc, indicators):
         """Detect short entry signal"""
         # Check if pivot high was crossed recently
-        cross_pivot = indicators['cross_above_pivot'].rolling(
-            self.breakout_lookback
-        ).apply(lambda x: np.any(x), raw=True).astype(bool)
+        cross_pivot = (
+            indicators["cross_above_pivot"]
+            .rolling(self.breakout_lookback)
+            .apply(lambda x: np.any(x), raw=True)
+            .astype(bool)
+        )
 
         # Order block pattern
-        bear_ob = indicators['bear_ob'].iloc[-1]
+        bear_ob = indicators["bear_ob"].iloc[-1]
 
         # Trend filter
-        downtrend = not indicators['uptrend'].iloc[-1]
+        downtrend = not indicators["uptrend"].iloc[-1]
 
         # Combine conditions
         return cross_pivot.iloc[-1] and bear_ob and downtrend
 
     def calculate_stops(self, ohlc, indicators, is_long):
         """Calculate stop loss and take profit levels"""
-        atr = indicators['atr'].iloc[-1]
-        close = indicators['close'].iloc[-1]
+        atr = indicators["atr"].iloc[-1]
+        close = indicators["close"].iloc[-1]
 
         if is_long:
             self.sl = close - atr * self.sl_atr_mult
@@ -172,13 +181,17 @@ class MetaOB(MetaStrategy):
 
         positions_mean_entry, num_positions = self.get_positions_info()
 
-        print(f"{self.tag}:: State: {self.state}, TP: {tp}, SL: {sl}, Positions: {num_positions}")
+        print(
+            f"{self.tag}:: State: {self.state}, TP: {tp}, SL: {sl}, Positions: {num_positions}"
+        )
 
         if self.state in [1, -1]:
             try:
                 self.execute(symbol=symbol, short=(self.state == -1), sl=sl, tp=tp)
                 trade_type = "SELL" if self.state == -1 else "BUY"
-                print(f"{self.tag}:: Entered {trade_type} for {symbol}, SL: {sl}, TP: {tp}")
+                print(
+                    f"{self.tag}:: Entered {trade_type} for {symbol}, SL: {sl}, TP: {tp}"
+                )
             except Exception as e:
                 print(f"{self.tag}:: Execution failed: {str(e)}")
 
@@ -219,11 +232,16 @@ class MetaOB(MetaStrategy):
 
         if filtered_positions:
             total_volume = sum(pos.volume for pos in filtered_positions)
-            mid_price = sum(pos.price_open * pos.volume for pos in filtered_positions) / total_volume
+            mid_price = (
+                sum(pos.price_open * pos.volume for pos in filtered_positions)
+                / total_volume
+            )
             num_positions = len(filtered_positions)
         else:
             tick_info = mt5.symbol_info_tick(self.symbols[0])
-            mid_price = tick_info.last if tick_info else (tick_info.bid + tick_info.ask) / 2
+            mid_price = (
+                tick_info.last if tick_info else (tick_info.bid + tick_info.ask) / 2
+            )
             num_positions = 0
 
         return mid_price, num_positions
