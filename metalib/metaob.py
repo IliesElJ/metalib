@@ -119,7 +119,7 @@ class MetaOB(MetaStrategy):
         cross_pivot = (
             indicators["cross_below_pivot"]
             .rolling(self.breakout_lookback)
-            .apply(lambda x: np.any(x), raw=True)
+            .apply(lambda x: np.max(x), raw=True)
             .astype(bool)
         )
 
@@ -138,7 +138,7 @@ class MetaOB(MetaStrategy):
         cross_pivot = (
             indicators["cross_above_pivot"]
             .rolling(self.breakout_lookback)
-            .apply(lambda x: np.any(x), raw=True)
+            .apply(lambda x: np.max(x), raw=True)
             .astype(bool)
         )
 
