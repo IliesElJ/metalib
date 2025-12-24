@@ -94,8 +94,10 @@ class MetaOB(MetaStrategy):
         # indicators["uptrend"] = indicators["sma_short"] > indicators["sma_long"]
 
         # Rolling Sharpe
-        indicators["rolliing_sharpe"] = c.rolling(self.sma_long_hours).apply(
-            lambda x: np.mean(x) / np.std(x)
+        indicators["rolliing_sharpe"] = (
+            c.pct_change()
+            .rolling(self.sma_long_hours)
+            .apply(lambda x: np.mean(x) / np.std(x))
         )
         indicators["uptrend"] = indicators["rolliing_sharpe"] > self.sharpe_threshold
 
@@ -241,8 +243,10 @@ class MetaOB(MetaStrategy):
         self.loadData(start_time, end_time)
         data = self.data[self.symbols[0]]
         close = data["close"]
-        rolling_sharpe = close.rolling(self.sma_long_hours).apply(
-            lambda x: np.mean(x) / np.std(x)
+        rolling_sharpe = (
+            close.pct_change()
+            .rolling(self.sma_long_hours)
+            .apply(lambda x: np.mean(x) / np.std(x))
         )
         self.sharpe_threshold = rolling_sharpe.quantile(0.75)
         print(
