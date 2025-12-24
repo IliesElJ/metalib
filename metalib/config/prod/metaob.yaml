@@ -1,95 +1,106 @@
-EURUSD_M15_OB:
-  active_hours: None
-  size_position: 0.06
-  strategy_type: metaob
-  symbols:
-  - EURUSD
-  tag: metaob_eurusd
-  timeframe: mt5.TIMEFRAME_M15
-  pivot_window: 60
-  breakout_lookback: 3
-  sma_short_hours: 50
-  sma_long_hours: 200
-  atr_period: 14
-  sl_atr_mult: 5
-  tp_atr_mult: 10
-
-GBPUSD_M15_OB:
-  active_hours: None
-  size_position: 0.05
-  strategy_type: metaob
-  symbols:
-  - GBPUSD
-  tag: metaob_gbpusd
-  timeframe: mt5.TIMEFRAME_M15
-  pivot_window: 55
-  breakout_lookback: 2
-  sma_short_hours: 48
-  sma_long_hours: 210
-  atr_period: 14
-  sl_atr_mult: 4
-  tp_atr_mult: 9
-
-USDJPY_M15_OB:
-  active_hours: None
-  size_position: 0.08
-  strategy_type: metaob
-  symbols:
-  - USDJPY
-  tag: metaob_usdjpy
-  timeframe: mt5.TIMEFRAME_M15
-  pivot_window: 50
-  breakout_lookback: 3
-  sma_short_hours: 60
-  sma_long_hours: 220
-  atr_period: 14
-  sl_atr_mult: 4.5
-  tp_atr_mult: 8.5
-
 AUDUSD_M15_OB:
   active_hours: None
-  size_position: 0.04
+  atr_period: 14
+  breakout_lookback: 4
+  pivot_window: 65
+  size_position: 0.16
+  sl_atr_mult: 5.5
+  sma_long_hours: 200
+  sma_short_hours: 55
   strategy_type: metaob
   symbols:
   - AUDUSD
   tag: metaob_audusd
   timeframe: mt5.TIMEFRAME_M15
-  pivot_window: 65
-  breakout_lookback: 4
-  sma_short_hours: 55
-  sma_long_hours: 200
-  atr_period: 14
-  sl_atr_mult: 5.5
   tp_atr_mult: 11
+EURUSD_M15_OB:
+  active_hours: None
+  atr_period: 14
+  breakout_lookback: 3
+  pivot_window: 60
+  size_position: 0.24
+  sl_atr_mult: 5
+  sma_long_hours: 200
+  sma_short_hours: 50
+  strategy_type: metaob
+  symbols:
+  - EURUSD
+  tag: metaob_eurusd
+  timeframe: mt5.TIMEFRAME_M15
+  tp_atr_mult: 10
+GBPUSD_M15_OB:
+  active_hours: None
+  atr_period: 14
+  breakout_lookback: 2
+  pivot_window: 55
+  size_position: 0.09
+  sl_atr_mult: 4
+  sma_long_hours: 210
+  sma_short_hours: 48
+  strategy_type: metaob
+  symbols:
+  - GBPUSD
+  tag: metaob_gbpusd
+  timeframe: mt5.TIMEFRAME_M15
+  tp_atr_mult: 9
+NASDAQ_M15_OB:
+  active_hours: None
+  atr_period: 14
+  breakout_lookback: 4
+  pivot_window: 58
+  size_position: 0.1
+  sl_atr_mult: 5
 
+  sma_long_hours: 190
+  sma_short_hours: 50
+  strategy_type: metaob
+  symbols:
+  - US100
+  tag: metaob_nas
+  timeframe: mt5.TIMEFRAME_M15
+  tp_atr_mult: 15
+DAX_M15_OB:
+  active_hours: None
+  atr_period: 14
+  breakout_lookback: 4
+  pivot_window: 58
+  size_position: 0.1
+  sl_atr_mult: 5
+  sma_long_hours: 190
+  sma_short_hours: 50
+  strategy_type: metaob
+  symbols:
+  - US100
+  tag: metaob_nas
+  timeframe: mt5.TIMEFRAME_M15
+  tp_atr_mult: 15
 USDCAD_M15_OB:
   active_hours: None
-  size_position: 0.05
+  atr_period: 14
+  breakout_lookback: 4
+  pivot_window: 58
+  size_position: 0.5
+  sl_atr_mult: 5
+  sma_long_hours: 190
+  sma_short_hours: 50
   strategy_type: metaob
   symbols:
   - USDCAD
   tag: metaob_usdcad
   timeframe: mt5.TIMEFRAME_M15
-  pivot_window: 58
-  breakout_lookback: 4
-  sma_short_hours: 50
-  sma_long_hours: 190
-  atr_period: 14
-  sl_atr_mult: 5
   tp_atr_mult: 10
-
-NASDAQ_M15_OB:
+USDJPY_M15_OB:
   active_hours: None
-  size_position: 0.05
+  atr_period: 14
+  breakout_lookback: 3
+  pivot_window: 50
+  size_position: 0.19
+  sl_atr_mult: 4.5
+  sma_long_hours: 220
+  sma_short_hours: 60
   strategy_type: metaob
   symbols:
-    - US100
-  tag: metaob_nas
+  - USDJPY
+  tag: metaob_usdjpy
   timeframe: mt5.TIMEFRAME_M15
-  pivot_window: 58
-  breakout_lookback: 4
-  sma_short_hours: 50
-  sma_long_hours: 190
-  atr_period: 14
-  sl_atr_mult: 5
-  tp_atr_mult: 10
+  tp_atr_mult: 8.5
