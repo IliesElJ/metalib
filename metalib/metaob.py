@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import logging
 import MetaTrader5 as mt5
 import pandas as pd
+import pytz
 import numpy as np
 from metalib.metastrategy import MetaStrategy
 
@@ -40,6 +41,7 @@ class MetaOB(MetaStrategy):
         self.sl = None
         self.tp = None
         self.signalData = None
+        self.sharpe_threshold = None
         self.telegram = True
         self.logger = logging.getLogger(__name__)
 
@@ -89,7 +91,13 @@ class MetaOB(MetaStrategy):
         # SMAs
         indicators["sma_short"] = c.rolling(self.sma_short_hours).mean()
         indicators["sma_long"] = c.rolling(self.sma_long_hours).mean()
-        indicators["uptrend"] = indicators["sma_short"] > indicators["sma_long"]
+        # indicators["uptrend"] = indicators["sma_short"] > indicators["sma_long"]
+
+        # Rolling Sharpe
+        indicators["rolliing_sharpe"] = c.rolling(self.sma_long_hours).apply(
+            lambda x: np.mean(x) / np.std(x)
+        )
+        indicators["uptrend"] = indicators["rolliing_sharpe"] > self.sharpe_threshold
 
         # Pivot points
         indicators["pivot_low"] = l.rolling(self.pivot_window).min().shift(1)
@@ -215,7 +223,28 @@ class MetaOB(MetaStrategy):
 
     def fit(self, data=None):
         """No fitting required for this strategy"""
-        print(f"{self.tag}:: No model to fit for MetaOrderBlock")
+        # Define the UTC timezone
+        utc = pytz.timezone("UTC")
+        # Get the current time in UTC
+        end_time = datetime.now(utc)
+        start_time = end_time - timedelta(days=66)
+        # Set the time components to 0 (midnight) and maintain the timezone
+        end_time = end_time.replace(
+            hour=0, minute=0, second=0, microsecond=0
+        ).astimezone(utc)
+        start_time = start_time.astimezone(utc)
+
+        # Pulling last days of data
+        self.loadData(start_time, end_time)
+        data = self.data[self.symbols[0]]
+        close = data["close"]
+        rolling_sharpe = close.rolling(self.sma_long_hours).apply(
+            lambda x: np.mean(x) / np.std(x)
+        )
+        self.sharpe_threshold = rolling_sharpe.quantile(0.75)
+        print(
+            f"{self.tag}:: Sharpe Uptrend quantile is: {round(self.sharpe_threshold, 4)}"
+        )
         return
 
     def get_positions_info(self):
