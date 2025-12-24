@@ -94,12 +94,12 @@ class MetaOB(MetaStrategy):
         # indicators["uptrend"] = indicators["sma_short"] > indicators["sma_long"]
 
         # Rolling Sharpe
-        indicators["rolliing_sharpe"] = (
+        indicators["rolling_sharpe"] = (
             c.pct_change()
             .rolling(self.sma_long_hours)
             .apply(lambda x: np.mean(x) / np.std(x))
         )
-        indicators["uptrend"] = indicators["rolliing_sharpe"] > self.sharpe_threshold
+        indicators["uptrend"] = indicators["rolling_sharpe"] > self.sharpe_threshold
 
         # Pivot points
         indicators["pivot_low"] = l.rolling(self.pivot_window).min().shift(1)
