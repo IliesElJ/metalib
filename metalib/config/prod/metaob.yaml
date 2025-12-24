@@ -70,8 +70,8 @@ DAX_M15_OB:
   sma_short_hours: 50
   strategy_type: metaob
   symbols:
-  - US100
-  tag: metaob_nas
+  - GER40
+  tag: metaob_dax
   timeframe: mt5.TIMEFRAME_M15
   tp_atr_mult: 15
 USDCAD_M15_OB:
