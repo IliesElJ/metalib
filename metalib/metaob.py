@@ -211,6 +211,9 @@ class MetaOB(MetaStrategy):
         print(f"Close: {indicators['close'].iloc[-1]:.5f}")
         print(f"SMA Short: {indicators['sma_short'].iloc[-1]:.5f}")
         print(f"SMA Long: {indicators['sma_long'].iloc[-1]:.5f}")
+        print(
+            f"Sharpe Ratio: {indicators['rolling_sharpe'].iloc[-1]:.5f} vs Threshold: {self.sharpe_threshold:.5f}"
+        )
         print(f"Uptrend: {indicators['uptrend'].iloc[-1]}")
         print(f"Bull OB: {indicators['bull_ob'].iloc[-1]}")
         print(f"Bear OB: {indicators['bear_ob'].iloc[-1]}")
