@@ -35,8 +35,12 @@ from components import (
     render_log_tab,
     create_log_stats_display,
     format_log_content,
+    render_status_tab,
+    create_status_summary,
+    create_status_table,
 )
 from components.log_tab import get_filtered_instances
+from utils.health_utils import get_all_strategy_statuses, get_health_summary
 
 
 # Global storage for data
@@ -153,7 +157,10 @@ def register_callbacks(app):
     )
     def render_tab_content(active_tab, data, account_info):
         """Render content based on selected tab"""
-        # Log tab doesn't require MT5 data - it reads from files
+        # Status and Log tabs don't require MT5 data - they read from files
+        if active_tab == "status":
+            return render_status_tab()
+
         if active_tab == "logs":
             return render_log_tab()
 
@@ -414,3 +421,30 @@ def register_callbacks(app):
 
         filename = f"output_{strategy_instance}_{date_str}.log"
         return dict(content=log_content, filename=filename)
+
+    # ------------------------------
+    # Status Monitoring callbacks
+    # ------------------------------
+
+    @app.callback(
+        Output("status-summary-container", "children"),
+        Output("status-table-container", "children"),
+        Output("status-last-refresh", "children"),
+        Input("status-refresh-btn", "n_clicks"),
+        Input("status-auto-refresh", "n_intervals"),
+        prevent_initial_call=False,
+    )
+    def update_status_display(n_clicks, n_intervals):
+        """Update status summary and table"""
+        # Get current status
+        summary = get_health_summary()
+        statuses = get_all_strategy_statuses()
+
+        # Create components
+        summary_component = create_status_summary(summary)
+        table_component = create_status_table(statuses)
+
+        # Last refresh time
+        last_refresh = f"Last updated: {datetime.now().strftime('%H:%M:%S')}"
+
+        return summary_component, table_component, last_refresh
