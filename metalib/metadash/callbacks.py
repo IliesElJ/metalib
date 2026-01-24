@@ -5,10 +5,9 @@ Handles all Dash callbacks for the MetaDAsh application
 
 from dash import Input, Output, State, html
 import dash_bootstrap_components as dbc
-from datetime import datetime, date, timedelta
+from datetime import datetime
 import plotly.graph_objects as go
 import pandas as pd
-import calendar
 
 from utils import (
     initialize_mt5,
@@ -39,15 +38,6 @@ from components import (
 )
 from components.log_tab import get_filtered_instances
 
-# >>> NEW: import the calendar tab + helpers
-from components.tab_daily_calendar import (
-    render_daily_calendar_tab,  # layout builder
-    MonthCtx,  # month context dataclass
-    _month_series,  # days grid generator
-    _prep_instance_daily,  # daily aggregation
-    _color_for_value,  # chip colors
-    _format_money,  # money formatter
-)
 
 # Global storage for data
 stored_data = {
@@ -199,24 +189,6 @@ def register_callbacks(app):
             return render_trades_tab(merged_deals)
         elif active_tab == "raw":
             return render_raw_tab(merged_deals, stored_data["history_orders"])
-        # >>> NEW: calendar tab route
-        elif active_tab == "calendar":
-            # Pick sensible defaults from current data
-            most_common_strategy = (
-                merged_deals["comment_open"].dropna().mode().iloc[0]
-                if not merged_deals.empty
-                else None
-            )
-            most_common_symbol = (
-                merged_deals["symbol_open"].dropna().mode().iloc[0]
-                if not merged_deals.empty
-                else None
-            )
-            return render_daily_calendar_tab(
-                merged_deals=merged_deals,
-                default_strategy=most_common_strategy or "metafvg",
-                default_symbol=most_common_symbol or "EURUSD",
-            )
 
         return html.Div()
 
@@ -442,195 +414,3 @@ def register_callbacks(app):
 
         filename = f"output_{strategy_instance}_{date_str}.log"
         return dict(content=log_content, filename=filename)
-
-    # ------------------------------
-    # NEW: Calendar callbacks
-    # ------------------------------
-    # ------------------------------
-    # Calendar callbacks (deduped)
-    # ------------------------------
-
-    def _ctx_triggered_id():
-        import dash
-
-        ctx = dash.callback_context
-        if not ctx.triggered:
-            return None
-        return ctx.triggered[0]["prop_id"].split(".")[0]
-
-    # 1) Prev/Next buttons -> update the anchor date ONLY
-    @app.callback(
-        Output("cal_anchor_date", "date"),
-        Input("cal_prev_month", "n_clicks"),
-        Input("cal_next_month", "n_clicks"),
-        State("cal_anchor_date", "date"),
-        prevent_initial_call=True,
-    )
-    def cal_change_month(prev_clicks, next_clicks, anchor_date):
-        trigger = _ctx_triggered_id()
-        dt = (
-            pd.to_datetime(anchor_date).date()
-            if anchor_date
-            else date.today().replace(day=1)
-        )
-        mctx = MonthCtx(dt.year, dt.month)
-        if trigger == "cal_prev_month":
-            mctx = mctx.step(-1)
-        elif trigger == "cal_next_month":
-            mctx = mctx.step(+1)
-        return f"{mctx.year:04d}-{mctx.month:02d}-01"
-
-    # 2) Anchor date -> month label (single writer of cal_month_label.children)
-    @app.callback(
-        Output("cal_month_label", "children"), Input("cal_anchor_date", "date")
-    )
-    def cal_label_from_date(anchor_date):
-        dt = (
-            pd.to_datetime(anchor_date).date()
-            if anchor_date
-            else date.today().replace(day=1)
-        )
-        mctx = MonthCtx(dt.year, dt.month)
-        return f"{calendar.month_name[mctx.month]} {mctx.year}"
-
-    # 3) Anchor date + selectors -> grid + stats
-    @app.callback(
-        Output("cal_grid", "children"),
-        Output("cal_stats", "children"),
-        Input("cal_anchor_date", "date"),
-        Input("cal_strategy", "value"),
-    )
-    def cal_render_grid(anchor_date, strategy):
-        merged_deals = stored_data.get("merged_deals")
-        # Build month context
-        dt = (
-            pd.to_datetime(anchor_date).date()
-            if anchor_date
-            else date.today().replace(day=1)
-        )
-        mctx = MonthCtx(dt.year, dt.month)
-
-        if merged_deals is None or merged_deals.empty or not strategy:
-            cells = [
-                html.Div(
-                    [html.Div(str(d.day), className="calendar-day")],
-                    className="calendar-cell is-out",
-                )
-                for d in _month_series(mctx)
-            ]
-            stats = html.Div("No trades for this month.", style={"color": "#6b7280"})
-            return cells, stats
-
-        # Daily aggregation for selected instance
-        daily = _prep_instance_daily(merged_deals, strategy)
-        daily = (
-            daily.set_index("date")
-            if not daily.empty
-            else pd.DataFrame(columns=["pnl", "n_trades"])
-        )
-
-        # Grid cells
-        cells = []
-        for d in _month_series(mctx):
-            in_month = d.month == mctx.month
-            pnl = (
-                float(daily.loc[d, "pnl"])
-                if (not daily.empty and d in daily.index)
-                else 0.0
-            )
-            ntr = (
-                int(daily.loc[d, "n_trades"])
-                if (not daily.empty and d in daily.index)
-                else 0
-            )
-
-            c = _color_for_value(pnl)
-            chip_style = {
-                "background": c["bg"],
-                "borderColor": c["border"],
-                "color": c["text"],
-            }
-
-            cells.append(
-                html.Div(
-                    [
-                        html.Div(str(d.day), className="calendar-day"),
-                        html.Div(
-                            [
-                                html.Span(
-                                    _format_money(pnl),
-                                    className="pnl-chip",
-                                    style=chip_style,
-                                ),
-                                html.Span(
-                                    f"{ntr} trades",
-                                    className="trades-badge",
-                                    title="Number of trades that day",
-                                ),
-                            ],
-                            style={
-                                "display": "flex",
-                                "gap": "8px",
-                                "alignItems": "center",
-                            },
-                        ),
-                    ],
-                    className="calendar-cell" + ("" if in_month else " is-out"),
-                    title=f"{d:%b %d, %Y} — PnL: {_format_money(pnl)} • Trades: {ntr}",
-                )
-            )
-
-        # Monthly stats
-        if daily.empty:
-            stats = html.Div("No trades for this month.", style={"color": "#6b7280"})
-        else:
-            month_df = daily.loc[
-                (daily.index >= mctx.first) & (daily.index <= mctx.last)
-            ]
-            if month_df.empty:
-                stats = html.Div(
-                    "No trades for this month.", style={"color": "#6b7280"}
-                )
-            else:
-                total = month_df["pnl"].sum()
-                win_days = (month_df["pnl"] > 0).sum()
-                loss_days = (month_df["pnl"] < 0).sum()
-                zero_days = (month_df["pnl"] == 0).sum()
-                best = month_df["pnl"].max()
-                worst = month_df["pnl"].min()
-                avg = month_df["pnl"].mean()
-                wr = 100 * win_days / max(1, len(month_df))
-                stats = html.Div(
-                    [
-                        _stat_row("Total PnL", _format_money(total)),
-                        _stat_row("Avg / day", _format_money(avg)),
-                        _stat_row("Win rate (days)", f"{wr:.1f}%"),
-                        _stat_row("Best day", _format_money(best)),
-                        _stat_row("Worst day", _format_money(worst)),
-                        _stat_row(
-                            "Days: + / 0 / -", f"{win_days} / {zero_days} / {loss_days}"
-                        ),
-                    ],
-                    style={
-                        "display": "grid",
-                        "gridTemplateColumns": "repeat(3,minmax(160px,1fr))",
-                        "gap": "10px",
-                    },
-                )
-
-        return cells, stats
-
-
-# ---- Local helper for stats card (flat, matches calendar)
-def _stat_row(label: str, value: str) -> html.Div:
-    return html.Div(
-        [
-            html.Div(label, style={"fontSize": "12px", "color": "#6b7280"}),
-            html.Div(value, style={"fontWeight": "800", "color": "#0f172a"}),
-        ],
-        style={
-            "border": "1px solid rgba(15,23,42,0.08)",
-            "padding": "10px",
-            "background": "#fff",
-        },
-    )

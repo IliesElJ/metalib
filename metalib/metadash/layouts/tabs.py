@@ -14,7 +14,6 @@ def create_tabs_layout():
             dbc.Tab(label="Overview", tab_id="overview"),
             dbc.Tab(label="Strategy Types", tab_id="strategy_types"),
             dbc.Tab(label="Detailed Analysis", tab_id="detailed"),
-            dbc.Tab(label="Calendar", tab_id="calendar"),
             dbc.Tab(label="PnL Performance", tab_id="pnl"),
             dbc.Tab(label="Trades Table", tab_id="trades"),
             dbc.Tab(label="View Logs", tab_id="logs"),
