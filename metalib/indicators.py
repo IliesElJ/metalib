@@ -125,7 +125,7 @@ def corr_eigenvalues(price_arr):
     try:
         eigenvalues = np.linalg.eigvals(log_corr)
         eigenvalues = np.real(eigenvalues)
-    except:
+    except (np.linalg.LinAlgError, ValueError):
         return np.array([np.nan] * log_corr.shape[0])
 
     return eigenvalues
@@ -177,7 +177,9 @@ def rsi_compute(df, period=14):
     return df
 
 
-def ewa_compute(df, spans=[10, 20, 50]):
+def ewa_compute(df, spans=None):
+    if spans is None:
+        spans = [10, 20, 50]
     for span in spans:
         ewa_column = f"ewa_{span}"
         df[ewa_column] = df["close"].ewm(span=span).mean()
@@ -187,7 +189,6 @@ def ewa_compute(df, spans=[10, 20, 50]):
 
 @njit(cache=True)
 def fit_ou_process_nb(ts):
-    n = len(ts)
     delta_ts = ts[1:] - ts[:-1]
     ts_lagged = ts[:-1]
 
@@ -220,11 +221,11 @@ def calculate_half_life_nb(ts):
 
 
 def bollinger_bands_compute(df, period=20, k=2):
-    sma = df["close"].rolling(window=period).mean()
+    sma_result = df["close"].rolling(window=period).mean()
     std = df["close"].rolling(window=period).std()
 
-    upper_band = sma + (std * k)
-    lower_band = sma - (std * k)
+    upper_band = sma_result + (std * k)
+    lower_band = sma_result - (std * k)
 
     df["bollinger_upper"] = upper_band
     df["bollinger_lower"] = lower_band
@@ -269,18 +270,22 @@ def macd_compute(df):
 @njit(cache=True)
 def retrieve_number_of_crossings_nb(prices_arr):
     prices_arr_dem = prices_arr - np.mean(prices_arr)
-    return np.sum(prices_arr_dem[1:] * prices_arr_dem[:-1] < 0.0)
+    return np.sum((prices_arr_dem[1:] * prices_arr_dem[:-1]) < 0.0)
 
 
 @njit(cache=True)
 def skewness_nb(ts_arr):
-    demeaned_ts = (ts_arr - np.mean(ts_arr)) / np.std(ts_arr)
+    mean_val = np.mean(ts_arr)
+    std_val = np.std(ts_arr)
+    demeaned_ts = (ts_arr - mean_val) / std_val
     return np.mean(np.power(demeaned_ts, 3))
 
 
 @njit(cache=True)
 def kurtosis_nb(ts_arr):
-    demeaned_ts = (ts_arr - np.mean(ts_arr)) / np.std(ts_arr)
+    mean_val = np.mean(ts_arr)
+    std_val = np.std(ts_arr)
+    demeaned_ts = (ts_arr - mean_val) / std_val
     return np.mean(np.power(demeaned_ts, 4))
 
 
@@ -525,7 +530,7 @@ def is_valid_fvg(arr):
         return 0
 
     # Check if the close of the last candle is in the gap between the high of the first candle and the low of the third candle
-    if not (arr[-1, 2] < arr[2, 2] and arr[-1, 2] > arr[0, 1]):
+    if not (arr[0, 1] < arr[-1, 2] < arr[2, 2]):
         return 0
 
     # Check if the second candle is bullish and the third candle is bearish
@@ -548,6 +553,7 @@ def get_second_monday_open_ffill(ohlc_df, index_to_refill):
 
     Parameters:
         ohlc_df (pd.DataFrame): Daily OHLC DataFrame with a datetime index and an 'open' column.
+        index_to_refill (pd.Index): Index to which the returned Series will be reindexed and forward-filled.
 
     Returns:
         pd.Series: Series with the same index as ohlc_df, containing forward-filled second Monday 'open' prices.

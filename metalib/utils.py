@@ -1,7 +1,7 @@
 from numba import njit, prange
 from metalib.fastfinance import *
 import numpy as np
-import os 
+import os
 import pandas as pd
 import MetaTrader5 as mt5
 
@@ -68,10 +68,11 @@ def assign_cat(val):
     :param val: float
     :return: int
     """
-    if val < 0.:
+    if val < 0.0:
         return 0
     else:
         return 1
+
 
 def load_hist_data(symbol, year):
     """
@@ -85,15 +86,17 @@ def load_hist_data(symbol, year):
         current_directory = os.path.dirname(os.path.realpath(__file__))
         # Fix the path construction to use os.path.join exclusively
         directory = os.path.join(current_directory, "data", symbol.lower())
-        colnames = ['date', 'time', 'open', 'high', 'low', 'close', 'volume']
-        
+        colnames = ["date", "time", "open", "high", "low", "close", "volume"]
+
         for filename in os.listdir(directory):
-            if year in filename and filename.endswith('.csv'):
-                filepath = os.path.join(directory, filename)  # Ensure consistent path joining
+            if year in filename and filename.endswith(".csv"):
+                filepath = os.path.join(
+                    directory, filename
+                )  # Ensure consistent path joining
                 data = pd.read_csv(filepath, names=colnames, header=None)
-                data.loc[:, 'time'] = data.loc[:, 'date'] + ' ' + data.loc[:, 'time']
-                data.loc[:, 'time'] = pd.to_datetime(data.loc[:, 'time'])
-                return data.drop(columns=['date']).set_index('time')
+                data.loc[:, "time"] = data.loc[:, "date"] + " " + data.loc[:, "time"]
+                data.loc[:, "time"] = pd.to_datetime(data.loc[:, "time"])
+                return data.drop(columns=["date"]).set_index("time")
 
         return None
     except FileNotFoundError:
@@ -101,11 +104,13 @@ def load_hist_data(symbol, year):
     except Exception as e:
         print(f"An error occurred: {e}")
 
+
 def load_multiple_hist_data(symbols, year):
-    data = {symbol:load_hist_data(symbol, year) for symbol in symbols}
+    data = {symbol: load_hist_data(symbol, year) for symbol in symbols}
     common_index_ = common_index(list(data.values()))
-    return {k:v.loc[common_index_] for k, v in data.items()}
-	
+    return {k: v.loc[common_index_] for k, v in data.items()}
+
+
 def clean_args(args):
     # Convert timeframe string (e.g. "TIMEFRAME_M1") to actual mt5 constant
     if isinstance(args.get("timeframe"), str):
@@ -145,7 +150,7 @@ def split_dataframe(df, insample_days, outsample_days):
     business_days = pd.bdate_range(
         start=df.index.min().normalize(),
         end=df.index.max().normalize(),
-        freq='B'  # Business day frequency
+        freq="B",  # Business day frequency
     )
 
     # Filter to only business days that actually exist in our data
@@ -184,11 +189,15 @@ def split_dataframe(df, insample_days, outsample_days):
         outsample_end = available_days[outsample_end_idx]
 
         # Create in-sample dataframe (from start of insample_start day to end of insample_end day)
-        insample_end_of_day = insample_end + pd.DateOffset(days=1) - pd.Timedelta(minutes=1)
+        insample_end_of_day = (
+            insample_end + pd.DateOffset(days=1) - pd.Timedelta(minutes=1)
+        )
         insample_df = df.loc[insample_start:insample_end_of_day]
 
         # Create out-sample dataframe (from start of outsample_start day to end of outsample_end day)
-        outsample_end_of_day = outsample_end + pd.DateOffset(days=1) - pd.Timedelta(minutes=1)
+        outsample_end_of_day = (
+            outsample_end + pd.DateOffset(days=1) - pd.Timedelta(minutes=1)
+        )
         outsample_df = df.loc[outsample_start:outsample_end_of_day]
 
         # Only add if we have data for both periods
@@ -200,6 +209,7 @@ def split_dataframe(df, insample_days, outsample_days):
         current_idx += outsample_days
 
     return insample_dfs, outsample_dfs
+
 
 # Example usage:
 # train_samples, test_samples = split_dataframe(df, insample_days=30, outsample_days=5)
