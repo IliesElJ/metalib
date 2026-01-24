@@ -5,7 +5,7 @@ Handles all Dash callbacks for the MetaDAsh application
 
 from dash import Input, Output, State, html
 import dash_bootstrap_components as dbc
-from datetime import datetime
+from datetime import datetime, date
 import plotly.graph_objects as go
 import pandas as pd
 
@@ -38,9 +38,16 @@ from components import (
     render_status_tab,
     create_status_summary,
     create_status_table,
+    render_welcome_tab,
 )
 from components.log_tab import get_filtered_instances
+from components.detailed_tab import create_hourly_chart
 from utils.health_utils import get_all_strategy_statuses, get_health_summary
+
+
+# Default configuration
+DEFAULT_START_DATE = date(2025, 1, 1)
+DEFAULT_ACCOUNT_SIZE = 100000
 
 
 # Global storage for data
@@ -48,7 +55,7 @@ stored_data = {
     "history_orders": None,
     "history_deals": None,
     "merged_deals": None,
-    "account_size": 100000,
+    "account_size": DEFAULT_ACCOUNT_SIZE,
 }
 
 
@@ -57,53 +64,63 @@ def register_callbacks(app):
     Register all callbacks for the application
     """
 
-    @app.callback(
-        Output("connection-status", "children"),
-        Input("connect-btn", "n_clicks"),
-        prevent_initial_call=True,
-    )
-    def connect_mt5(n_clicks):
-        """Handle MT5 connection"""
-        if n_clicks:
-            success, message = initialize_mt5()
-            if success:
-                return dbc.Alert(message, color="success", className="status-alert")
-            else:
-                return dbc.Alert(message, color="danger", className="status-alert")
-        return ""
+    # ------------------------------
+    # Auto-startup data loading
+    # ------------------------------
 
     @app.callback(
         [
             Output("data-store", "data"),
-            Output("fetch-status", "children"),
+            Output("connection-status", "children"),
             Output("account-info-store", "data"),
         ],
-        [Input("fetch-btn", "n_clicks")],
-        [
-            State("start-date", "date"),
-            State("end-date", "date"),
-            State("account-size", "value"),
-        ],
-        prevent_initial_call=True,
+        [Input("startup-trigger", "n_intervals")],
+        prevent_initial_call=False,
     )
-    def fetch_data(n_clicks, start_date, end_date, account_size):
-        """Fetch trading data from MT5"""
-        if not n_clicks:
-            return None, "", None
+    def auto_load_data(n_intervals):
+        """Automatically connect to MT5 and load data on startup"""
+        if n_intervals == 0:
+            # First call - show loading status
+            return (
+                None,
+                dbc.Alert(
+                    "Connecting to MT5...",
+                    color="info",
+                    className="status-alert",
+                    dismissable=True,
+                ),
+                None,
+            )
 
-        # Convert dates
-        from_date = datetime.strptime(start_date, "%Y-%m-%d")
-        to_date = datetime.strptime(end_date, "%Y-%m-%d").replace(
-            hour=23, minute=59, second=59
-        )
+        # Connect to MT5
+        success, message = initialize_mt5()
+        if not success:
+            return (
+                None,
+                dbc.Alert(
+                    f"MT5 Connection Failed: {message}",
+                    color="danger",
+                    className="status-alert",
+                    dismissable=True,
+                ),
+                None,
+            )
 
-        # Get historical data
+        # Fetch data with defaults
+        from_date = datetime.combine(DEFAULT_START_DATE, datetime.min.time())
+        to_date = datetime.now().replace(hour=23, minute=59, second=59)
+
         history_orders, history_deals, error = get_historical_data(from_date, to_date)
 
         if error:
             return (
                 None,
-                dbc.Alert(error, color="danger", className="status-alert"),
+                dbc.Alert(
+                    f"Data Fetch Error: {error}",
+                    color="danger",
+                    className="status-alert",
+                    dismissable=True,
+                ),
                 None,
             )
 
@@ -111,7 +128,10 @@ def register_callbacks(app):
             return (
                 None,
                 dbc.Alert(
-                    "Failed to retrieve data", color="danger", className="status-alert"
+                    "Failed to retrieve trading data",
+                    color="danger",
+                    className="status-alert",
+                    dismissable=True,
                 ),
                 None,
             )
@@ -123,7 +143,10 @@ def register_callbacks(app):
             return (
                 None,
                 dbc.Alert(
-                    "No valid trades found", color="warning", className="status-alert"
+                    "No valid trades found in the specified period",
+                    color="warning",
+                    className="status-alert",
+                    dismissable=True,
                 ),
                 None,
             )
@@ -135,15 +158,20 @@ def register_callbacks(app):
         stored_data["history_orders"] = history_orders
         stored_data["history_deals"] = history_deals
         stored_data["merged_deals"] = merged_deals
-        stored_data["account_size"] = account_size
+        stored_data["account_size"] = DEFAULT_ACCOUNT_SIZE
 
-        message = (
-            f"✓ Retrieved {len(history_orders)} orders and {len(history_deals)} deals"
+        # Success message (will auto-dismiss)
+        success_message = dbc.Alert(
+            f"Loaded {len(history_orders)} orders, {len(history_deals)} deals",
+            color="success",
+            className="status-alert",
+            dismissable=True,
+            duration=4000,  # Auto-dismiss after 4 seconds
         )
 
         return (
             {"data_available": True},
-            dbc.Alert(message, color="success", className="status-alert"),
+            success_message,
             account_info,
         )
 
@@ -157,7 +185,10 @@ def register_callbacks(app):
     )
     def render_tab_content(active_tab, data, account_info):
         """Render content based on selected tab"""
-        # Status and Log tabs don't require MT5 data - they read from files
+        # Welcome, Status, and Log tabs don't require MT5 data
+        if active_tab == "welcome":
+            return render_welcome_tab()
+
         if active_tab == "status":
             return render_status_tab()
 
@@ -167,15 +198,24 @@ def register_callbacks(app):
         if data is None or not data.get("data_available", False):
             return html.Div(
                 [
-                    html.H4(
-                        "No Data Available", className="text-center text-muted mt-3"
+                    dbc.Spinner(
+                        color="primary",
+                        size="lg",
+                        spinner_style={"width": "3rem", "height": "3rem"},
                     ),
                     html.P(
-                        "Please connect to MT5 and fetch trading data to view analytics",
-                        className="text-center text-muted",
+                        "Loading trading data...",
+                        className="text-center text-muted mt-3",
+                        style={"fontSize": "14px"},
                     ),
                 ],
-                className="empty-state",
+                style={
+                    "display": "flex",
+                    "flexDirection": "column",
+                    "alignItems": "center",
+                    "justifyContent": "center",
+                    "minHeight": "300px",
+                },
             )
 
         merged_deals = stored_data["merged_deals"]
@@ -227,46 +267,27 @@ def register_callbacks(app):
         return create_detailed_metrics_figure(grouped_metrics, selected_metrics)
 
     @app.callback(
-        Output("hourly-graph", "figure"),
+        [
+            Output("hourly-graph", "figure"),
+            Output("hourly-stats", "children"),
+        ],
         [Input("strategy-dropdown", "value")],
         [State("data-store", "data")],
     )
     def update_hourly_graph(selected_strategy, data):
-        """Update hourly performance graph"""
+        """Update hourly performance graph and stats"""
         if not data or not selected_strategy:
-            return go.Figure()
+            return go.Figure(), html.Div()
 
         merged_deals = stored_data["merged_deals"]
-        account_size = stored_data["account_size"]
 
         if merged_deals is None:
-            return go.Figure()
+            return go.Figure(), html.Div()
 
-        # Calculate hourly performance
-        hourly_perf = calculate_hourly_performance(merged_deals, selected_strategy)
+        # Use the new create_hourly_chart function
+        fig, stats = create_hourly_chart(merged_deals, selected_strategy)
 
-        fig = go.Figure()
-
-        if not hourly_perf.empty:
-            fig.add_trace(
-                go.Bar(
-                    x=hourly_perf.index,
-                    y=hourly_perf["Average Profit by Trade"].fillna(0),
-                    name="Hourly Avg Profit",
-                    marker_color="#0066cc",
-                    hovertemplate="Hour: %{x}<br>Avg Profit: $%{y:.2f}<extra></extra>",
-                )
-            )
-
-        fig.update_layout(
-            title=f"Hourly Performance for {selected_strategy}",
-            xaxis_title="Hour of Day",
-            yaxis_title="Average Profit ($)",
-            template="plotly_white",
-            height=400,
-        )
-
-        return fig
+        return fig, stats
 
     @app.callback(
         Output("trades-table-container", "children"),
@@ -286,9 +307,6 @@ def register_callbacks(app):
             return html.Div("No data available", className="text-center text-muted")
 
         return create_trades_table(merged_deals, selected_bot)
-
-    # Add missing import at the top if needed
-    import dash_bootstrap_components as dbc
 
     # ------------------------------
     # Log Tab callbacks

@@ -11,6 +11,7 @@ def create_tabs_layout():
     """
     return dbc.Tabs(
         [
+            dbc.Tab(label="Accueil", tab_id="welcome"),
             dbc.Tab(label="Status Monitor", tab_id="status"),
             dbc.Tab(label="Overview", tab_id="overview"),
             dbc.Tab(label="Strategy Types", tab_id="strategy_types"),
@@ -21,6 +22,6 @@ def create_tabs_layout():
             dbc.Tab(label="Raw Data", tab_id="raw"),
         ],
         id="tabs",
-        active_tab="status",
+        active_tab="welcome",
         className="nav-tabs",
     )
