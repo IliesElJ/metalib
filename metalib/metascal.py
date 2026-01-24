@@ -13,14 +13,11 @@ import sys
 class MetaScale(MetaStrategy):
     """MetaTrader FVG (Fair Value Gap) Trading Strategy"""
 
-    def __init__(self,
-                 tag,
-                 risk_pct=0.005,
-                 config_dir="../config/prod"):
+    def __init__(self, tag, risk_pct=0.005, config_dir="../config/prod"):
         """
         Initialize the Position Sizing Strategy
         """
-        super().__init__([], 0, tag) # Init with empty symbols and timeframe
+        super().__init__([], 0, tag, 0)  # Init with empty symbols and timeframe
 
         print(f"{self.tag}::    Initializing MetaScaler strategy..")
         self.timeframe = mt5.TIMEFRAME_M15
@@ -30,15 +27,16 @@ class MetaScale(MetaStrategy):
         strategy_weights["metafvg"] = 20 / np.sqrt(48)
         strategy_weights["metago"] = np.sqrt(1.5)
         strategy_weights["metane"] = 10 / np.sqrt(12)
-        strategy_weights["metaga"] = 15 / np.sqrt(48)
+        strategy_weights["metaga"] = 30 / np.sqrt(48)
+        strategy_weights["metaob"] = np.sqrt(1)
 
         self.running_strategies = list(strategy_weights.keys())
-        self.strategy_weights   = strategy_weights
-        self.risk_pct           = risk_pct
-        self.balance            = mt5.account_info().balance
-        self.mu                 = self.balance * self.risk_pct
-        self.config_dir         = config_dir
-        self.weights            = None
+        self.strategy_weights = strategy_weights
+        self.risk_pct = risk_pct
+        self.balance = mt5.account_info().balance
+        self.mu = self.balance * self.risk_pct
+        self.config_dir = config_dir
+        self.weights = None
 
         print(f"{self.tag}::    Running strategies:     {self.running_strategies}")
         print(f"{self.tag}::    Risk percentage:        {self.risk_pct}")
@@ -68,13 +66,17 @@ class MetaScale(MetaStrategy):
         yaml_files = [f for f in os.listdir(config_dir) if f.endswith(".yaml")]
 
         for yaml_file in yaml_files:
-            strategy_name = os.path.splitext(yaml_file)[0]  # Get the file name without extension
+            strategy_name = os.path.splitext(yaml_file)[
+                0
+            ]  # Get the file name without extension
             yaml_path = os.path.join(config_dir, yaml_file)
 
-            with open(yaml_path, 'r') as file:
+            with open(yaml_path, "r") as file:
                 try:
                     data = yaml.safe_load(file)  # Safely load the YAML data
-                    instances += [(i["strategy_type"], i["symbols"][0]) for i in data.values()]
+                    instances += [
+                        (i["strategy_type"], i["symbols"][0]) for i in data.values()
+                    ]
 
                 except yaml.YAMLError as e:
                     raise ValueError(f"Error reading YAML file '{yaml_file}': {e}")
@@ -85,22 +87,45 @@ class MetaScale(MetaStrategy):
         return
 
     def _apply_mt5_tick_params(self, diff_df: pd.DataFrame):
+        """
+        Apply MT5 tick parameters to normalize price differences.
+
+        Args:
+            diff_df: DataFrame containing price differences for each symbol
+
+        Returns:
+            DataFrame with adjusted price differences based on tick value and size
+        """
         for symbol in self.symbols:
             symbol_info = mt5.symbol_info(symbol)
             tick_value = symbol_info.trade_tick_value
             tick_size = symbol_info.trade_tick_size
 
-            assert tick_size > 0, f"Tick size must be greater than 0, current value: {tick_size}"
-            assert tick_value > 0, f"Tick value must be greater than 0, current value: {tick_value}"
+            assert (
+                tick_size > 0
+            ), f"Tick size must be greater than 0, current value: {tick_size}"
+            assert (
+                tick_value > 0
+            ), f"Tick value must be greater than 0, current value: {tick_value}"
             print(f"{self.tag}::    Applying MT5 tick params for {symbol}")
             print(f"{self.tag}::    Tick value: {tick_value}, Tick size: {tick_size}")
-            diff_df.loc[:, symbol] = diff_df.loc[:, symbol].apply(lambda x: x * tick_value / tick_size)
+            diff_df.loc[:, symbol] = diff_df.loc[:, symbol].apply(
+                lambda x: x * tick_value / tick_size
+            )
         return diff_df
 
     def _fetch_strategies_cov(self) -> pd.DataFrame:
-        strategies_running_cov  = pd.DataFrame()
-        running_instances       = self.instances[self.instances["strategy_type"].isin(self.running_strategies)]
-        symbols_running_cov     = self.cov_assets
+        """
+        Calculate covariance matrix for running strategy instances.
+
+        Returns:
+            DataFrame containing the covariance matrix weighted by strategy weights
+        """
+        strategies_running_cov = pd.DataFrame()
+        running_instances = self.instances[
+            self.instances["strategy_type"].isin(self.running_strategies)
+        ]
+        symbols_running_cov = self.cov_assets
 
         for f_instance in running_instances.itertuples():
             for s_instance in running_instances.itertuples():
@@ -109,13 +134,29 @@ class MetaScale(MetaStrategy):
                 else:
                     f_symbol = f_instance[2]
                     s_symbol = s_instance[2]
-                    val = symbols_running_cov.loc[f_symbol, s_symbol] * self.strategy_weights[f_instance[1]] ** 2
+                    val = (
+                        symbols_running_cov.loc[f_symbol, s_symbol]
+                        * self.strategy_weights[f_instance[1]] ** 2
+                    )
                 strategies_running_cov.loc[f_instance, s_instance] = val
 
         self.running_instances = running_instances
         return strategies_running_cov
 
     def _run_optimization(self, Sigma: np.ndarray, mu: np.number) -> np.ndarray:
+        """
+        Run portfolio optimization to find optimal position sizes.
+
+        Args:
+            Sigma: Covariance matrix of strategies
+            mu: Target risk amount
+
+        Returns:
+            Optimized weight vector
+
+        Raises:
+            ValueError: If optimization fails to converge
+        """
         n_instances = len(self.running_instances)
         assert Sigma.shape[0] > 0, "Sigma matrix is empty"
         assert n_instances > 0, "No running instances found"
@@ -133,8 +174,7 @@ class MetaScale(MetaStrategy):
 
         prob = cx.Problem(
             cx.Minimize(cx.quad_form(w, Sigma)),
-            [cx.sum(cx.multiply(w, sigma_diag)) == mu,
-             w >= 0],
+            [cx.sum(cx.multiply(w, sigma_diag)) == mu, w >= 0],
         )
         prob.solve()
         if prob.status == "optimal":
@@ -143,7 +183,6 @@ class MetaScale(MetaStrategy):
         else:
             raise ValueError("Optimization failed..")
 
-
     def fit(self):
         print(f"{self.tag}::    Starting the MetaScaler fit!!..")
         # Pulling YAML configs
@@ -151,12 +190,14 @@ class MetaScale(MetaStrategy):
         print(f"{self.tag}::    Running symbols: {self.symbols}")
 
         # Load the last 92 days of data
-        utc = pytz.timezone('UTC')
+        utc = pytz.timezone("UTC")
         # Get the current time in UTC
         end_time = datetime.now(utc)
         start_time = end_time - timedelta(days=92)
         # Set the time components to 0 (midnight) and maintain the timezone
-        end_time = end_time.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(utc)
+        end_time = end_time.replace(
+            hour=0, minute=0, second=0, microsecond=0
+        ).astimezone(utc)
         start_time = start_time.astimezone(utc)
 
         # Pulling last days of data
@@ -168,14 +209,16 @@ class MetaScale(MetaStrategy):
         price_diffs = data.diff()
         price_diffs_adj = self._apply_mt5_tick_params(price_diffs)
         # Compute daily covariance of price differences
-        self.cov_assets = price_diffs_adj.cov() * 4 * 24 # Assuming 15-minute bars
+        self.cov_assets = price_diffs_adj.cov() * 4 * 24  # Assuming 15-minute bars
         self.cov_strategies = self._fetch_strategies_cov()
 
         # Run optimization and save rounded weights
         Sigma = self.cov_strategies.values
         weights = self._run_optimization(Sigma, self.mu)
         weights = np.round(weights.value, 2)
-        self.weights = {tuple(k): v for k, v in zip(self.running_instances.values, weights)}
+        self.weights = {
+            tuple(k): v for k, v in zip(self.running_instances.values, weights)
+        }
         print(f"{self.tag}::    Weights: {self.weights}")
 
         # Write changes to yaml config files
@@ -203,14 +246,22 @@ class MetaScale(MetaStrategy):
                             weight = self.weights[(strategy_type, asset)]
                             data[instance]["size_position"] = float(weight)
                         else:
-                            print(f"{self.tag}::    Strategy {instance['strategy_type']} not running..")
+                            print(
+                                f"{self.tag}::    Strategy {instance['strategy_type']} not running.."
+                            )
                     if write_yaml:
                         file.seek(0)  # Go to the start of the file
-                        yaml.dump(data, file,  default_flow_style=False)  # Write updated data
+                        yaml.dump(
+                            data, file, default_flow_style=False
+                        )  # Write updated data
                         file.truncate()  # Remove any leftover content
-                        print(f"{self.tag}::    Changes written to YAML file '{yaml_file}'")
+                        print(
+                            f"{self.tag}::    Changes written to YAML file '{yaml_file}'"
+                        )
                 except Exception as e:
-                    print(f"{self.tag}::    Error writing to YAML file '{yaml_file}': {e}")
+                    print(
+                        f"{self.tag}::    Error writing to YAML file '{yaml_file}': {e}"
+                    )
 
     def signals(self):
         return

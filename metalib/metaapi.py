@@ -10,6 +10,7 @@ warnings.filterwarnings("ignore")
 app = FastAPI()
 controller = MetaController()
 
+
 def start_strategy_instances(metacontroller) -> Dict[str, Any]:
     """
     Start strategy instances based on configurations from all YAML files in CONFIG_PATH.
@@ -36,12 +37,14 @@ def start_strategy_instances(metacontroller) -> Dict[str, Any]:
             for strategy_name, config in strategy_configs.items():
                 strategy_type = config.pop("strategy_type")
                 init_args = config.copy()
-                message, pid, running = metacontroller.start_script(strategy_type, init_args)
+                message, pid, running = metacontroller.start_script(
+                    strategy_type, init_args
+                )
 
                 instances[strategy_name] = {
                     "Message": message,
                     "PID": pid,
-                    "Running": running
+                    "Running": running,
                 }
 
         return instances
@@ -57,27 +60,31 @@ def start_strategy_instances(metacontroller) -> Dict[str, Any]:
 def start_stored_instances():
     print("API::Starting stored instances")
     return start_strategy_instances(controller)
+
+
 @app.get("/")
 def read_root():
     return {"Meta": "API"}
+
+
 @app.get("/list")
 def list():
     return controller.list_processes()
+
+
 @app.get("/stop/{tag}")
 def stop(tag: str):
     return controller.stop_instance(tag)
+
+
 @app.get("/stop_all_running")
 def stop(tag: str):
     return controller.stop_all_running()
+
+
 @app.get("/start")
 async def start(request: Request):
     query_params = dict(request.query_params)
     strategy_type = query_params.pop("strategy_type")
     init_args = query_params.copy()
     return controller.start_script(strategy_type, init_args)
-
-
-
-
-
-

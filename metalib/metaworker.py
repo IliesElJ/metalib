@@ -24,8 +24,8 @@ strategy_registry = {
             "size_position",
             "active_hours",
             "risk_factor",
-            "mode"
-        ]
+            "mode",
+        ],
     },
     "metane": {
         "class": MetaNE,
@@ -43,8 +43,8 @@ strategy_registry = {
             "don_lag",
             "ewma_ewm_span",
             "time_ewm_span",
-            "ols_window"
-        ]
+            "ols_window",
+        ],
     },
     "metaga": {
         "class": MetaGA,
@@ -57,8 +57,8 @@ strategy_registry = {
             "low_length",
             "mid_length",
             "high_length",
-            "prob_bound"
-        ]
+            "prob_bound",
+        ],
     },
     "metago": {
         "class": MetaGO,
@@ -68,8 +68,8 @@ strategy_registry = {
             "tag",
             "size_position",
             "active_hours",
-            "mean_rev_tf"
-        ]
+            "mean_rev_tf",
+        ],
     },
     "metahar": {
         "class": MetaHAR,
@@ -81,8 +81,8 @@ strategy_registry = {
             "size_position",
             "active_hours",
             "short_factor",
-            "long_factor"
-        ]
+            "long_factor",
+        ],
     },
     "metafvg": {
         "class": MetaFVG,
@@ -92,24 +92,24 @@ strategy_registry = {
             "tag",
             "size_position",
             "limit_number_position",
-        ]
+        ],
     },
     "metaob": {
-            "class": MetaOB,
-            "init_keys": [
-                "symbols",
-                "timeframe",
-                "tag",
-                "size_position",
-                "pivot_window",
-                "breakout_lookback",
-                "sma_short_hours",
-                "sma_long_hours",
-                "atr_period",
-                "sl_atr_mult",
-                "tp_atr_mult"
-            ]
-        },
+        "class": MetaOB,
+        "init_keys": [
+            "symbols",
+            "timeframe",
+            "tag",
+            "size_position",
+            "pivot_window",
+            "breakout_lookback",
+            "sma_short_hours",
+            "sma_long_hours",
+            "atr_period",
+            "sl_atr_mult",
+            "tp_atr_mult",
+        ],
+    },
 }
 
 timeframe_mapping = {
@@ -122,8 +122,9 @@ timeframe_mapping = {
     mt5.TIMEFRAME_M30: 30,
     mt5.TIMEFRAME_H1: 60,
     mt5.TIMEFRAME_H4: 240,
-    mt5.TIMEFRAME_D1: 60*24,
+    mt5.TIMEFRAME_D1: 60 * 24,
 }
+
 
 def run_strategy_loop(strategy_type, init_args):
     strategy_info = strategy_registry.get(strategy_type)

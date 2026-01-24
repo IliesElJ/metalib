@@ -5,9 +5,29 @@ import pandas as pd
 import pytz
 import numpy as np
 from metalib.metastrategy import MetaStrategy
+from metalib.indicators import (
+    rolling_mean_nb,
+    pct_change_nb,
+    rolling_sharpe_nb,
+    rolling_min_shift1_nb,
+    rolling_max_shift1_nb,
+    true_range_nb,
+    order_blocks_nb,
+    crosses_nb,
+)
 
 
 class MetaOB(MetaStrategy):
+    """
+    Order Block trading strategy that uses pivot breakouts and order blocks for entry signals.
+
+    This strategy combines technical analysis concepts including:
+    - Order blocks (bullish/bearish patterns)
+    - Pivot point breakouts
+    - Trend filtering using rolling Sharpe ratio
+    - ATR-based stop loss and take profit levels
+    """
+
     def __init__(
         self,
         symbols,
@@ -41,7 +61,8 @@ class MetaOB(MetaStrategy):
         self.sl = None
         self.tp = None
         self.signalData = None
-        self.sharpe_threshold = None
+        self.sharpe_threshold_long = None
+        self.sharpe_threshold_short = None
         self.telegram = True
         self.logger = logging.getLogger(__name__)
 
@@ -61,11 +82,13 @@ class MetaOB(MetaStrategy):
             self.calculate_stops(ohlc, indicators, long_signal)
 
         # Set state
-        if long_signal and not self.are_positions_with_tag_open(position_type="buy"):
+        if (
+            long_signal
+        ):  # and not self.are_positions_with_tag_open(position_type="buy"):
             self.state = 1
-        elif short_signal and not self.are_positions_with_tag_open(
-            position_type="sell"
-        ):
+        elif (
+            short_signal
+        ):  # and not self.are_positions_with_tag_open(position_type="sell" ):
             self.state = -1
         else:
             self.state = 0
@@ -80,46 +103,57 @@ class MetaOB(MetaStrategy):
         signal_line["short_signal"] = short_signal
         self.signalData = signal_line
 
-    def calculate_indicators(self, ohlc):
-        """Calculate all technical indicators"""
+    def calculate_indicators(self, ohlc: pd.DataFrame) -> pd.DataFrame:
+        """
+        Calculate all technical indicators needed for the strategy.
+
+        Args:
+            ohlc: DataFrame with OHLC price data
+
+        Returns:
+            DataFrame with calculated indicators including SMAs, Sharpe ratio, pivots, ATR, and order blocks
+        """
         indicators = pd.DataFrame(index=ohlc.index)
 
-        # Price data
-        o, h, l, c = ohlc["open"], ohlc["high"], ohlc["low"], ohlc["close"]
+        o = ohlc["open"].to_numpy(dtype=np.float64)
+        h = ohlc["high"].to_numpy(dtype=np.float64)
+        l = ohlc["low"].to_numpy(dtype=np.float64)
+        c = ohlc["close"].to_numpy(dtype=np.float64)
+
         indicators["close"] = c
 
-        # SMAs
-        indicators["sma_short"] = c.rolling(self.sma_short_hours).mean()
-        indicators["sma_long"] = c.rolling(self.sma_long_hours).mean()
-        # indicators["uptrend"] = indicators["sma_short"] > indicators["sma_long"]
+        # SMAs (sequential rolling sum)
+        indicators["sma_short"] = rolling_mean_nb(c, int(self.sma_short_hours))
+        indicators["sma_long"] = rolling_mean_nb(c, int(self.sma_long_hours))
 
-        # Rolling Sharpe
-        indicators["rolling_sharpe"] = (
-            c.pct_change()
-            .rolling(self.sma_long_hours)
-            .apply(lambda x: np.mean(x) / np.std(x))
-        )
-        indicators["uptrend"] = indicators["rolling_sharpe"] > self.sharpe_threshold
+        # Rolling Sharpe (sequential, but returns computed in parallel)
+        rets = pct_change_nb(c)
+        rolling_sh = rolling_sharpe_nb(rets, int(self.sma_long_hours))
+        indicators["rolling_sharpe"] = rolling_sh
 
-        # Pivot points
-        indicators["pivot_low"] = l.rolling(self.pivot_window).min().shift(1)
-        indicators["pivot_high"] = h.rolling(self.pivot_window).max().shift(1)
+        indicators["uptrend"] = rolling_sh > float(self.sharpe_threshold_long)
+        indicators["downtrend"] = rolling_sh < float(self.sharpe_threshold_short)
 
-        # ATR
-        prev_c = c.shift(1)
-        tr = pd.concat([h - l, (h - prev_c).abs(), (l - prev_c).abs()], axis=1).max(
-            axis=1
-        )
-        indicators["atr"] = tr.rolling(window=self.atr_period).mean()
+        # Pivot points (parallel, good candidate)
+        w = int(self.pivot_window)
+        pivot_low = rolling_min_shift1_nb(l, w)
+        pivot_high = rolling_max_shift1_nb(h, w)
+        indicators["pivot_low"] = pivot_low
+        indicators["pivot_high"] = pivot_high
 
-        # Order blocks
-        o_1, h_1, l_1, c_1 = o.shift(1), h.shift(1), l.shift(1), c.shift(1)
-        indicators["bull_ob"] = (c > o) & (o_1 > c_1) & (h > h_1)
-        indicators["bear_ob"] = (c < o) & (o_1 < c_1) & (l < l_1)
+        # ATR: TR parallel, rolling mean sequential
+        tr = true_range_nb(h, l, c)
+        indicators["atr"] = rolling_mean_nb(tr, int(self.atr_period))
 
-        # Pivot crosses
-        indicators["cross_below_pivot"] = l < indicators["pivot_low"]
-        indicators["cross_above_pivot"] = h > indicators["pivot_high"]
+        # Order blocks (parallel)
+        bull_ob, bear_ob = order_blocks_nb(o, h, l, c)
+        indicators["bull_ob"] = bull_ob
+        indicators["bear_ob"] = bear_ob
+
+        # Crosses (parallel)
+        cross_below, cross_above = crosses_nb(l, h, pivot_low, pivot_high)
+        indicators["cross_below_pivot"] = cross_below
+        indicators["cross_above_pivot"] = cross_above
 
         return indicators
 
@@ -156,7 +190,7 @@ class MetaOB(MetaStrategy):
         bear_ob = indicators["bear_ob"].iloc[-1]
 
         # Trend filter
-        downtrend = not indicators["uptrend"].iloc[-1]
+        downtrend = indicators["downtrend"].iloc[-1]
 
         # Combine conditions
         return cross_pivot.iloc[-1] and bear_ob and downtrend
@@ -214,7 +248,7 @@ class MetaOB(MetaStrategy):
         print(f"SMA Short: {indicators['sma_short'].iloc[-1]:.5f}")
         print(f"SMA Long: {indicators['sma_long'].iloc[-1]:.5f}")
         print(
-            f"Sharpe Ratio: {indicators['rolling_sharpe'].iloc[-1]:.5f} vs Threshold: {self.sharpe_threshold:.5f}"
+            f"Sharpe Ratio: {indicators['rolling_sharpe'].iloc[-1]:.5f} vs Threshold: {self.sharpe_threshold_long:.5f}/{self.sharpe_threshold_short:.5f}"
         )
         print(f"Uptrend: {indicators['uptrend'].iloc[-1]}")
         print(f"Bull OB: {indicators['bull_ob'].iloc[-1]}")
@@ -248,9 +282,13 @@ class MetaOB(MetaStrategy):
             .rolling(self.sma_long_hours)
             .apply(lambda x: np.mean(x) / np.std(x))
         )
-        self.sharpe_threshold = rolling_sharpe.quantile(0.75)
+        self.sharpe_threshold_long = rolling_sharpe.quantile(0.75)
+        self.sharpe_threshold_short = rolling_sharpe.quantile(0.25)
         print(
-            f"{self.tag}:: Sharpe Uptrend quantile is: {round(self.sharpe_threshold, 4)}"
+            f"{self.tag}:: Sharpe Uptrend quantile is: {round(self.sharpe_threshold_long, 4)}"
+        )
+        print(
+            f"{self.tag}:: Sharpe Downtrend quantile is: {round(self.sharpe_threshold_short, 4)}"
         )
         return
 

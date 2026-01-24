@@ -11,33 +11,36 @@ from metalib.metastrategy import MetaStrategy
 
 class MetaHAR(MetaStrategy):
 
-    def __init__(   self, 
-                    symbols,
-                    predicted_symbol,
-                    timeframe, 
-                    tag, 
-                    active_hours, 
-                    short_factor=60,
-                    long_factor=8*60,
-                ):
+    def __init__(
+        self,
+        symbols,
+        predicted_symbol,
+        timeframe,
+        tag,
+        active_hours,
+        short_factor=60,
+        long_factor=8 * 60,
+    ):
         super().__init__(symbols, timeframe, tag, active_hours)
-        
+
         if not (short_factor < long_factor):
             raise ValueError("Length parameters should be ordered.")
 
         if not (predicted_symbol in symbols):
-            raise ValueError("Predicted symbol should be in the list of symbols to be used for training the model.")
+            raise ValueError(
+                "Predicted symbol should be in the list of symbols to be used for training the model."
+            )
 
-        self.indicators     = None
-        self.model          = None
-        self.short_factor   = short_factor
-        self.long_factor    = long_factor
+        self.indicators = None
+        self.model = None
+        self.short_factor = short_factor
+        self.long_factor = long_factor
         self.predicted_symbol = predicted_symbol
-        self.telegram       = True
-        self.logger         = logging.getLogger(__name__)
+        self.telegram = True
+        self.logger = logging.getLogger(__name__)
 
     TRAINING_PERIOD_DAYS = 66
-    UTC_TIMEZONE = 'UTC'
+    UTC_TIMEZONE = "UTC"
     RESAMPLE_FREQUENCY = "1t"
 
     def signals(self) -> None:
@@ -53,7 +56,6 @@ class MetaHAR(MetaStrategy):
         # Make predictions
         volatility_predictions = self.model.predict(recent_indicators)
 
-
         # Update strategy state
         self._update_strategy_state(recent_indicators, volatility_predictions)
 
@@ -63,26 +65,36 @@ class MetaHAR(MetaStrategy):
     def _get_processed_closes(self) -> pd.DataFrame:
         """Transform raw close prices into resampled DataFrame."""
         closes_dict = dict(map(lambda kv: (kv[0], kv[1].close), self.data.items()))
-        return pd.DataFrame(closes_dict).resample(
-            "1t",
-            closed="right",
-            label="right"
-        ).last().dropna()
+        return (
+            pd.DataFrame(closes_dict)
+            .resample("1t", closed="right", label="right")
+            .last()
+            .dropna()
+        )
 
-    def _update_strategy_state(self, indicators: pd.DataFrame, predictions: np.ndarray) -> None:
+    def _update_strategy_state(
+        self, indicators: pd.DataFrame, predictions: np.ndarray
+    ) -> None:
         """Update internal strategy state with new data."""
-        print(f"{self.tag}::: Open positions for strategy: {self.tag}: {self.are_positions_with_tag_open()}")
+        print(
+            f"{self.tag}::: Open positions for strategy: {self.tag}: {self.are_positions_with_tag_open()}"
+        )
 
         self.state = 0
         self.signals_data = indicators.iloc[[-1]]
         self.predicted_vol_diff = predictions
-        self.realized_previous_diff = indicators[f"short_scale_std_{self.predicted_symbol}"].diff().dropna().iloc[:1]
+        self.realized_previous_diff = (
+            indicators[f"short_scale_std_{self.predicted_symbol}"]
+            .diff()
+            .dropna()
+            .iloc[:1]
+        )
         self.timestamp = indicators.index[-1]
 
     def _process_predictions(self) -> None:
         """
         Process prediction results and store them in signalData.
-        
+
         This method:
         1. Retrieves previous predictions (if available)
         2. Calculates the difference between predicted and realized values
@@ -108,10 +120,15 @@ class MetaHAR(MetaStrategy):
             "timestamp": self.timestamp,
             "prediction": float(self.predicted_vol_diff[-1]),
             "realized_diff": float(self.realized_previous_diff),
-            "prediction_realized_difference": prediction_diff if prediction_diff is not None else 0.0,
-            "same_sign": int(np.sign(self.predicted_vol_diff[-1]) == np.sign(self.realized_previous_diff))
+            "prediction_realized_difference": (
+                prediction_diff if prediction_diff is not None else 0.0
+            ),
+            "same_sign": int(
+                np.sign(self.predicted_vol_diff[-1])
+                == np.sign(self.realized_previous_diff)
+            ),
         }
-        
+
         # Add all indicator values as individual fields
         for col, value in self.signals_data.iloc[-1].items():
             # Ensure values are simple types (int, float, bool, or string)
@@ -125,7 +142,7 @@ class MetaHAR(MetaStrategy):
                     prediction_data[col] = float(value)
                 except (ValueError, TypeError):
                     prediction_data[col] = str(value)
-        
+
         # Save to signalData
         self.signalData = pd.Series(prediction_data)
 
@@ -163,16 +180,14 @@ class MetaHAR(MetaStrategy):
     def prepare_training_data(self, raw_data: Dict) -> Tuple[pd.DataFrame, pd.Series]:
         """Prepare features and target variable for model training."""
         # Extract closing prices
-        closes = pd.DataFrame({
-            symbol: data.close for symbol, data in raw_data.items()
-        })
+        closes = pd.DataFrame({symbol: data.close for symbol, data in raw_data.items()})
 
         # Resample and clean data
-        resampled_closes = closes.resample(
-            self.RESAMPLE_FREQUENCY,
-            closed="right",
-            label="right"
-        ).last().dropna()
+        resampled_closes = (
+            closes.resample(self.RESAMPLE_FREQUENCY, closed="right", label="right")
+            .last()
+            .dropna()
+        )
 
         # Generate features and target
         indicators = self.retrieve_indicators(resampled_closes)
@@ -184,9 +199,7 @@ class MetaHAR(MetaStrategy):
         )
 
         # Align features with target
-        features = indicators.loc[
-                   indicators.index.intersection(target.index), :
-                   ]
+        features = indicators.loc[indicators.index.intersection(target.index), :]
         target = target.loc[target.index]
 
         return features, target
@@ -217,36 +230,39 @@ class MetaHAR(MetaStrategy):
         COLUMN_PREFIXES = {
             # 'long_corr_': 'long_factor_log_corr',
             # 'short_corr_': 'short_factor_log_corr',
-            'long_scale_std_': 'long_scale_std',
-            'short_scale_std_': 'short_scale_std',
-            'trend_ewm_short_factor_': 'trend_ewm_short_factor',
-            'trend_ewm_long_factor_': 'trend_ewm_long_factor',
-            'sq_ret_ewm_short_factor_': 'sq_ret_ewm_short_factor',
-            'sq_ret_ewm_long_factor_': 'sq_ret_ewm_long_factor',
+            "long_scale_std_": "long_scale_std",
+            "short_scale_std_": "short_scale_std",
+            "trend_ewm_short_factor_": "trend_ewm_short_factor",
+            "trend_ewm_long_factor_": "trend_ewm_long_factor",
+            "sq_ret_ewm_short_factor_": "sq_ret_ewm_short_factor",
+            "sq_ret_ewm_long_factor_": "sq_ret_ewm_long_factor",
         }
 
         def calculate_rolling_correlations(price_data):
-            fx_rolling_log_corr = price_data.rolling(
-                self.short_factor,
-                method="table"
-            ).apply( corr_eigenvalues, engine='numba', raw=True).dropna()
-
-            long_factor_log_corr = fx_rolling_log_corr.rolling(self.long_factor).apply(
-                lambda x: np.median(x), engine='numba', raw=True
+            fx_rolling_log_corr = (
+                price_data.rolling(self.short_factor, method="table")
+                .apply(corr_eigenvalues, engine="numba", raw=True)
+                .dropna()
             )
 
-            short_factor_log_corr = (fx_rolling_log_corr - long_factor_log_corr).rolling(
-                self.short_factor
-            ).apply(lambda x: np.median(x), engine='numba', raw=True)
+            long_factor_log_corr = fx_rolling_log_corr.rolling(self.long_factor).apply(
+                lambda x: np.median(x), engine="numba", raw=True
+            )
+
+            short_factor_log_corr = (
+                (fx_rolling_log_corr - long_factor_log_corr)
+                .rolling(self.short_factor)
+                .apply(lambda x: np.median(x), engine="numba", raw=True)
+            )
 
             return long_factor_log_corr, short_factor_log_corr
 
         def calculate_scale_std(price_data):
             long_scale = price_data.rolling(self.long_factor).apply(
-                log_var, engine='numba', raw=True
+                log_var, engine="numba", raw=True
             )
             short_scale = price_data.rolling(self.short_factor).apply(
-                log_var, engine='numba', raw=True
+                log_var, engine="numba", raw=True
             )
             return long_scale, short_scale
 
@@ -254,28 +270,41 @@ class MetaHAR(MetaStrategy):
             trend_short = returns.ewm(halflife=self.short_factor).mean()
             trend_long = returns.ewm(halflife=self.long_factor).mean()
 
-            squared_returns = returns.apply(lambda x: x ** 2, engine="numba", raw=True)
+            squared_returns = returns.apply(lambda x: x**2, engine="numba", raw=True)
             sq_ret_short = squared_returns.ewm(halflife=self.short_factor).mean()
             sq_ret_long = squared_returns.ewm(halflife=self.long_factor).mean()
 
             return trend_short, trend_long, sq_ret_short, sq_ret_long
 
         def calculate_asym_std(log_returns):
-            downside_squared_returns = log_returns.where(log_returns < 0, 0).apply(lambda x: x ** 2, engine="numba",
-                                                                                   raw=True)
-            upside_squared_returns = log_returns.where(log_returns > 0, 0).apply(lambda x: x ** 2, engine="numba",
-                                                                                 raw=True)
+            downside_squared_returns = log_returns.where(log_returns < 0, 0).apply(
+                lambda x: x**2, engine="numba", raw=True
+            )
+            upside_squared_returns = log_returns.where(log_returns > 0, 0).apply(
+                lambda x: x**2, engine="numba", raw=True
+            )
 
             # EWM of realized semi-variances (HAR-RSV style)
-            downside_vol_ewm_short = downside_squared_returns.ewm(halflife=self.short_factor).mean()
-            upside_vol_ewm_short = upside_squared_returns.ewm(halflife=self.short_factor).mean()
+            downside_vol_ewm_short = downside_squared_returns.ewm(
+                halflife=self.short_factor
+            ).mean()
+            upside_vol_ewm_short = upside_squared_returns.ewm(
+                halflife=self.short_factor
+            ).mean()
 
-            downside_vol_ewm_long = downside_squared_returns.ewm(halflife=self.long_factor).mean()
-            upside_vol_ewm_long = upside_squared_returns.ewm(halflife=self.long_factor).mean()
+            downside_vol_ewm_long = downside_squared_returns.ewm(
+                halflife=self.long_factor
+            ).mean()
+            upside_vol_ewm_long = upside_squared_returns.ewm(
+                halflife=self.long_factor
+            ).mean()
 
-            return downside_vol_ewm_short, downside_vol_ewm_long, upside_vol_ewm_short, upside_vol_ewm_long
-
-
+            return (
+                downside_vol_ewm_short,
+                downside_vol_ewm_long,
+                upside_vol_ewm_short,
+                upside_vol_ewm_long,
+            )
 
         # Calculate base metrics
         price_series = close_df
@@ -284,8 +313,12 @@ class MetaHAR(MetaStrategy):
         # Calculate all indicators
         # long_corr, short_corr = calculate_rolling_correlations(price_series)
         long_std, short_std = calculate_scale_std(price_series)
-        trend_short, trend_long, sq_ret_short, sq_ret_long = calculate_ewm_indicators(log_returns)
-        downside_short, downside_long, upside_short, upside_long = calculate_asym_std(log_returns)
+        trend_short, trend_long, sq_ret_short, sq_ret_long = calculate_ewm_indicators(
+            log_returns
+        )
+        downside_short, downside_long, upside_short, upside_long = calculate_asym_std(
+            log_returns
+        )
 
         # Validate unique indices
         for name, df in [
@@ -302,28 +335,32 @@ class MetaHAR(MetaStrategy):
                 raise IndexError(f"Duplicates found in {name}")
 
         # Combine all indicators
-        indicators = pd.concat([
-            # long_corr.add_prefix("long_corr_"),
-            # short_corr.add_prefix("short_corr_"),
-            long_std.add_prefix("long_scale_std_").apply(np.log),
-            short_std.add_prefix("short_scale_std_").apply(np.log),
-            trend_short.add_prefix("trend_ewm_short_factor_"),
-            trend_long.add_prefix("trend_ewm_long_factor_"),
-            sq_ret_short.add_prefix("sq_ret_ewm_short_factor_"),
-            sq_ret_long.add_prefix("sq_ret_ewm_long_factor_"),
-            downside_short.add_prefix("downside_ewm_short_factor_"),
-            downside_long.add_prefix("downside_ewm_long_factor_"),
-            upside_short.add_prefix("upside_ewm_short_factor_"),
-            upside_long.add_prefix("upside_ewm_long_factor_")
-        ], axis=1).dropna()
-        indicators.loc[:, 'const'] = 1
+        indicators = pd.concat(
+            [
+                # long_corr.add_prefix("long_corr_"),
+                # short_corr.add_prefix("short_corr_"),
+                long_std.add_prefix("long_scale_std_").apply(np.log),
+                short_std.add_prefix("short_scale_std_").apply(np.log),
+                trend_short.add_prefix("trend_ewm_short_factor_"),
+                trend_long.add_prefix("trend_ewm_long_factor_"),
+                sq_ret_short.add_prefix("sq_ret_ewm_short_factor_"),
+                sq_ret_long.add_prefix("sq_ret_ewm_long_factor_"),
+                downside_short.add_prefix("downside_ewm_short_factor_"),
+                downside_long.add_prefix("downside_ewm_long_factor_"),
+                upside_short.add_prefix("upside_ewm_short_factor_"),
+                upside_long.add_prefix("upside_ewm_long_factor_"),
+            ],
+            axis=1,
+        ).dropna()
+        indicators.loc[:, "const"] = 1
 
         # Resample and clean data
-        resampled_indicators = indicators.resample(
-            f"{self.short_factor}t",
-            closed="right",
-            label="right"
-        ).last().replace([np.inf, -np.inf], np.nan).dropna()
+        resampled_indicators = (
+            indicators.resample(f"{self.short_factor}t", closed="right", label="right")
+            .last()
+            .replace([np.inf, -np.inf], np.nan)
+            .dropna()
+        )
 
         resampled_indicators.index = pd.to_datetime(resampled_indicators.index)
         resampled_indicators.columns = resampled_indicators.columns.astype(str)

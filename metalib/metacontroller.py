@@ -2,6 +2,7 @@ from multiprocessing import Process
 from metalib.metaworker import run_strategy_loop
 from metalib.utils import clean_args
 
+
 class MetaController:
     def __init__(self):
         self.processes = {}  # script_name -> subprocess.Popen object
@@ -15,7 +16,7 @@ class MetaController:
         p.start()
         self.processes[tag] = p
 
-        #process = subprocess.Popen(["python", path])
+        # process = subprocess.Popen(["python", path])
         try:
             p = Process(target=run_strategy_loop, args=(strategy_type, init_args))
             message = f"Started {strategy_type} instance with PID {p.pid} and tag {tag}"

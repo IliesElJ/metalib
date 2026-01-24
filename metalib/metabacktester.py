@@ -34,6 +34,7 @@ class MetaBackTester:
         - trading_end: End time of the trading day (UTC)
         - n_principal_comp: Number of principal components to use (if 0, no PCA is applied)
     """
+
     def __init__(self, dictionary):
         self.validate_keys(dictionary)
         self.assign_attributes(dictionary)
@@ -45,9 +46,24 @@ class MetaBackTester:
         :param dictionary:
         :return:
         """
-        required_keys = ['symbols', 'symbol', 'timeframe', 'start_time', 'end_time', 'indicators', 'return_lookahead',
-                         'history_len', 'trading_start', 'trading_end', 'n_principal_comp', 'long_open_threshold',
-                         'long_exit_threshold', 'short_open_threshold', 'short_exit_threshold', 'year']
+        required_keys = [
+            "symbols",
+            "symbol",
+            "timeframe",
+            "start_time",
+            "end_time",
+            "indicators",
+            "return_lookahead",
+            "history_len",
+            "trading_start",
+            "trading_end",
+            "n_principal_comp",
+            "long_open_threshold",
+            "long_exit_threshold",
+            "short_open_threshold",
+            "short_exit_threshold",
+            "year",
+        ]
         for key in required_keys:
             if key not in dictionary:
                 raise ValueError(f"Missing required key in dictionary: {key}")
@@ -67,11 +83,15 @@ class MetaBackTester:
 
         if len(self.data) != 0:
             print(f"Successful data import")
-            self.returns = pd.concat(map(lambda x: x['close'], self.data.values()), axis=1).apply(
-                np.log).diff().dropna()
+            self.returns = (
+                pd.concat(map(lambda x: x["close"], self.data.values()), axis=1)
+                .apply(np.log)
+                .diff()
+                .dropna()
+            )
             self.returns.columns = self.symbols
             self.rebased_prices = self.returns.vbt.returns.cumulative(1).dropna()
-            
+
     def compute_future_returns(self):
         """
         Computes the future returns of the selected symbol for the given return_lookahead
@@ -80,7 +100,10 @@ class MetaBackTester:
             raise ValueError("The 'returns' attribute has not been set.")
 
         T = self.returns[self.symbol].shape[0]
-        next_returns = [np.sum(self.returns[self.symbol][i + 1: i + self.return_lookahead]) for i in range(T)]
+        next_returns = [
+            np.sum(self.returns[self.symbol][i + 1 : i + self.return_lookahead])
+            for i in range(T)
+        ]
         next_returns = pd.Series(next_returns, index=self.returns[self.symbol].index)
         self.next_returns = next_returns
 
@@ -102,17 +125,27 @@ class MetaBackTester:
         indicators_df_list = []
 
         common_index_ = common_index([data for data in self.data.values()])
-        ohlc_list = [data.iloc[:, :4].apply(np.log).values for data in self.data.values()]
+        ohlc_list = [
+            data.iloc[:, :4].apply(np.log).values for data in self.data.values()
+        ]
         n = len(common_index_)
 
         for ind in self.indicators:
-            if ind['dim'] == 1:
-                ind_df = apply_w_diff_params_1d_nb(rebased_prices.values, ind['func'], ind['params'], self.weights)
-                ind_df = pd.DataFrame(ind_df, columns=ind['params'], index=returns.index).add_suffix(f"_{ind['name']}")
+            if ind["dim"] == 1:
+                ind_df = apply_w_diff_params_1d_nb(
+                    rebased_prices.values, ind["func"], ind["params"], self.weights
+                )
+                ind_df = pd.DataFrame(
+                    ind_df, columns=ind["params"], index=returns.index
+                ).add_suffix(f"_{ind['name']}")
                 indicators_df_list.append(ind_df)
-            elif ind['dim'] == 2:
-                ind_df = apply_w_diff_params_2d_nb(np.array(ohlc_list), ind['func'], ind['params'], self.weights)
-                ind_df = pd.DataFrame(ind_df[1:], columns=ind['params'], index=returns.index).add_suffix(f"_{ind['name']}")
+            elif ind["dim"] == 2:
+                ind_df = apply_w_diff_params_2d_nb(
+                    np.array(ohlc_list), ind["func"], ind["params"], self.weights
+                )
+                ind_df = pd.DataFrame(
+                    ind_df[1:], columns=ind["params"], index=returns.index
+                ).add_suffix(f"_{ind['name']}")
                 indicators_df_list.append(ind_df)
             else:
                 pass
@@ -130,13 +163,17 @@ class MetaBackTester:
         n = int(self.history_len * self.indicators_data.shape[0])
         hist_indicators = self.indicators_data.iloc[:n]
         hist_next_returns = self.next_returns.loc[hist_indicators.index]
-        indicators = self.indicators_data.loc[self.indicators_data.index.difference(hist_indicators.index)]
+        indicators = self.indicators_data.loc[
+            self.indicators_data.index.difference(hist_indicators.index)
+        ]
         next_returns = self.next_returns.loc[indicators.index]
 
         stds = hist_indicators.std()
         to_keep = stds[stds != 0].index
 
-        self.indicators_data = indicators.between_time(self.trading_start, self.trading_end).loc[:, to_keep]
+        self.indicators_data = indicators.between_time(
+            self.trading_start, self.trading_end
+        ).loc[:, to_keep]
         self.dummy_next_returns = next_returns.loc[indicators.index].apply(assign_cat)
         self.hist_next_returns = hist_next_returns
         self.hist_indicators = hist_indicators.loc[:, to_keep]
@@ -147,10 +184,17 @@ class MetaBackTester:
         """
         if self.n_principal_comp > 0:
             pca = PCA(n_components=self.n_principal_comp)
-            pca = pca.fit((self.hist_indicators - self.hist_indicators.mean()) / self.hist_indicators.std())
+            pca = pca.fit(
+                (self.hist_indicators - self.hist_indicators.mean())
+                / self.hist_indicators.std()
+            )
             self.indicators_pc = pd.DataFrame(
-                pca.transform((self.indicators_data - self.hist_indicators.mean()) / self.hist_indicators.std()),
-                index=self.indicators_data.index)
+                pca.transform(
+                    (self.indicators_data - self.hist_indicators.mean())
+                    / self.hist_indicators.std()
+                ),
+                index=self.indicators_data.index,
+            )
             return
         else:
             return
@@ -161,18 +205,25 @@ class MetaBackTester:
         """
         if self.n_principal_comp > 0:
             index_features = self.indicators_pc.index
-            X_train, X_test, y_train, y_test = train_test_split(self.indicators_pc,
-                                                                self.dummy_next_returns.loc[index_features],
-                                                                test_size=0.7, shuffle=False)
+            X_train, X_test, y_train, y_test = train_test_split(
+                self.indicators_pc,
+                self.dummy_next_returns.loc[index_features],
+                test_size=0.7,
+                shuffle=False,
+            )
         else:
-            X_train, X_test, y_train, y_test = train_test_split(self.indicators_data, self.dummy_next_returns,
-                                                                test_size=0.7, shuffle=False)
+            X_train, X_test, y_train, y_test = train_test_split(
+                self.indicators_data,
+                self.dummy_next_returns,
+                test_size=0.7,
+                shuffle=False,
+            )
 
         xgb_dummy = xgb.XGBClassifier().fit(X_train, y_train)
         y_hat = xgb_dummy.predict(X_test)
         self.y_hat_prob = xgb_dummy.predict_proba(X_test)
         self.y_hat_prob = pd.Series(self.y_hat_prob[:, 1], index=y_test.index)
-        print(f'Fitted XGB model')
+        print(f"Fitted XGB model")
 
     def get_entry_exit_signals(self, signals):
         """
@@ -199,18 +250,23 @@ class MetaBackTester:
         Computes the backtest of the trading strategy using the predicted probabilities and vectorbt
         """
         signals = self.y_hat_prob
-        entry_longs, exit_longs, entry_shorts, exit_shorts = self.get_entry_exit_signals(signals)
+        entry_longs, exit_longs, entry_shorts, exit_shorts = (
+            self.get_entry_exit_signals(signals)
+        )
 
         # Initialize the vectorbt portfolio
         portfolio = vbt.Portfolio.from_signals(
-            self.returns[self.symbol].vbt.returns.cumulative(1),  # Using the 'Close' column for price data
-            entries=entry_longs, accumulate=False,
+            self.returns[self.symbol].vbt.returns.cumulative(
+                1
+            ),  # Using the 'Close' column for price data
+            entries=entry_longs,
+            accumulate=False,
             exits=exit_longs,
             short_entries=entry_shorts,
             short_exits=exit_shorts,
             size=1,  # 0.01% of the capital
             fees=0.0,  # Trading fees
-            freq='1T',  # Frequency of the data
+            freq="1T",  # Frequency of the data
         )
 
         # Analyze the performance

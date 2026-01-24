@@ -17,17 +17,14 @@ from metalib.indicators import *
 from metalib.metastrategy import MetaStrategy
 
 
-def _evaluate_random_forest_with_tuning(X,
-                                        y,
-                                        n_splits=4,
-                                        feature_names=None):
+def _evaluate_random_forest_with_tuning(X, y, n_splits=4, feature_names=None):
     """
     Evaluate Random Forest with hyperparameter tuning on most important parameters.
     Focus on simplicity and robustness.
     """
 
     # Convert to arrays and handle feature names
-    if hasattr(X, 'values'):
+    if hasattr(X, "values"):
         X_array = X.values
         if feature_names is None:
             feature_names = X.columns.tolist()
@@ -35,13 +32,16 @@ def _evaluate_random_forest_with_tuning(X,
         X_array = X
 
     if feature_names is None:
-        feature_names = [f'feature_{i}' for i in range(X_array.shape[1])]
+        feature_names = [f"feature_{i}" for i in range(X_array.shape[1])]
 
     # Simplified parameter grid - focus on most impactful parameters
     param_grid = {
-        'randomforestregressor__n_estimators': [100, 200],  # More trees = more stable
-        'randomforestregressor__max_depth': [10, 15, None],  # Control overfitting
-        'randomforestregressor__min_samples_leaf': [2, 5]  # Prevent overfitting on leaves
+        "randomforestregressor__n_estimators": [100, 200],  # More trees = more stable
+        "randomforestregressor__max_depth": [10, 15, None],  # Control overfitting
+        "randomforestregressor__min_samples_leaf": [
+            2,
+            5,
+        ],  # Prevent overfitting on leaves
     }
 
     tscv = TimeSeriesSplit(n_splits=n_splits)
@@ -51,10 +51,10 @@ def _evaluate_random_forest_with_tuning(X,
         StandardScaler(),
         RandomForestRegressor(
             min_samples_split=10,  # Conservative default to prevent overfitting
-            max_features='sqrt',  # Good default for most cases
+            max_features="sqrt",  # Good default for most cases
             random_state=42,
-            n_jobs=-1
-        )
+            n_jobs=-1,
+        ),
     )
 
     # Use GridSearchCV for full search since we have fewer parameters
@@ -62,9 +62,9 @@ def _evaluate_random_forest_with_tuning(X,
         base_model,
         param_grid,
         cv=tscv,
-        scoring='r2',
+        scoring="r2",
         n_jobs=-1,
-        verbose=1  # Show progress
+        verbose=1,  # Show progress
     )
 
     # Fit and find best hyperparameters
@@ -79,11 +79,10 @@ def _evaluate_random_forest_with_tuning(X,
     sign_accuracy = accuracy_score(y > 0, y_pred > 0)
 
     # Get feature importance from the best model
-    rf = best_model.named_steps['randomforestregressor']
-    feature_importance = pd.DataFrame({
-        'feature': feature_names,
-        'importance': rf.feature_importances_
-    }).sort_values('importance', ascending=False)
+    rf = best_model.named_steps["randomforestregressor"]
+    feature_importance = pd.DataFrame(
+        {"feature": feature_names, "importance": rf.feature_importances_}
+    ).sort_values("importance", ascending=False)
 
     # Print results
     print("=" * 60)
@@ -105,57 +104,59 @@ def _evaluate_random_forest_with_tuning(X,
     print(feature_importance.head(5).to_string(index=False))
 
     return {
-        'model': best_model,
-        'best_params': rf_search.best_params_,
-        'best_cv_score': rf_search.best_score_,
-        'in_sample_r2': in_sample_r2,
-        'sign_accuracy': sign_accuracy,
-        'feature_importance': feature_importance,
-        'cv_results': rf_search.cv_results_
+        "model": best_model,
+        "best_params": rf_search.best_params_,
+        "best_cv_score": rf_search.best_score_,
+        "in_sample_r2": in_sample_r2,
+        "sign_accuracy": sign_accuracy,
+        "feature_importance": feature_importance,
+        "cv_results": rf_search.cv_results_,
     }
 
 
 class MetaNE(MetaStrategy):
-    def __init__(self,
-               symbols,
-               timeframe,
-               tag,
-               active_hours,
-               lookahead,
-               size_position,
-               rrr,
-               long_threshold,
-               tz = "UTC",
-               don_window = 240,
-               don_lag = 60,
-               ewma_ewm_span = 15,
-               time_ewm_span = 30,
-               ols_window = 120 ):
+    def __init__(
+        self,
+        symbols,
+        timeframe,
+        tag,
+        active_hours,
+        lookahead,
+        size_position,
+        rrr,
+        long_threshold,
+        tz="UTC",
+        don_window=240,
+        don_lag=60,
+        ewma_ewm_span=15,
+        time_ewm_span=30,
+        ols_window=120,
+    ):
 
         super().__init__(symbols, timeframe, tag, size_position, active_hours)
-        self.indicators         = None
-        self.lookahead          = lookahead
-        self.rrr                = rrr
-        self.long_threshold     = long_threshold
-        self.tz                 = tz
-        self.don_window         = don_window
-        self.don_lag            = don_lag
-        self.ewma_ewm_span      = ewma_ewm_span
-        self.time_ewm_span      = time_ewm_span
-        self.ols_window         = ols_window
-        self.fwd_returns_ser    = pd.Series()
-        self.logger             = logging.getLogger(__name__)
+        self.indicators = None
+        self.lookahead = lookahead
+        self.rrr = rrr
+        self.long_threshold = long_threshold
+        self.tz = tz
+        self.don_window = don_window
+        self.don_lag = don_lag
+        self.ewma_ewm_span = ewma_ewm_span
+        self.time_ewm_span = time_ewm_span
+        self.ols_window = ols_window
+        self.fwd_returns_ser = pd.Series()
+        self.logger = logging.getLogger(__name__)
 
     def retrieve_indicators(
-            self,
-            ohlc_df: pd.DataFrame,
-            *,
-            tz: str = "UTC",
-            don_window: int = 240,
-            don_lag: int = 60,
-            ewma_ewm_span: int = 15,
-            time_ewm_span: int = 30,
-            ols_window: int = 120
+        self,
+        ohlc_df: pd.DataFrame,
+        *,
+        tz: str = "UTC",
+        don_window: int = 240,
+        don_lag: int = 60,
+        ewma_ewm_span: int = 15,
+        time_ewm_span: int = 30,
+        ols_window: int = 120,
     ) -> pd.DataFrame:
         """
         Build indicator matrix from OHLC with:
@@ -171,7 +172,11 @@ class MetaNE(MetaStrategy):
 
         # ----------------------- utils -----------------------
         def _ensure_utc(ts: pd.Series) -> pd.Series:
-            ts = pd.to_datetime(ts, utc=True) if ts.dt.tz is None else ts.dt.tz_convert("UTC")
+            ts = (
+                pd.to_datetime(ts, utc=True)
+                if ts.dt.tz is None
+                else ts.dt.tz_convert("UTC")
+            )
             if tz and tz.upper() != "UTC":
                 # convert to UTC baseline first, then keep UTC for session logic
                 # (we keep UTC for flags because your definitions are UTC-based)
@@ -200,7 +205,9 @@ class MetaNE(MetaStrategy):
 
         def _compute_ols_tval(close_s: pd.Series, ols_window) -> pd.Series:
             # rolling apply with numba-compiled ols_tval_nb on raw window arrays
-            tvals = close_s.rolling(ols_window).apply(ols_tval_nb, engine="numba", raw=True)
+            tvals = close_s.rolling(ols_window).apply(
+                ols_tval_nb, engine="numba", raw=True
+            )
             # squeeze to ~[0,1]
             return tvals.apply(lambda x: x / 200.0 + 0.5)
 
@@ -244,8 +251,7 @@ class MetaNE(MetaStrategy):
 
         # -------------------- concat & return ----------------
         indicators = pd.concat(
-            [ewma_dummies, bb_dummies, ols_tvals, time_feats],
-            axis=1
+            [ewma_dummies, bb_dummies, ols_tvals, time_feats], axis=1
         )
 
         # Str column names
@@ -253,14 +259,14 @@ class MetaNE(MetaStrategy):
         return indicators
 
     def signals(self):
-        ohlc            = self.data[self.symbols[0]]
-        close           = ohlc["close"].reset_index(drop=True)
-        ema_fast        = close.ewm(span=self.lookahead*10).mean()
+        ohlc = self.data[self.symbols[0]]
+        close = ohlc["close"].reset_index(drop=True)
+        ema_fast = close.ewm(span=self.lookahead * 10).mean()
 
-        indicators      = self.retrieve_indicators(ohlc)[self.selected_features]
+        indicators = self.retrieve_indicators(ohlc)[self.selected_features]
         del ohlc
-        model           = self.clb_result["model"]
-        y_hat           = model.predict(indicators)[-1] / self.historical_vol
+        model = self.clb_result["model"]
+        y_hat = model.predict(indicators)[-1] / self.historical_vol
 
         self.fwd_returns_ser = pd.concat([self.fwd_returns_ser, pd.Series([y_hat])])
         y_hat_smoothed = self.fwd_returns_ser.ewm(self.lookahead).mean().iloc[-1]
@@ -273,9 +279,13 @@ class MetaNE(MetaStrategy):
 
         mean_entry_price, num_positions = self.get_positions_info()
 
-        if close.iloc[-1] < ema_fast.iloc[-1] and self.are_positions_with_tag_open(position_type="buy"):
+        if close.iloc[-1] < ema_fast.iloc[-1] and self.are_positions_with_tag_open(
+            position_type="buy"
+        ):
             self.state = -2
-        elif close.iloc[-1] > ema_fast.iloc[-1] and self.are_positions_with_tag_open(position_type="sell"):
+        elif close.iloc[-1] > ema_fast.iloc[-1] and self.are_positions_with_tag_open(
+            position_type="sell"
+        ):
             self.state = -2
         elif y_hat > self.long_threshold and not num_positions:
             self.state = 1
@@ -284,13 +294,15 @@ class MetaNE(MetaStrategy):
         else:
             self.state = 0
 
-        print(f"{self.tag}::: Open positions for strategy: {self.tag}: {self.are_positions_with_tag_open()}")
+        print(
+            f"{self.tag}::: Open positions for strategy: {self.tag}: {self.are_positions_with_tag_open()}"
+        )
         print(f"{self.tag}::: Current signal: {self.state}")
         print(f"{self.tag}::: Predicted forward return: {y_hat}")
         print(f"{self.tag}::: Number of positions: {num_positions}")
 
         signal_line = indicators.iloc[-1]
-        signal_line['predicted_fwd_return'] = y_hat
+        signal_line["predicted_fwd_return"] = y_hat
 
         self.signalData = signal_line
 
@@ -305,12 +317,14 @@ class MetaNE(MetaStrategy):
             self.execute(symbol=self.symbols[0], short=False)
             # Send a message when an order is entered
             self.send_telegram_message(
-                f"Entered BUY order for {self.symbols[0]} with volume: {self.volume} et pelo sa achete! Mean Entry Price: {mean_entry_price}, Number of Positions: {num_positions}")
+                f"Entered BUY order for {self.symbols[0]} with volume: {self.volume} et pelo sa achete! Mean Entry Price: {mean_entry_price}, Number of Positions: {num_positions}"
+            )
         elif self.state == -1:
             self.execute(symbol=self.symbols[0], short=True)
             # Send a message when an order is entered
             self.send_telegram_message(
-                f"Entered SELL order for {self.symbols[0]} with volume: {self.volume}et pelo ca vend: Mean Entry Price: {mean_entry_price}, Number of Positions: {num_positions}")
+                f"Entered SELL order for {self.symbols[0]} with volume: {self.volume}et pelo ca vend: Mean Entry Price: {mean_entry_price}, Number of Positions: {num_positions}"
+            )
         elif self.state == -2:
             self.close_all_positions()
             # Send a message when positions are closed
@@ -318,45 +332,52 @@ class MetaNE(MetaStrategy):
 
     def fit(self):
         # Define the UTC timezone
-        utc = pytz.timezone('UTC')
+        utc = pytz.timezone("UTC")
         # Get the current time in UTC
         end_time = datetime.now(utc)
         start_time = end_time - timedelta(days=66)
         # Set the time components to 0 (midnight) and maintain the timezone
-        end_time = end_time.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(utc)
+        end_time = end_time.replace(
+            hour=0, minute=0, second=0, microsecond=0
+        ).astimezone(utc)
         start_time = start_time.astimezone(utc)
 
         # Pulling last days of data
         self.loadData(start_time, end_time)
-        data        = self.data[self.symbols[0]]
-        returns     = data.close.apply(np.log).diff()
+        data = self.data[self.symbols[0]]
+        returns = data.close.apply(np.log).diff()
         forward_returns = returns.rolling(self.lookahead).mean().shift(-self.lookahead)
         forward_returns = forward_returns.replace([np.inf, -np.inf, np.nan], 0).values
 
         self.historical_vol = returns.std() * np.sqrt(self.lookahead)
 
-        indicators = self.retrieve_indicators(data,
-                                              tz=self.tz,
-                                              don_window=self.don_window,
-                                              don_lag=self.don_lag,
-                                              ewma_ewm_span=self.ewma_ewm_span,
-                                              time_ewm_span=self.time_ewm_span,
-                                              ols_window=self.ols_window)
+        indicators = self.retrieve_indicators(
+            data,
+            tz=self.tz,
+            don_window=self.don_window,
+            don_lag=self.don_lag,
+            ewma_ewm_span=self.ewma_ewm_span,
+            time_ewm_span=self.time_ewm_span,
+            ols_window=self.ols_window,
+        )
 
-        selected_features = self._select_least_correlated_features(indicators, n_features=15)
+        selected_features = self._select_least_correlated_features(
+            indicators, n_features=15
+        )
         self.selected_features = selected_features
         print("Selected features:", selected_features)
 
         X_subset_train = indicators[selected_features].values
-        rf_clb_result = _evaluate_random_forest_with_tuning(X_subset_train,
-                                                            forward_returns,
-                                                            n_splits=4,
-                                                            feature_names=selected_features)
+        rf_clb_result = _evaluate_random_forest_with_tuning(
+            X_subset_train, forward_returns, n_splits=4, feature_names=selected_features
+        )
 
         self.clb_result = rf_clb_result
         return
 
-    def _select_least_correlated_features(self, df: pd.DataFrame, n_features: int = 10) -> list:
+    def _select_least_correlated_features(
+        self, df: pd.DataFrame, n_features: int = 10
+    ) -> list:
         """
         Select n_features from df.columns such that average pairwise correlation
         among selected features is minimized (greedy algorithm).
@@ -390,4 +411,3 @@ class MetaNE(MetaStrategy):
             remaining.remove(next_feat)
 
         return selected
-
