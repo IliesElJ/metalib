@@ -7,6 +7,8 @@ from .detailed_tab import render_detailed_tab, create_detailed_metrics_figure
 from .pnl_tab import render_pnl_tab
 from .trades_tab import render_trades_tab, create_trades_table
 from .raw_tab import render_raw_tab
+from .strategy_type_tab import render_strategy_type_tab
+from .log_tab import render_log_tab, create_log_stats_display, format_log_content
 
 __all__ = [
     'render_overview_tab',
@@ -15,5 +17,9 @@ __all__ = [
     'render_pnl_tab',
     'render_trades_tab',
     'create_trades_table',
-    'render_raw_tab'
+    'render_raw_tab',
+    'render_strategy_type_tab',
+    'render_log_tab',
+    'create_log_stats_display',
+    'format_log_content'
 ]

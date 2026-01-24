@@ -12,6 +12,7 @@ def create_tabs_layout():
     return dbc.Tabs(
         [
             dbc.Tab(label="Overview", tab_id="overview"),
+            dbc.Tab(label="Strategy Types", tab_id="strategy_types"),
             dbc.Tab(label="Detailed Analysis", tab_id="detailed"),
             dbc.Tab(label="Calendar", tab_id="calendar"),
             dbc.Tab(label="PnL Performance", tab_id="pnl"),

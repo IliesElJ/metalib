@@ -18,6 +18,11 @@ from utils import (
     strategy_metrics,
     calculate_hourly_performance,
 )
+from utils.log_utils import (
+    get_dates_for_strategy,
+    read_log_file,
+    get_log_statistics,
+)
 
 from components import (
     render_overview_tab,
@@ -27,6 +32,10 @@ from components import (
     render_trades_tab,
     create_trades_table,
     render_raw_tab,
+    render_strategy_type_tab,
+    render_log_tab,
+    create_log_stats_display,
+    format_log_content,
 )
 
 # >>> NEW: import the calendar tab + helpers
@@ -153,6 +162,10 @@ def register_callbacks(app):
     )
     def render_tab_content(active_tab, data, account_info):
         """Render content based on selected tab"""
+        # Log tab doesn't require MT5 data - it reads from files
+        if active_tab == "logs":
+            return render_log_tab()
+
         if data is None or not data.get("data_available", False):
             return html.Div(
                 [
@@ -175,12 +188,12 @@ def register_callbacks(app):
 
         if active_tab == "overview":
             return render_overview_tab(merged_deals, account_size, account_info)
+        elif active_tab == "strategy_types":
+            return render_strategy_type_tab(merged_deals, account_size)
         elif active_tab == "detailed":
             return render_detailed_tab(merged_deals, account_size)
         elif active_tab == "pnl":
             return render_pnl_tab(merged_deals, account_size)
-        elif active_tab == "logs":
-            return render_logs_tab()
         elif active_tab == "trades":
             return render_trades_tab(merged_deals)
         elif active_tab == "raw":
@@ -296,6 +309,104 @@ def register_callbacks(app):
 
     # Add missing import at the top if needed
     import dash_bootstrap_components as dbc
+
+    # ------------------------------
+    # Log Tab callbacks
+    # ------------------------------
+
+    @app.callback(
+        Output("log-date-dropdown", "options"),
+        Output("log-date-dropdown", "value"),
+        Input("log-strategy-dropdown", "value"),
+        prevent_initial_call=True,
+    )
+    def update_log_dates(strategy_instance):
+        """Update available dates when strategy instance changes"""
+        if not strategy_instance:
+            return [], None
+
+        dates = get_dates_for_strategy(strategy_instance)
+
+        def format_date(date_str):
+            try:
+                dt = datetime.strptime(date_str, "%Y-%m-%d")
+                return dt.strftime("%B %d, %Y (%A)")
+            except ValueError:
+                return date_str
+
+        options = [{"label": format_date(d), "value": d} for d in dates]
+        default_value = dates[0] if dates else None
+
+        return options, default_value
+
+    @app.callback(
+        Output("log-stats-container", "children"),
+        Output("log-content-display", "children"),
+        Output("log-filename-display", "children"),
+        Input("log-strategy-dropdown", "value"),
+        Input("log-date-dropdown", "value"),
+        Input("log-refresh-btn", "n_clicks"),
+        prevent_initial_call=False,
+    )
+    def update_log_display(strategy_instance, date_str, refresh_clicks):
+        """Update log content and statistics display"""
+        if not strategy_instance or not date_str:
+            empty_stats = create_log_stats_display({
+                "total_lines": 0,
+                "timestamp_markers": 0,
+                "errors": 0,
+                "warnings": 0
+            })
+            empty_content = html.Div(
+                "Please select a strategy instance and date to view logs.",
+                style={"color": "#888", "textAlign": "center", "padding": "40px"}
+            )
+            return empty_stats, empty_content, ""
+
+        # Read log file
+        log_content = read_log_file(strategy_instance, date_str)
+        filename = f"output_{strategy_instance}_{date_str}.log"
+
+        if log_content is None:
+            empty_stats = create_log_stats_display({
+                "total_lines": 0,
+                "timestamp_markers": 0,
+                "errors": 0,
+                "warnings": 0
+            })
+            error_content = html.Div(
+                f"Log file not found for {strategy_instance} on {date_str}",
+                style={"color": "#f48771", "textAlign": "center", "padding": "40px"}
+            )
+            return empty_stats, error_content, filename
+
+        # Get statistics
+        stats = get_log_statistics(log_content)
+        stats_display = create_log_stats_display(stats)
+
+        # Format content
+        formatted_content = format_log_content(log_content)
+
+        return stats_display, formatted_content, filename
+
+    @app.callback(
+        Output("download-log-file", "data"),
+        Input("log-download-btn", "n_clicks"),
+        State("log-strategy-dropdown", "value"),
+        State("log-date-dropdown", "value"),
+        prevent_initial_call=True,
+    )
+    def download_log_file(n_clicks, strategy_instance, date_str):
+        """Handle log file download"""
+        if not n_clicks or not strategy_instance or not date_str:
+            return None
+
+        log_content = read_log_file(strategy_instance, date_str)
+        if log_content is None:
+            return None
+
+        filename = f"output_{strategy_instance}_{date_str}.log"
+        return dict(content=log_content, filename=filename)
 
     # ------------------------------
     # NEW: Calendar callbacks
