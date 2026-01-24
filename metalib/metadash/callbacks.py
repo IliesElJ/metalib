@@ -37,6 +37,7 @@ from components import (
     create_log_stats_display,
     format_log_content,
 )
+from components.log_tab import get_filtered_instances
 
 # >>> NEW: import the calendar tab + helpers
 from components.tab_daily_calendar import (
@@ -315,6 +316,29 @@ def register_callbacks(app):
     # ------------------------------
 
     @app.callback(
+        Output("log-strategy-dropdown", "options"),
+        Output("log-strategy-dropdown", "value"),
+        Input("log-strategy-type-dropdown", "value"),
+        prevent_initial_call=True,
+    )
+    def update_log_strategy_instances(strategy_type):
+        """Update strategy instances when type filter changes"""
+        instances = get_filtered_instances(strategy_type)
+
+        def format_label(s):
+            parts = s.split("_")
+            if len(parts) >= 2:
+                strategy_t = parts[0].upper()
+                instance_name = "_".join(parts[1:])
+                return f"{strategy_t} - {instance_name}"
+            return s
+
+        options = [{"label": format_label(s), "value": s} for s in instances]
+        default_value = instances[0] if instances else None
+
+        return options, default_value
+
+    @app.callback(
         Output("log-date-dropdown", "options"),
         Output("log-date-dropdown", "value"),
         Input("log-strategy-dropdown", "value"),
@@ -334,8 +358,19 @@ def register_callbacks(app):
             except ValueError:
                 return date_str
 
+        def get_default_business_day(date_list):
+            """Get the most recent business day from available dates."""
+            for d in date_list:
+                try:
+                    dt = datetime.strptime(d, "%Y-%m-%d")
+                    if dt.weekday() < 5:  # Mon-Fri
+                        return d
+                except ValueError:
+                    continue
+            return date_list[0] if date_list else None
+
         options = [{"label": format_date(d), "value": d} for d in dates]
-        default_value = dates[0] if dates else None
+        default_value = get_default_business_day(dates)
 
         return options, default_value
 
