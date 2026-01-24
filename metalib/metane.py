@@ -1,16 +1,11 @@
 from datetime import datetime, timedelta
 import pandas as pd
-import vectorbt as vbt
-from metalib.indicators import ols_tval_nb
 import logging
-import MetaTrader5 as mt5
 import pytz as pytz
 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import TimeSeriesSplit
-from sklearn.model_selection import RandomizedSearchCV, GridSearchCV
-from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import make_pipeline
+from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import r2_score, accuracy_score
 
 from metalib.indicators import *

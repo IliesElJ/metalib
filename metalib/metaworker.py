@@ -131,9 +131,11 @@ def run_strategy_loop(strategy_type, init_args):
     schedule.every().day.at("00:00").do(instance.connect)
     schedule.every().day.at("00:01").do(instance.fit)
 
-    # Fpr MetaDo, let us close all the positions every day
+    # For some stratgies, let us close all the positions every day
     # at 8 PM UTC time (3 PM NYC)
-    if strategy_info["class"] == MetaDO:
+    night_close_strategies = []  # [ MetaFVG ] should be the class itself.
+
+    if strategy_info["class"] in night_close_strategies:
         schedule.every().day.at("20:00").do(instance.close_all_positions())
 
     # Loop
