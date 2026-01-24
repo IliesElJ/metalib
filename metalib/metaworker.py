@@ -1,4 +1,3 @@
-from metalib.metado2 import MetaDO
 import schedule
 import pytz
 import time
@@ -6,27 +5,13 @@ from datetime import datetime, timedelta
 import MetaTrader5 as mt5
 
 # Registry maps a keyword to a strategy class and expected init keys
-from metalib.metado2 import MetaDO
 from metalib.metaga import MetaGA
 from metalib.metagomano import MetaGO
-from metalib.metahar import MetaHAR
 from metalib.metafvg import MetaFVG
 from metalib.metane import MetaNE
 from metalib.metaob import MetaOB
 
 strategy_registry = {
-    "metado": {
-        "class": MetaDO,
-        "init_keys": [
-            "symbols",
-            "timeframe",
-            "tag",
-            "size_position",
-            "active_hours",
-            "risk_factor",
-            "mode",
-        ],
-    },
     "metane": {
         "class": MetaNE,
         "init_keys": [
@@ -69,19 +54,6 @@ strategy_registry = {
             "size_position",
             "active_hours",
             "mean_rev_tf",
-        ],
-    },
-    "metahar": {
-        "class": MetaHAR,
-        "init_keys": [
-            "symbols",
-            "predicted_symbol",
-            "timeframe",
-            "tag",
-            "size_position",
-            "active_hours",
-            "short_factor",
-            "long_factor",
         ],
     },
     "metafvg": {
