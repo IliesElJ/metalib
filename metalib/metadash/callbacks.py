@@ -3,7 +3,7 @@ Callbacks Module
 Handles all Dash callbacks for the MetaDAsh application
 """
 
-from dash import Input, Output, State, html
+from dash import Input, Output, State, html, no_update, callback_context
 import dash_bootstrap_components as dbc
 from datetime import datetime, date
 import plotly.graph_objects as go
@@ -16,6 +16,7 @@ from utils import (
     get_account_info,
     strategy_metrics,
     calculate_hourly_performance,
+    get_candles_for_trade,
 )
 from utils.log_utils import (
     get_dates_for_strategy,
@@ -39,6 +40,12 @@ from components import (
     create_status_summary,
     create_status_table,
     render_welcome_tab,
+    render_instance_trades_tab,
+    get_filtered_strategy_instances,
+    get_dates_for_instance,
+    create_instance_trades_grid,
+    create_instance_trades_stats,
+    create_trade_candlestick_chart,
 )
 from components.log_tab import get_filtered_instances
 from components.detailed_tab import create_hourly_chart
@@ -234,6 +241,8 @@ def register_callbacks(app):
             return render_pnl_tab(merged_deals, account_size)
         elif active_tab == "trades":
             return render_trades_tab(merged_deals)
+        elif active_tab == "instance_trades":
+            return render_instance_trades_tab(merged_deals)
         elif active_tab == "raw":
             return render_raw_tab(merged_deals, stored_data["history_orders"])
 
@@ -466,3 +475,199 @@ def register_callbacks(app):
         last_refresh = f"Last updated: {datetime.now().strftime('%H:%M:%S')}"
 
         return summary_component, table_component, last_refresh
+
+    # ------------------------------
+    # Instance Trades Tab callbacks
+    # ------------------------------
+
+    @app.callback(
+        Output("instance-trades-strategy-dropdown", "options"),
+        Output("instance-trades-strategy-dropdown", "value"),
+        Input("instance-trades-type-dropdown", "value"),
+        State("data-store", "data"),
+        prevent_initial_call=True,
+    )
+    def update_instance_trades_strategy_options(strategy_type, data):
+        """Update strategy instances when type filter changes"""
+        if not data or not data.get("data_available"):
+            return [], None
+
+        merged_deals = stored_data["merged_deals"]
+        instances = get_filtered_strategy_instances(strategy_type, merged_deals)
+
+        def format_label(s):
+            parts = s.split("_")
+            if len(parts) >= 2:
+                strategy_t = parts[0].upper()
+                instance_name = "_".join(parts[1:])
+                return f"{strategy_t} - {instance_name}"
+            return s
+
+        options = [{"label": format_label(s), "value": s} for s in instances]
+        default_value = instances[0] if instances else None
+
+        return options, default_value
+
+    @app.callback(
+        Output("instance-trades-date-dropdown", "options"),
+        Output("instance-trades-date-dropdown", "value"),
+        Input("instance-trades-strategy-dropdown", "value"),
+        State("data-store", "data"),
+        prevent_initial_call=True,
+    )
+    def update_instance_trades_date_options(strategy_instance, data):
+        """Update available dates when strategy instance changes"""
+        if not strategy_instance or not data or not data.get("data_available"):
+            return [], None
+
+        merged_deals = stored_data["merged_deals"]
+        dates = get_dates_for_instance(strategy_instance, merged_deals)
+
+        def format_date(date_str):
+            try:
+                dt = datetime.strptime(date_str, "%Y-%m-%d")
+                return dt.strftime("%B %d, %Y (%A)")
+            except ValueError:
+                return date_str
+
+        options = [{"label": format_date(d), "value": d} for d in dates]
+        default_value = dates[0] if dates else None
+
+        return options, default_value
+
+    @app.callback(
+        Output("instance-trades-grid-container", "children"),
+        Output("instance-trades-stats-container", "children"),
+        Input("instance-trades-strategy-dropdown", "value"),
+        Input("instance-trades-date-dropdown", "value"),
+        State("data-store", "data"),
+        prevent_initial_call=False,
+    )
+    def update_instance_trades_grid(strategy_instance, date_str, data):
+        """Update AG Grid with trades for selected instance and date"""
+        if not strategy_instance or not date_str:
+            empty_msg = html.Div(
+                "Please select a strategy instance and date to view trades.",
+                style={"color": "#64748b", "textAlign": "center", "padding": "40px"},
+            )
+            return empty_msg, html.Div()
+
+        if not data or not data.get("data_available"):
+            return html.Div("Loading data...", style={"color": "#64748b", "textAlign": "center", "padding": "40px"}), html.Div()
+
+        merged_deals = stored_data["merged_deals"]
+        if merged_deals is None or merged_deals.empty:
+            return html.Div("No trade data available.", style={"color": "#64748b", "textAlign": "center", "padding": "40px"}), html.Div()
+
+        # Filter trades by instance and date
+        instance_deals = merged_deals[merged_deals["comment_open"] == strategy_instance].copy()
+        instance_deals["trade_date"] = instance_deals["time_open"].dt.strftime("%Y-%m-%d")
+        filtered_deals = instance_deals[instance_deals["trade_date"] == date_str]
+
+        if filtered_deals.empty:
+            return html.Div(
+                f"No trades found for {strategy_instance} on {date_str}.",
+                style={"color": "#64748b", "textAlign": "center", "padding": "40px"},
+            ), html.Div()
+
+        # Create grid and stats
+        grid = create_instance_trades_grid(filtered_deals)
+        stats = create_instance_trades_stats(filtered_deals)
+
+        return grid, stats
+
+    @app.callback(
+        Output("trade-chart-container", "children"),
+        Output("trade-chart-container", "style"),
+        Input("instance-trades-grid", "selectedRows"),
+        State("instance-trades-strategy-dropdown", "value"),
+        State("instance-trades-date-dropdown", "value"),
+        State("data-store", "data"),
+        prevent_initial_call=True,
+    )
+    def show_trade_chart(selected_rows, strategy_instance, date_str, data):
+        """Show candlestick chart when a trade row is selected"""
+        if not selected_rows or not strategy_instance or not date_str:
+            return html.Div(), {"display": "none"}
+
+        if not data or not data.get("data_available"):
+            return html.Div(), {"display": "none"}
+
+        # Get the first selected row
+        row_data = selected_rows[0] if selected_rows else {}
+        if not row_data:
+            return html.Div(), {"display": "none"}
+
+        # Extract trade info
+        symbol = row_data.get("symbol_open", "")
+        time_open_iso = row_data.get("time_open_iso")
+        time_close_iso = row_data.get("time_close_iso")
+        price_open = row_data.get("price_open", 0)
+        price_close = row_data.get("price_close", 0)
+        total_profit = row_data.get("total_profit", 0)
+
+        if not time_open_iso:
+            return html.Div("Could not retrieve trade time.", style={"color": "#ef4444"}), {
+                "display": "block",
+                "backgroundColor": "white",
+                "padding": "24px",
+                "borderRadius": "12px",
+                "border": "1px solid #e2e8f0",
+                "boxShadow": "0 1px 3px rgba(0,0,0,0.05)",
+            }
+
+        # Parse times
+        time_open = pd.to_datetime(time_open_iso)
+        time_close = pd.to_datetime(time_close_iso) if time_close_iso else None
+
+        # Fetch candle data from MT5
+        candles_df = get_candles_for_trade(symbol, time_open, time_close, buffer_minutes=30)
+
+        # Prepare trade data for chart
+        trade_data = {
+            "symbol": symbol,
+            "time_open": time_open,
+            "time_close": time_close,
+            "price_open": price_open,
+            "price_close": price_close,
+            "total_profit": total_profit,
+        }
+
+        # Create chart
+        from dash import dcc
+        fig = create_trade_candlestick_chart(candles_df, trade_data)
+
+        chart_container = html.Div([
+            html.Div(
+                [
+                    html.Span(
+                        "Trade Chart",
+                        style={
+                            "fontWeight": "600",
+                            "fontSize": "16px",
+                            "color": "#1e293b",
+                        },
+                    ),
+                    html.Span(
+                        f" - {symbol}",
+                        style={
+                            "color": "#64748b",
+                            "fontSize": "14px",
+                        },
+                    ),
+                ],
+                style={"marginBottom": "16px"},
+            ),
+            dcc.Graph(figure=fig, config={"displayModeBar": True, "scrollZoom": True}),
+        ])
+
+        visible_style = {
+            "display": "block",
+            "backgroundColor": "white",
+            "padding": "24px",
+            "borderRadius": "12px",
+            "border": "1px solid #e2e8f0",
+            "boxShadow": "0 1px 3px rgba(0,0,0,0.05)",
+        }
+
+        return chart_container, visible_style

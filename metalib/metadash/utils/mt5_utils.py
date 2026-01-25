@@ -41,12 +41,13 @@ def save_and_retrieve_historical_deals(new_merged_deals):
 
     # Create data directory if it doesn't exist
     os.makedirs("data", exist_ok=True)
+    #
+    # if os.path.exists(pkl_file):
+    #     with open(pkl_file, "rb") as f:
+    #         old_merged_deals = pickle.load(f)
+    # else:
 
-    if os.path.exists(pkl_file):
-        with open(pkl_file, "rb") as f:
-            old_merged_deals = pickle.load(f)
-    else:
-        old_merged_deals = pd.DataFrame()
+    old_merged_deals = pd.DataFrame()
 
     merged_deals = pd.concat([old_merged_deals, new_merged_deals], ignore_index=True)
     merged_deals = merged_deals.drop_duplicates(
@@ -108,3 +109,52 @@ def get_account_info():
     if account_info:
         return account_info._asdict()
     return {"balance": 0, "equity": 0, "margin": 0, "profit": 0, "credit": 0}
+
+
+def get_candles_for_trade(symbol, time_open, time_close, buffer_minutes=30):
+    """
+    Get OHLC candle data for a trade with buffer before and after.
+
+    Args:
+        symbol: Trading symbol (e.g., 'EURUSD', 'DE40')
+        time_open: Trade open time (datetime)
+        time_close: Trade close time (datetime), can be None
+        buffer_minutes: Minutes of buffer before and after the trade
+
+    Returns:
+        DataFrame with columns: time, open, high, low, close, volume
+        Returns None if no data available
+    """
+    from datetime import timedelta
+
+    # Always use M1 timeframe for detailed view
+    timeframe = mt5.TIMEFRAME_M1
+
+    # Calculate date range with buffer
+    buffer = timedelta(minutes=buffer_minutes)
+    start_time = time_open - buffer
+    end_time = (time_close if time_close else time_open) + buffer
+
+    # Fetch candles from MT5
+    rates = mt5.copy_rates_range(symbol, timeframe, start_time, end_time)
+
+    if rates is None or len(rates) == 0:
+        # Try with a different symbol format (some brokers add suffixes)
+        # Try common variations
+        for suffix in ["", ".a", ".b", ".pro", "_SB"]:
+            alt_symbol = symbol + suffix if suffix else symbol
+            rates = mt5.copy_rates_range(alt_symbol, timeframe, start_time, end_time)
+            if rates is not None and len(rates) > 0:
+                break
+
+    if rates is None or len(rates) == 0:
+        return None
+
+    # Convert to DataFrame
+    df = pd.DataFrame(rates)
+    df["time"] = pd.to_datetime(df["time"], unit="s")
+
+    # Rename columns to match expected format
+    df = df.rename(columns={"tick_volume": "volume"})
+
+    return df[["time", "open", "high", "low", "close", "volume"]]

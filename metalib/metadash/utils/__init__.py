@@ -6,7 +6,8 @@ from .mt5_utils import (
     initialize_mt5,
     get_historical_data,
     process_deals_data,
-    get_account_info
+    get_account_info,
+    get_candles_for_trade,
 )
 from .metrics import (
     calculate_additional_metrics,
@@ -41,6 +42,7 @@ __all__ = [
     'get_historical_data',
     'process_deals_data',
     'get_account_info',
+    'get_candles_for_trade',
     'calculate_additional_metrics',
     'strategy_metrics',
     'calculate_daily_performance',

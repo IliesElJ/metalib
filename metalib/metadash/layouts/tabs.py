@@ -18,6 +18,7 @@ def create_tabs_layout():
             dbc.Tab(label="Detailed Analysis", tab_id="detailed"),
             dbc.Tab(label="PnL Performance", tab_id="pnl"),
             dbc.Tab(label="Trades Table", tab_id="trades"),
+            dbc.Tab(label="Instance Trades", tab_id="instance_trades"),
             dbc.Tab(label="View Logs", tab_id="logs"),
             dbc.Tab(label="Raw Data", tab_id="raw"),
         ],

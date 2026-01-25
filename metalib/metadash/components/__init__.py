@@ -11,6 +11,14 @@ from .strategy_type_tab import render_strategy_type_tab
 from .log_tab import render_log_tab, create_log_stats_display, format_log_content
 from .status_tab import render_status_tab, create_status_summary, create_status_table
 from .welcome_tab import render_welcome_tab
+from .instance_trades_tab import (
+    render_instance_trades_tab,
+    get_filtered_strategy_instances,
+    get_dates_for_instance,
+    create_instance_trades_grid,
+    create_instance_trades_stats,
+    create_trade_candlestick_chart,
+)
 
 __all__ = [
     'render_overview_tab',
@@ -29,4 +37,10 @@ __all__ = [
     'create_status_summary',
     'create_status_table',
     'render_welcome_tab',
+    'render_instance_trades_tab',
+    'get_filtered_strategy_instances',
+    'get_dates_for_instance',
+    'create_instance_trades_grid',
+    'create_instance_trades_stats',
+    'create_trade_candlestick_chart',
 ]
