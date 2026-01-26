@@ -5,6 +5,7 @@ Displays health status of all trading strategies.
 from dash import html, dcc
 import dash_bootstrap_components as dbc
 from utils.health_utils import get_all_strategy_statuses, get_health_summary, is_weekend
+from utils.pm2_utils import get_pm2_status, get_pm2_summary, is_pm2_available
 
 
 def render_status_tab():
@@ -16,6 +17,7 @@ def render_status_tab():
     """
     summary = get_health_summary()
     weekend = is_weekend()
+    pm2_available = is_pm2_available()
 
     return html.Div(
         [
@@ -62,6 +64,89 @@ def render_status_tab():
                     "marginBottom": "24px",
                     "paddingBottom": "16px",
                     "borderBottom": "1px solid #e2e8f0",
+                },
+            ),
+            # PM2 Process Manager Section
+            html.Div(
+                [
+                    # PM2 Section Header
+                    html.Div(
+                        [
+                            html.Div(
+                                [
+                                    html.Span(
+                                        "PM2 Process Manager",
+                                        style={
+                                            "fontSize": "16px",
+                                            "fontWeight": "600",
+                                            "color": "#1e293b",
+                                        },
+                                    ),
+                                    html.Span(
+                                        "ONLINE" if pm2_available else "OFFLINE",
+                                        style={
+                                            "backgroundColor": "#dcfce7" if pm2_available else "#fee2e2",
+                                            "color": "#166534" if pm2_available else "#991b1b",
+                                            "padding": "2px 8px",
+                                            "borderRadius": "4px",
+                                            "fontSize": "11px",
+                                            "fontWeight": "600",
+                                            "marginLeft": "10px",
+                                        },
+                                    ),
+                                ],
+                                style={"display": "flex", "alignItems": "center"},
+                            ),
+                            # Control buttons
+                            html.Div(
+                                [
+                                    dbc.Button(
+                                        "Start All",
+                                        id="pm2-start-all-btn",
+                                        color="success",
+                                        size="sm",
+                                        outline=True,
+                                        className="me-2",
+                                        disabled=not pm2_available,
+                                    ),
+                                    dbc.Button(
+                                        "Stop All",
+                                        id="pm2-stop-all-btn",
+                                        color="danger",
+                                        size="sm",
+                                        outline=True,
+                                        className="me-2",
+                                        disabled=not pm2_available,
+                                    ),
+                                    dbc.Button(
+                                        "Restart All",
+                                        id="pm2-restart-all-btn",
+                                        color="warning",
+                                        size="sm",
+                                        outline=True,
+                                        disabled=not pm2_available,
+                                    ),
+                                ],
+                            ),
+                        ],
+                        style={
+                            "display": "flex",
+                            "justifyContent": "space-between",
+                            "alignItems": "center",
+                            "marginBottom": "16px",
+                        },
+                    ),
+                    # PM2 Process Table Container
+                    html.Div(id="pm2-process-table-container"),
+                    # Action feedback
+                    html.Div(id="pm2-action-feedback", className="mt-2"),
+                ],
+                style={
+                    "backgroundColor": "#f8fafc",
+                    "padding": "20px",
+                    "borderRadius": "12px",
+                    "border": "1px solid #e2e8f0",
+                    "marginBottom": "24px",
                 },
             ),
             # Summary cards
@@ -386,5 +471,189 @@ def _create_status_row(status):
             "borderBottom": "1px solid #f1f5f9",
             "fontSize": "14px",
             "backgroundColor": "#fef2f2" if status["status"] == "stopped" else "white",
+        },
+    )
+
+
+def create_pm2_process_table(processes):
+    """
+    Create the PM2 process table.
+
+    Args:
+        processes: List of PM2 process dicts from get_pm2_status()
+
+    Returns:
+        Dash component with PM2 process table
+    """
+    if not processes:
+        return html.Div(
+            [
+                html.Span(
+                    "No PM2 processes found. ",
+                    style={"color": "#64748b"},
+                ),
+                html.Span(
+                    "Run 'pm2 start ecosystem.config.js' to start strategies.",
+                    style={"color": "#94a3b8", "fontSize": "13px"},
+                ),
+            ],
+            style={
+                "padding": "20px",
+                "textAlign": "center",
+            },
+        )
+
+    # Table header
+    header = html.Div(
+        [
+            html.Div("Status", style={"width": "80px", "fontWeight": "600"}),
+            html.Div("Name", style={"width": "120px", "fontWeight": "600"}),
+            html.Div("PID", style={"width": "70px", "fontWeight": "600"}),
+            html.Div("CPU", style={"width": "70px", "fontWeight": "600"}),
+            html.Div("Memory", style={"width": "80px", "fontWeight": "600"}),
+            html.Div("Uptime", style={"width": "90px", "fontWeight": "600"}),
+            html.Div("Restarts", style={"width": "70px", "fontWeight": "600"}),
+            html.Div("Actions", style={"flex": "1", "fontWeight": "600", "textAlign": "right"}),
+        ],
+        style={
+            "display": "flex",
+            "padding": "10px 16px",
+            "backgroundColor": "#f1f5f9",
+            "borderRadius": "8px 8px 0 0",
+            "fontSize": "12px",
+            "color": "#475569",
+        },
+    )
+
+    # Process rows
+    rows = [_create_pm2_process_row(proc) for proc in processes]
+
+    return html.Div(
+        [header] + rows,
+        style={
+            "backgroundColor": "white",
+            "borderRadius": "8px",
+            "border": "1px solid #e2e8f0",
+            "overflow": "hidden",
+        },
+    )
+
+
+def _create_pm2_process_row(proc):
+    """Create a single PM2 process row."""
+    status = proc.get("status", "unknown")
+
+    status_styles = {
+        "online": {"bg": "#dcfce7", "color": "#166534", "text": "Online"},
+        "stopped": {"bg": "#fee2e2", "color": "#991b1b", "text": "Stopped"},
+        "errored": {"bg": "#fef3c7", "color": "#92400e", "text": "Error"},
+        "unknown": {"bg": "#f1f5f9", "color": "#475569", "text": "Unknown"},
+    }
+
+    style_info = status_styles.get(status, status_styles["unknown"])
+
+    return html.Div(
+        [
+            # Status badge
+            html.Div(
+                html.Span(
+                    style_info["text"],
+                    style={
+                        "backgroundColor": style_info["bg"],
+                        "color": style_info["color"],
+                        "padding": "3px 8px",
+                        "borderRadius": "4px",
+                        "fontSize": "11px",
+                        "fontWeight": "600",
+                    },
+                ),
+                style={"width": "80px"},
+            ),
+            # Name
+            html.Div(
+                proc.get("name", "unknown"),
+                style={
+                    "width": "120px",
+                    "fontWeight": "600",
+                    "color": "#1e293b",
+                },
+            ),
+            # PID
+            html.Div(
+                str(proc.get("pid", "-")) if proc.get("pid") else "-",
+                style={
+                    "width": "70px",
+                    "color": "#64748b",
+                    "fontSize": "13px",
+                },
+            ),
+            # CPU
+            html.Div(
+                f"{proc.get('cpu', 0)}%",
+                style={
+                    "width": "70px",
+                    "color": "#64748b",
+                    "fontSize": "13px",
+                },
+            ),
+            # Memory
+            html.Div(
+                f"{proc.get('memory', 0)} MB",
+                style={
+                    "width": "80px",
+                    "color": "#64748b",
+                    "fontSize": "13px",
+                },
+            ),
+            # Uptime
+            html.Div(
+                proc.get("uptime", "N/A"),
+                style={
+                    "width": "90px",
+                    "color": "#64748b",
+                    "fontSize": "13px",
+                },
+            ),
+            # Restarts
+            html.Div(
+                str(proc.get("restarts", 0)),
+                style={
+                    "width": "70px",
+                    "color": "#f59e0b" if proc.get("restarts", 0) > 0 else "#64748b",
+                    "fontWeight": "600" if proc.get("restarts", 0) > 0 else "400",
+                    "fontSize": "13px",
+                },
+            ),
+            # Action buttons
+            html.Div(
+                [
+                    dbc.Button(
+                        "Start" if status == "stopped" else "Restart",
+                        id={"type": "pm2-action-btn", "index": proc.get("name"), "action": "start" if status == "stopped" else "restart"},
+                        color="success" if status == "stopped" else "warning",
+                        size="sm",
+                        outline=True,
+                        className="me-1",
+                        style={"fontSize": "11px", "padding": "2px 8px"},
+                    ),
+                    dbc.Button(
+                        "Stop",
+                        id={"type": "pm2-action-btn", "index": proc.get("name"), "action": "stop"},
+                        color="danger",
+                        size="sm",
+                        outline=True,
+                        disabled=status == "stopped",
+                        style={"fontSize": "11px", "padding": "2px 8px"},
+                    ),
+                ],
+                style={"flex": "1", "textAlign": "right"},
+            ),
+        ],
+        style={
+            "display": "flex",
+            "alignItems": "center",
+            "padding": "10px 16px",
+            "borderBottom": "1px solid #f1f5f9",
+            "fontSize": "13px",
         },
     )

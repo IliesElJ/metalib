@@ -3,7 +3,7 @@ Callbacks Module
 Handles all Dash callbacks for the MetaDAsh application
 """
 
-from dash import Input, Output, State, html, no_update, callback_context
+from dash import Input, Output, State, html, no_update, callback_context, ALL, MATCH
 import dash_bootstrap_components as dbc
 from datetime import datetime, date
 import plotly.graph_objects as go
@@ -23,6 +23,12 @@ from utils.log_utils import (
     read_log_file,
     get_log_statistics,
 )
+from utils.pm2_utils import (
+    get_pm2_status,
+    pm2_start,
+    pm2_stop,
+    pm2_restart,
+)
 
 from components import (
     render_overview_tab,
@@ -39,6 +45,7 @@ from components import (
     render_status_tab,
     create_status_summary,
     create_status_table,
+    create_pm2_process_table,
     render_welcome_tab,
     render_instance_trades_tab,
     get_filtered_strategy_instances,
@@ -671,3 +678,114 @@ def register_callbacks(app):
         }
 
         return chart_container, visible_style
+
+    # ------------------------------
+    # PM2 Process Manager callbacks
+    # ------------------------------
+
+    @app.callback(
+        Output("pm2-process-table-container", "children"),
+        Input("status-auto-refresh", "n_intervals"),
+        Input("status-refresh-btn", "n_clicks"),
+        Input("pm2-start-all-btn", "n_clicks"),
+        Input("pm2-stop-all-btn", "n_clicks"),
+        Input("pm2-restart-all-btn", "n_clicks"),
+        prevent_initial_call=False,
+    )
+    def update_pm2_process_table(n_intervals, refresh_clicks, start_clicks, stop_clicks, restart_clicks):
+        """Update PM2 process table"""
+        processes = get_pm2_status()
+        return create_pm2_process_table(processes)
+
+    @app.callback(
+        Output("pm2-action-feedback", "children"),
+        Input("pm2-start-all-btn", "n_clicks"),
+        Input("pm2-stop-all-btn", "n_clicks"),
+        Input("pm2-restart-all-btn", "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def handle_pm2_bulk_actions(start_clicks, stop_clicks, restart_clicks):
+        """Handle PM2 bulk action buttons"""
+        ctx = callback_context
+        if not ctx.triggered:
+            return no_update
+
+        button_id = ctx.triggered[0]["prop_id"].split(".")[0]
+
+        if button_id == "pm2-start-all-btn":
+            result = pm2_start()
+        elif button_id == "pm2-stop-all-btn":
+            result = pm2_stop()
+        elif button_id == "pm2-restart-all-btn":
+            result = pm2_restart()
+        else:
+            return no_update
+
+        if result["success"]:
+            return dbc.Alert(
+                result["message"],
+                color="success",
+                dismissable=True,
+                duration=3000,
+            )
+        else:
+            return dbc.Alert(
+                f"Error: {result['message']}",
+                color="danger",
+                dismissable=True,
+                duration=5000,
+            )
+
+    @app.callback(
+        Output("pm2-action-feedback", "children", allow_duplicate=True),
+        Input({"type": "pm2-action-btn", "index": ALL, "action": ALL}, "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def handle_pm2_individual_actions(n_clicks_list):
+        """Handle individual PM2 process action buttons"""
+        ctx = callback_context
+        if not ctx.triggered or not any(n_clicks_list):
+            return no_update
+
+        # Get the triggered button info
+        triggered = ctx.triggered[0]
+        prop_id = triggered["prop_id"]
+
+        # Parse the pattern-matching ID
+        import json
+        # prop_id looks like: '{"type":"pm2-action-btn","index":"metafvg","action":"restart"}.n_clicks'
+        id_str = prop_id.rsplit(".", 1)[0]
+        try:
+            button_info = json.loads(id_str)
+        except json.JSONDecodeError:
+            return no_update
+
+        process_name = button_info.get("index")
+        action = button_info.get("action")
+
+        if not process_name or not action:
+            return no_update
+
+        if action == "start":
+            result = pm2_start(process_name)
+        elif action == "stop":
+            result = pm2_stop(process_name)
+        elif action == "restart":
+            result = pm2_restart(process_name)
+        else:
+            return no_update
+
+        if result["success"]:
+            return dbc.Alert(
+                f"{process_name}: {result['message']}",
+                color="success",
+                dismissable=True,
+                duration=3000,
+            )
+        else:
+            return dbc.Alert(
+                f"{process_name}: {result['message']}",
+                color="danger",
+                dismissable=True,
+                duration=5000,
+            )

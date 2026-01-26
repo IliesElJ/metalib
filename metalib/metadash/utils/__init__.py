@@ -36,6 +36,15 @@ from .health_utils import (
     load_all_configs,
     is_weekend,
 )
+from .pm2_utils import (
+    get_pm2_status,
+    get_pm2_summary,
+    is_pm2_available,
+    pm2_start,
+    pm2_stop,
+    pm2_restart,
+    pm2_save,
+)
 
 __all__ = [
     'initialize_mt5',
@@ -58,5 +67,12 @@ __all__ = [
     'get_dates_for_strategy',
     'read_log_file',
     'parse_log_content',
-    'get_log_statistics'
+    'get_log_statistics',
+    'get_pm2_status',
+    'get_pm2_summary',
+    'is_pm2_available',
+    'pm2_start',
+    'pm2_stop',
+    'pm2_restart',
+    'pm2_save',
 ]
