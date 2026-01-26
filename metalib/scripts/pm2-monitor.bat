@@ -1,0 +1,3 @@
+@echo off
+echo Opening PM2 monitor dashboard (press 'q' to exit)...
+pm2 monit

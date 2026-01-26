@@ -1,0 +1,3 @@
+@echo off
+echo Showing PM2 logs (Ctrl+C to exit)...
+pm2 logs --lines 100
