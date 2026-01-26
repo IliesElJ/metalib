@@ -22,17 +22,32 @@ def get_pm2_status() -> List[Dict]:
         - restarts: Number of restarts
     """
     try:
+        # Use shell=True on Windows for better compatibility
         result = subprocess.run(
-            ["pm2", "jlist"],
+            "pm2 jlist",
             capture_output=True,
             text=True,
             timeout=10,
+            shell=True,
+            encoding="utf-8",
+            errors="ignore",
         )
 
         if result.returncode != 0:
             return []
 
-        processes = json.loads(result.stdout)
+        output = result.stdout.strip()
+        if not output:
+            return []
+
+        # Try to find valid JSON array in output (skip any non-JSON prefix)
+        start_idx = output.find("[")
+        end_idx = output.rfind("]")
+        if start_idx == -1 or end_idx == -1:
+            return []
+
+        json_str = output[start_idx : end_idx + 1]
+        processes = json.loads(json_str)
 
         status_list = []
         for proc in processes:
@@ -43,25 +58,31 @@ def get_pm2_status() -> List[Dict]:
             uptime_ms = pm2_env.get("pm_uptime", 0)
             uptime_str = _format_uptime(uptime_ms)
 
-            status_list.append({
-                "name": proc.get("name", "unknown"),
-                "pm_id": proc.get("pm_id", -1),
-                "status": pm2_env.get("status", "unknown"),
-                "cpu": monit.get("cpu", 0),
-                "memory": round(monit.get("memory", 0) / (1024 * 1024), 1),  # Convert to MB
-                "uptime": uptime_str,
-                "uptime_ms": uptime_ms,
-                "restarts": pm2_env.get("restart_time", 0),
-                "pid": proc.get("pid", None),
-            })
+            status_list.append(
+                {
+                    "name": proc.get("name", "unknown"),
+                    "pm_id": proc.get("pm_id", -1),
+                    "status": pm2_env.get("status", "unknown"),
+                    "cpu": monit.get("cpu", 0),
+                    "memory": round(
+                        monit.get("memory", 0) / (1024 * 1024), 1
+                    ),  # Convert to MB
+                    "uptime": uptime_str,
+                    "uptime_ms": uptime_ms,
+                    "restarts": pm2_env.get("restart_time", 0),
+                    "pid": proc.get("pid", None),
+                }
+            )
 
         return status_list
 
     except subprocess.TimeoutExpired:
         return []
-    except (json.JSONDecodeError, FileNotFoundError):
+    except (json.JSONDecodeError, FileNotFoundError) as e:
+        print(f"PM2 JSON parse error: {e}")
         return []
-    except Exception:
+    except Exception as e:
+        print(f"PM2 status error: {e}")
         return []
 
 
@@ -110,16 +131,19 @@ def pm2_start(name: Optional[str] = None) -> Dict:
     """
     try:
         if name:
-            cmd = ["pm2", "start", name]
+            cmd = f"pm2 start {name}"
         else:
-            cmd = ["pm2", "start", "ecosystem.config.js"]
+            cmd = "pm2 start ecosystem.config.js"
 
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
             timeout=30,
+            shell=True,
             cwd=_get_project_root(),
+            encoding="utf-8",
+            errors="ignore",
         )
 
         if result.returncode == 0:
@@ -145,15 +169,18 @@ def pm2_stop(name: Optional[str] = None) -> Dict:
     """
     try:
         if name:
-            cmd = ["pm2", "stop", name]
+            cmd = f"pm2 stop {name}"
         else:
-            cmd = ["pm2", "stop", "all"]
+            cmd = "pm2 stop all"
 
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
             timeout=30,
+            shell=True,
+            encoding="utf-8",
+            errors="ignore",
         )
 
         if result.returncode == 0:
@@ -179,15 +206,18 @@ def pm2_restart(name: Optional[str] = None) -> Dict:
     """
     try:
         if name:
-            cmd = ["pm2", "restart", name]
+            cmd = f"pm2 restart {name}"
         else:
-            cmd = ["pm2", "restart", "all"]
+            cmd = "pm2 restart all"
 
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
             timeout=30,
+            shell=True,
+            encoding="utf-8",
+            errors="ignore",
         )
 
         if result.returncode == 0:
@@ -210,10 +240,13 @@ def pm2_save() -> Dict:
     """
     try:
         result = subprocess.run(
-            ["pm2", "save"],
+            "pm2 save",
             capture_output=True,
             text=True,
             timeout=10,
+            shell=True,
+            encoding="utf-8",
+            errors="ignore",
         )
 
         if result.returncode == 0:
@@ -229,10 +262,13 @@ def is_pm2_available() -> bool:
     """Check if PM2 is installed and available."""
     try:
         result = subprocess.run(
-            ["pm2", "--version"],
+            "pm2 --version",
             capture_output=True,
             text=True,
             timeout=5,
+            shell=True,
+            encoding="utf-8",
+            errors="ignore",
         )
         return result.returncode == 0
     except:
@@ -262,6 +298,7 @@ def get_pm2_summary() -> Dict:
 def _get_project_root() -> str:
     """Get the project root directory."""
     import os
+
     # Go up from metadash/utils to metalib root
     current = os.path.dirname(os.path.abspath(__file__))
     return os.path.dirname(os.path.dirname(current))
