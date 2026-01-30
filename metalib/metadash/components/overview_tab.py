@@ -4,12 +4,12 @@ Overview Tab Component
 from dash import html, dcc
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
+import numpy as np
 from utils.metrics import strategy_metrics, calculate_daily_performance
 from .common_ui import (
     create_page_header,
     create_stat_card,
     create_section_card,
-    create_styled_table,
     style_plotly_chart,
     format_currency,
     format_percentage,
@@ -18,30 +18,73 @@ from .common_ui import (
 )
 
 
+# Strategy name mapping - matches comment_open prefixes (longest match first)
+STRATEGY_NAME_MAP = {
+    'metago_weekly_': 'Weekly True Open',
+    'metaga_': 'XGBoost Decision Tree',
+    'metago_': 'Monthly True Open',
+    'metaob_': 'Order Blocks',
+    'metane_': 'Seasonality Decision Tree',
+    'metafvg_': 'Fair Value Gaps',
+}
+
+# Sort by prefix length (longest first) for correct matching
+_SORTED_PREFIXES = sorted(STRATEGY_NAME_MAP.keys(), key=len, reverse=True)
+
+# Grid template for collapsible table columns
+_GRID_TEMPLATE = "2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 0.8fr"
+
+
+def get_strategy_type_key(comment_open):
+    """Return the matched prefix key for grouping (handles metago_weekly_ vs metago_)."""
+    if not comment_open or not isinstance(comment_open, str):
+        return comment_open or "unknown"
+    for prefix in _SORTED_PREFIXES:
+        if comment_open.startswith(prefix):
+            return prefix
+    return comment_open
+
+
+def get_strategy_display_name(comment_open):
+    """Match longest prefix first, return human-readable name."""
+    if not comment_open or not isinstance(comment_open, str):
+        return comment_open or "Unknown"
+    for prefix in _SORTED_PREFIXES:
+        if comment_open.startswith(prefix):
+            return STRATEGY_NAME_MAP[prefix]
+    return comment_open
+
+
+def _format_profit_factor(value):
+    """Format profit factor, handling infinity."""
+    if value is None or (isinstance(value, float) and np.isnan(value)):
+        return "---"
+    if isinstance(value, float) and np.isinf(value):
+        return "inf"
+    return f"{value:.2f}"
+
+
 def render_overview_tab(merged_deals, account_size, account_info):
     """
     Render the overview tab with account info and strategy metrics
     """
-    # Calculate strategy metrics
-    strategy_metrics_df = merged_deals[
-        ["profit_open", "profit_close", "comment_open", "symbol_open", "time_open"]
-    ].copy()
-
-    # Group by strategy and symbol
-    grouped_metrics = strategy_metrics_df.groupby(["comment_open", "symbol_open"]).apply(
-        lambda x: strategy_metrics(x, account_size)
-    )
-
     # Calculate quick stats
     total_profit = merged_deals["profit_open"].sum() + merged_deals["profit_close"].sum()
     total_trades = len(merged_deals)
     winning_trades = len(merged_deals[(merged_deals["profit_open"] + merged_deals["profit_close"]) > 0])
     win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
 
-    # Find best performing strategy
+    # Find best performing strategy (using human-readable name)
+    strategy_metrics_df = merged_deals[
+        ["profit_open", "profit_close", "comment_open", "symbol_open", "time_open"]
+    ].copy()
+    grouped_metrics = strategy_metrics_df.groupby(["comment_open", "symbol_open"]).apply(
+        lambda x: strategy_metrics(x, account_size)
+    )
+
     if not grouped_metrics.empty:
         best_strategy_idx = grouped_metrics["Total Profit"].idxmax()
-        best_strategy = f"{best_strategy_idx[0]}"
+        best_strategy = get_strategy_display_name(best_strategy_idx[0])
     else:
         best_strategy = "N/A"
 
@@ -56,8 +99,8 @@ def render_overview_tab(merged_deals, account_size, account_info):
             daily_change = today_deals["profit_open"].sum() + today_deals["profit_close"].sum()
             daily_change_pct = (daily_change / account_info["balance"] * 100) if account_info["balance"] > 0 else 0
 
-    # Create strategy comparison figure
-    comparison_fig = create_strategy_comparison_chart(grouped_metrics)
+    # Count strategy types for subtitle
+    type_keys = strategy_metrics_df["comment_open"].apply(get_strategy_type_key).nunique()
 
     return html.Div(
         [
@@ -153,18 +196,11 @@ def render_overview_tab(merged_deals, account_size, account_info):
                 },
             ),
 
-            # Strategy Metrics Table
+            # Strategy Metrics Table (collapsible)
             create_section_card(
                 "Strategy Performance Metrics",
-                create_metrics_table(grouped_metrics),
-                subtitle=f"{len(grouped_metrics)} strategy-symbol combinations",
-            ),
-
-            # Strategy Comparison Chart
-            create_section_card(
-                "Performance Comparison",
-                dcc.Graph(figure=comparison_fig, config={"displayModeBar": False}),
-                subtitle="Key metrics across all strategies",
+                create_collapsible_metrics_table(merged_deals, account_size),
+                subtitle=f"{type_keys} strategy types",
             ),
         ]
     )
@@ -220,77 +256,166 @@ def _create_quick_stat(label, value, icon, color="neutral"):
     )
 
 
-def create_strategy_comparison_chart(grouped_metrics):
+def create_collapsible_metrics_table(merged_deals, account_size):
     """
-    Create strategy comparison bar chart
+    Create a collapsible metrics table grouped by strategy type.
+    Each strategy type gets a clickable header row with aggregated metrics
+    and a collapsible section containing per-symbol child rows.
     """
-    plot_metrics = ["Total Profit", "Average Profit by Trade", "Win Rate (%)", "Sharpe Ratio"]
-    plot_data = grouped_metrics.reset_index()
-    plot_data["strategy_symbol"] = plot_data["comment_open"] + " - " + plot_data["symbol_open"]
+    deals_df = merged_deals[
+        ["profit_open", "profit_close", "comment_open", "symbol_open", "time_open"]
+    ].copy()
+    deals_df["strategy_type_key"] = deals_df["comment_open"].apply(get_strategy_type_key)
 
-    fig = go.Figure()
+    # Column names
+    col_names = [
+        "Strategy / Symbol", "Total Profit", "Win Rate", "Avg Profit",
+        "Sharpe", "Max DD", "Profit Factor", "# Trades",
+    ]
 
-    colors = [CHART_COLORS[0], CHART_COLORS[1], CHART_COLORS[2], CHART_COLORS[4]]
+    # Header row (column labels)
+    header_cells = [
+        html.Div(
+            col,
+            style={
+                "fontWeight": "600",
+                "fontSize": "11px",
+                "color": COLORS["text_medium"],
+                "textTransform": "uppercase",
+                "letterSpacing": "0.5px",
+            },
+        )
+        for col in col_names
+    ]
 
-    for i, metric in enumerate(plot_metrics):
-        if metric in plot_data.columns:
-            fig.add_trace(
-                go.Bar(
-                    x=plot_data["strategy_symbol"],
-                    y=plot_data[metric],
-                    name=metric,
-                    marker_color=colors[i % len(colors)],
-                    hovertemplate=f"{metric}: %{{y:,.2f}}<extra></extra>",
-                )
-            )
-
-    fig.update_layout(
-        xaxis_title="",
-        yaxis_title="Value",
-        barmode="group",
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="center",
-            x=0.5,
-        ),
-        xaxis_tickangle=-45,
+    header_row = html.Div(
+        header_cells,
+        style={
+            "display": "grid",
+            "gridTemplateColumns": _GRID_TEMPLATE,
+            "padding": "12px 16px",
+            "backgroundColor": COLORS["background"],
+            "borderBottom": f"2px solid {COLORS['border']}",
+        },
     )
 
-    return style_plotly_chart(fig, height=450)
+    # Group deals by strategy type, sorted by total profit descending
+    type_groups = deals_df.groupby("strategy_type_key")
+    sorted_groups = sorted(
+        type_groups,
+        key=lambda g: -(g[1]["profit_open"].sum() + g[1]["profit_close"].sum()),
+    )
 
+    content_rows = []
 
-def create_metrics_table(grouped_metrics):
-    """
-    Create a formatted metrics table
-    """
-    df = grouped_metrics.reset_index()
+    for type_key, type_deals in sorted_groups:
+        display_name = STRATEGY_NAME_MAP.get(type_key, type_key)
 
-    # Rename columns for display
-    df = df.rename(columns={
-        "comment_open": "Strategy",
-        "symbol_open": "Symbol",
-    })
+        # Compute aggregated metrics for this strategy type
+        agg_metrics = strategy_metrics(type_deals, account_size)
 
-    # Select and order columns
-    display_cols = ["Strategy", "Symbol", "Total Profit", "Win Rate (%)",
-                    "Average Profit by Trade", "Sharpe Ratio", "Max Drawdown (%)",
-                    "Profit Factor", "Number of Trades"]
+        # Build clickable header row
+        profit_color = COLORS["success"] if agg_metrics["Total Profit"] >= 0 else COLORS["danger"]
 
-    available_cols = [c for c in display_cols if c in df.columns]
-    df = df[available_cols]
+        strategy_header = html.Div(
+            [
+                html.Div(
+                    [
+                        html.Span(
+                            "▶ ",
+                            style={
+                                "fontSize": "10px",
+                                "color": COLORS["text_light"],
+                                "marginRight": "6px",
+                            },
+                        ),
+                        html.Span(display_name, style={"fontWeight": "600"}),
+                    ],
+                ),
+                html.Div(
+                    format_currency(agg_metrics["Total Profit"]),
+                    style={"color": profit_color, "fontWeight": "600"},
+                ),
+                html.Div(f'{agg_metrics["Win Rate (%)"]:.1f}%'),
+                html.Div(format_currency(agg_metrics["Average Profit by Trade"])),
+                html.Div(f'{agg_metrics["Sharpe Ratio"]:.2f}'),
+                html.Div(f'{agg_metrics["Max Drawdown (%)"]:.1f}%'),
+                html.Div(_format_profit_factor(agg_metrics["Profit Factor"])),
+                html.Div(f'{int(agg_metrics["Number of Trades"])}'),
+            ],
+            id={"type": "strategy-header", "index": type_key},
+            n_clicks=0,
+            style={
+                "display": "grid",
+                "gridTemplateColumns": _GRID_TEMPLATE,
+                "padding": "12px 16px",
+                "backgroundColor": "#f1f5f9",
+                "cursor": "pointer",
+                "borderBottom": f"1px solid {COLORS['border']}",
+                "fontSize": "13px",
+                "color": COLORS["text_dark"],
+                "alignItems": "center",
+            },
+        )
 
-    # Build column definitions
-    columns = []
-    for col in df.columns:
-        col_def = {"name": col, "id": col}
-        if col not in ["Strategy", "Symbol"]:
-            col_def["type"] = "numeric"
-            col_def["format"] = {"specifier": ".2f"}
-        columns.append(col_def)
+        # Build per-symbol child rows
+        child_rows = []
+        symbol_groups = type_deals.groupby("symbol_open")
+        sorted_symbols = sorted(
+            symbol_groups,
+            key=lambda g: -(g[1]["profit_open"].sum() + g[1]["profit_close"].sum()),
+        )
 
-    return create_styled_table(
-        data=df.to_dict("records"),
-        columns=columns,
+        for idx, (symbol, symbol_deals) in enumerate(sorted_symbols):
+            sym_metrics = strategy_metrics(symbol_deals, account_size)
+            bg_color = "white" if idx % 2 == 0 else COLORS["background"]
+            sym_profit_color = COLORS["success"] if sym_metrics["Total Profit"] >= 0 else COLORS["danger"]
+
+            child_row = html.Div(
+                [
+                    html.Div(
+                        symbol,
+                        style={"paddingLeft": "28px", "color": COLORS["text_medium"]},
+                    ),
+                    html.Div(
+                        format_currency(sym_metrics["Total Profit"]),
+                        style={"color": sym_profit_color},
+                    ),
+                    html.Div(f'{sym_metrics["Win Rate (%)"]:.1f}%'),
+                    html.Div(format_currency(sym_metrics["Average Profit by Trade"])),
+                    html.Div(f'{sym_metrics["Sharpe Ratio"]:.2f}'),
+                    html.Div(f'{sym_metrics["Max Drawdown (%)"]:.1f}%'),
+                    html.Div(_format_profit_factor(sym_metrics["Profit Factor"])),
+                    html.Div(f'{int(sym_metrics["Number of Trades"])}'),
+                ],
+                style={
+                    "display": "grid",
+                    "gridTemplateColumns": _GRID_TEMPLATE,
+                    "padding": "10px 16px",
+                    "backgroundColor": bg_color,
+                    "borderBottom": f"1px solid {COLORS['border_light']}",
+                    "fontSize": "13px",
+                    "color": COLORS["text_dark"],
+                    "alignItems": "center",
+                },
+            )
+            child_rows.append(child_row)
+
+        # Wrap child rows in a Collapse component
+        collapse = dbc.Collapse(
+            html.Div(child_rows),
+            id={"type": "strategy-collapse", "index": type_key},
+            is_open=False,
+        )
+
+        content_rows.append(strategy_header)
+        content_rows.append(collapse)
+
+    return html.Div(
+        [header_row] + content_rows,
+        style={
+            "borderRadius": "8px",
+            "overflow": "hidden",
+            "border": f"1px solid {COLORS['border']}",
+        },
     )

@@ -736,6 +736,21 @@ def register_callbacks(app):
                 duration=5000,
             )
 
+    # ------------------------------
+    # Overview Tab - Strategy Collapse Toggle
+    # ------------------------------
+
+    @app.callback(
+        Output({"type": "strategy-collapse", "index": MATCH}, "is_open"),
+        Input({"type": "strategy-header", "index": MATCH}, "n_clicks"),
+        State({"type": "strategy-collapse", "index": MATCH}, "is_open"),
+        prevent_initial_call=True,
+    )
+    def toggle_strategy_collapse(n_clicks, is_open):
+        if n_clicks:
+            return not is_open
+        return is_open
+
     @app.callback(
         Output("pm2-action-feedback", "children", allow_duplicate=True),
         Input({"type": "pm2-action-btn", "index": ALL, "action": ALL}, "n_clicks"),

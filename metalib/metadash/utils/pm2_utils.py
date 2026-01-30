@@ -1,10 +1,13 @@
 """
 PM2 Utilities Module
 Handles PM2 process management for trading strategies.
+
+NOTE: The dashboard must be started from a terminal where pm2 and node are in the PATH.
 """
 
 import subprocess
 import json
+import os
 from typing import List, Dict, Optional
 
 
@@ -13,24 +16,15 @@ def get_pm2_status() -> List[Dict]:
     Get status of all PM2 processes.
 
     Returns:
-        List of process info dicts with keys:
-        - name: process name
-        - status: 'online', 'stopped', 'errored', etc.
-        - cpu: CPU usage percentage
-        - memory: Memory usage in MB
-        - uptime: Uptime in milliseconds
-        - restarts: Number of restarts
+        List of process info dicts
     """
     try:
-        # Use shell=True on Windows for better compatibility
         result = subprocess.run(
             "pm2 jlist",
             capture_output=True,
             text=True,
             timeout=10,
             shell=True,
-            encoding="utf-8",
-            errors="ignore",
         )
 
         if result.returncode != 0:
@@ -40,13 +34,13 @@ def get_pm2_status() -> List[Dict]:
         if not output:
             return []
 
-        # Try to find valid JSON array in output (skip any non-JSON prefix)
+        # Find JSON array in output
         start_idx = output.find("[")
         end_idx = output.rfind("]")
         if start_idx == -1 or end_idx == -1:
             return []
 
-        json_str = output[start_idx : end_idx + 1]
+        json_str = output[start_idx:end_idx + 1]
         processes = json.loads(json_str)
 
         status_list = []
@@ -54,33 +48,23 @@ def get_pm2_status() -> List[Dict]:
             pm2_env = proc.get("pm2_env", {})
             monit = proc.get("monit", {})
 
-            # Calculate uptime string
             uptime_ms = pm2_env.get("pm_uptime", 0)
             uptime_str = _format_uptime(uptime_ms)
 
-            status_list.append(
-                {
-                    "name": proc.get("name", "unknown"),
-                    "pm_id": proc.get("pm_id", -1),
-                    "status": pm2_env.get("status", "unknown"),
-                    "cpu": monit.get("cpu", 0),
-                    "memory": round(
-                        monit.get("memory", 0) / (1024 * 1024), 1
-                    ),  # Convert to MB
-                    "uptime": uptime_str,
-                    "uptime_ms": uptime_ms,
-                    "restarts": pm2_env.get("restart_time", 0),
-                    "pid": proc.get("pid", None),
-                }
-            )
+            status_list.append({
+                "name": proc.get("name", "unknown"),
+                "pm_id": proc.get("pm_id", -1),
+                "status": pm2_env.get("status", "unknown"),
+                "cpu": monit.get("cpu", 0),
+                "memory": round(monit.get("memory", 0) / (1024 * 1024), 1),
+                "uptime": uptime_str,
+                "uptime_ms": uptime_ms,
+                "restarts": pm2_env.get("restart_time", 0),
+                "pid": proc.get("pid", None),
+            })
 
         return status_list
 
-    except subprocess.TimeoutExpired:
-        return []
-    except (json.JSONDecodeError, FileNotFoundError) as e:
-        print(f"PM2 JSON parse error: {e}")
-        return []
     except Exception as e:
         print(f"PM2 status error: {e}")
         return []
@@ -91,22 +75,17 @@ def _format_uptime(uptime_ms: int) -> str:
     if not uptime_ms:
         return "N/A"
 
-    import time
-    from datetime import datetime
-
-    # pm_uptime is the timestamp when the process started
     try:
+        from datetime import datetime
         start_time = datetime.fromtimestamp(uptime_ms / 1000)
         now = datetime.now()
         delta = now - start_time
-
         total_seconds = int(delta.total_seconds())
 
         if total_seconds < 60:
             return f"{total_seconds}s"
         elif total_seconds < 3600:
-            minutes = total_seconds // 60
-            return f"{minutes}m"
+            return f"{total_seconds // 60}m"
         elif total_seconds < 86400:
             hours = total_seconds // 3600
             minutes = (total_seconds % 3600) // 60
@@ -120,15 +99,7 @@ def _format_uptime(uptime_ms: int) -> str:
 
 
 def pm2_start(name: Optional[str] = None) -> Dict:
-    """
-    Start PM2 process(es).
-
-    Args:
-        name: Process name to start, or None to start all
-
-    Returns:
-        Dict with 'success' bool and 'message' string
-    """
+    """Start PM2 process(es)."""
     try:
         if name:
             cmd = f"pm2 start {name}"
@@ -142,8 +113,6 @@ def pm2_start(name: Optional[str] = None) -> Dict:
             timeout=30,
             shell=True,
             cwd=_get_project_root(),
-            encoding="utf-8",
-            errors="ignore",
         )
 
         if result.returncode == 0:
@@ -151,22 +120,12 @@ def pm2_start(name: Optional[str] = None) -> Dict:
         else:
             return {"success": False, "message": result.stderr or "Failed to start"}
 
-    except subprocess.TimeoutExpired:
-        return {"success": False, "message": "Command timed out"}
     except Exception as e:
         return {"success": False, "message": str(e)}
 
 
 def pm2_stop(name: Optional[str] = None) -> Dict:
-    """
-    Stop PM2 process(es).
-
-    Args:
-        name: Process name to stop, or None to stop all
-
-    Returns:
-        Dict with 'success' bool and 'message' string
-    """
+    """Stop PM2 process(es)."""
     try:
         if name:
             cmd = f"pm2 stop {name}"
@@ -179,8 +138,6 @@ def pm2_stop(name: Optional[str] = None) -> Dict:
             text=True,
             timeout=30,
             shell=True,
-            encoding="utf-8",
-            errors="ignore",
         )
 
         if result.returncode == 0:
@@ -188,22 +145,12 @@ def pm2_stop(name: Optional[str] = None) -> Dict:
         else:
             return {"success": False, "message": result.stderr or "Failed to stop"}
 
-    except subprocess.TimeoutExpired:
-        return {"success": False, "message": "Command timed out"}
     except Exception as e:
         return {"success": False, "message": str(e)}
 
 
 def pm2_restart(name: Optional[str] = None) -> Dict:
-    """
-    Restart PM2 process(es).
-
-    Args:
-        name: Process name to restart, or None to restart all
-
-    Returns:
-        Dict with 'success' bool and 'message' string
-    """
+    """Restart PM2 process(es)."""
     try:
         if name:
             cmd = f"pm2 restart {name}"
@@ -216,8 +163,6 @@ def pm2_restart(name: Optional[str] = None) -> Dict:
             text=True,
             timeout=30,
             shell=True,
-            encoding="utf-8",
-            errors="ignore",
         )
 
         if result.returncode == 0:
@@ -225,19 +170,12 @@ def pm2_restart(name: Optional[str] = None) -> Dict:
         else:
             return {"success": False, "message": result.stderr or "Failed to restart"}
 
-    except subprocess.TimeoutExpired:
-        return {"success": False, "message": "Command timed out"}
     except Exception as e:
         return {"success": False, "message": str(e)}
 
 
 def pm2_save() -> Dict:
-    """
-    Save PM2 process list for auto-restart on boot.
-
-    Returns:
-        Dict with 'success' bool and 'message' string
-    """
+    """Save PM2 process list."""
     try:
         result = subprocess.run(
             "pm2 save",
@@ -245,8 +183,6 @@ def pm2_save() -> Dict:
             text=True,
             timeout=10,
             shell=True,
-            encoding="utf-8",
-            errors="ignore",
         )
 
         if result.returncode == 0:
@@ -267,8 +203,6 @@ def is_pm2_available() -> bool:
             text=True,
             timeout=5,
             shell=True,
-            encoding="utf-8",
-            errors="ignore",
         )
         return result.returncode == 0
     except:
@@ -276,15 +210,10 @@ def is_pm2_available() -> bool:
 
 
 def get_pm2_summary() -> Dict:
-    """
-    Get summary of PM2 processes.
-
-    Returns:
-        Dict with counts: total, online, stopped, errored
-    """
+    """Get summary of PM2 processes."""
     processes = get_pm2_status()
 
-    summary = {
+    return {
         "total": len(processes),
         "online": sum(1 for p in processes if p["status"] == "online"),
         "stopped": sum(1 for p in processes if p["status"] == "stopped"),
@@ -292,13 +221,8 @@ def get_pm2_summary() -> Dict:
         "available": is_pm2_available(),
     }
 
-    return summary
-
 
 def _get_project_root() -> str:
     """Get the project root directory."""
-    import os
-
-    # Go up from metadash/utils to metalib root
     current = os.path.dirname(os.path.abspath(__file__))
     return os.path.dirname(os.path.dirname(current))
