@@ -23,6 +23,6 @@ def create_tabs_layout():
             dbc.Tab(label="Raw Data", tab_id="raw"),
         ],
         id="tabs",
-        active_tab="welcome",
+        active_tab="overview",
         className="nav-tabs",
     )
