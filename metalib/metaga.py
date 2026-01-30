@@ -144,9 +144,9 @@ class MetaGA(MetaStrategy):
         # Compute rolling next returns series
         ret_cc = np.log(data["close"]).diff()
         vol_sess = np.sqrt(
-            ret_cc.rolling(self.low_length).apply(lambda x: (x**2).sum(), raw=True)
+            ret_cc.rolling(self.mid_length).apply(lambda x: (x**2).sum(), raw=True)
         )
-        y_raw = ret_cc.rolling(self.low_length).sum().shift(-self.low_length) / vol_sess
+        y_raw = ret_cc.rolling(self.mid_length).sum().shift(-self.low_length) / vol_sess
         next_five_returns = (y_raw > 0).astype(int).dropna()
 
         # Indicators
