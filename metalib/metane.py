@@ -10,6 +10,7 @@ from sklearn.metrics import r2_score, accuracy_score
 
 from metalib.indicators import *
 from metalib.metastrategy import MetaStrategy
+import vectorbt as vbt
 
 
 def _evaluate_random_forest_with_tuning(X, y, n_splits=4, feature_names=None):
