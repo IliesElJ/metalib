@@ -8,7 +8,14 @@ NOTE: The dashboard must be started from a terminal where pm2 and node are in th
 import subprocess
 import json
 import os
+import sys
 from typing import List, Dict, Optional
+
+_NODE_DIR = r"C:\Program Files\nodejs"
+_PM2_CMD = r"C:\Users\Administrator\AppData\Roaming\npm"
+
+_SUBPROCESS_ENV = os.environ.copy()
+_SUBPROCESS_ENV["PATH"] = _NODE_DIR + ";" + _SUBPROCESS_ENV.get("PATH", "")
 
 
 def get_pm2_status() -> List[Dict]:
@@ -20,11 +27,12 @@ def get_pm2_status() -> List[Dict]:
     """
     try:
         result = subprocess.run(
-            "pm2 jlist",
+            [_PM2_CMD, "jlist"],
             capture_output=True,
             text=True,
             timeout=10,
-            shell=True,
+            shell=False,
+            env=_SUBPROCESS_ENV,
         )
 
         if result.returncode != 0:
@@ -40,7 +48,7 @@ def get_pm2_status() -> List[Dict]:
         if start_idx == -1 or end_idx == -1:
             return []
 
-        json_str = output[start_idx:end_idx + 1]
+        json_str = output[start_idx : end_idx + 1]
         processes = json.loads(json_str)
 
         status_list = []
@@ -51,17 +59,19 @@ def get_pm2_status() -> List[Dict]:
             uptime_ms = pm2_env.get("pm_uptime", 0)
             uptime_str = _format_uptime(uptime_ms)
 
-            status_list.append({
-                "name": proc.get("name", "unknown"),
-                "pm_id": proc.get("pm_id", -1),
-                "status": pm2_env.get("status", "unknown"),
-                "cpu": monit.get("cpu", 0),
-                "memory": round(monit.get("memory", 0) / (1024 * 1024), 1),
-                "uptime": uptime_str,
-                "uptime_ms": uptime_ms,
-                "restarts": pm2_env.get("restart_time", 0),
-                "pid": proc.get("pid", None),
-            })
+            status_list.append(
+                {
+                    "name": proc.get("name", "unknown"),
+                    "pm_id": proc.get("pm_id", -1),
+                    "status": pm2_env.get("status", "unknown"),
+                    "cpu": monit.get("cpu", 0),
+                    "memory": round(monit.get("memory", 0) / (1024 * 1024), 1),
+                    "uptime": uptime_str,
+                    "uptime_ms": uptime_ms,
+                    "restarts": pm2_env.get("restart_time", 0),
+                    "pid": proc.get("pid", None),
+                }
+            )
 
         return status_list
 
@@ -77,6 +87,7 @@ def _format_uptime(uptime_ms: int) -> str:
 
     try:
         from datetime import datetime
+
         start_time = datetime.fromtimestamp(uptime_ms / 1000)
         now = datetime.now()
         delta = now - start_time
@@ -102,17 +113,18 @@ def pm2_start(name: Optional[str] = None) -> Dict:
     """Start PM2 process(es)."""
     try:
         if name:
-            cmd = f"pm2 start {name}"
+            cmd = [_PM2_CMD, "start", name]
         else:
-            cmd = "pm2 start ecosystem.config.js"
+            cmd = [_PM2_CMD, "start", "ecosystem.config.js"]
 
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
             timeout=30,
-            shell=True,
+            shell=False,
             cwd=_get_project_root(),
+            env=_SUBPROCESS_ENV,
         )
 
         if result.returncode == 0:
@@ -128,16 +140,17 @@ def pm2_stop(name: Optional[str] = None) -> Dict:
     """Stop PM2 process(es)."""
     try:
         if name:
-            cmd = f"pm2 stop {name}"
+            cmd = [_PM2_CMD, "stop", name]
         else:
-            cmd = "pm2 stop all"
+            cmd = [_PM2_CMD, "stop", "all"]
 
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
             timeout=30,
-            shell=True,
+            shell=False,
+            env=_SUBPROCESS_ENV,
         )
 
         if result.returncode == 0:
@@ -153,16 +166,17 @@ def pm2_restart(name: Optional[str] = None) -> Dict:
     """Restart PM2 process(es)."""
     try:
         if name:
-            cmd = f"pm2 restart {name}"
+            cmd = [_PM2_CMD, "restart", name]
         else:
-            cmd = "pm2 restart all"
+            cmd = [_PM2_CMD, "restart", "all"]
 
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
             timeout=30,
-            shell=True,
+            shell=False,
+            env=_SUBPROCESS_ENV,
         )
 
         if result.returncode == 0:
@@ -178,11 +192,12 @@ def pm2_save() -> Dict:
     """Save PM2 process list."""
     try:
         result = subprocess.run(
-            "pm2 save",
+            [_PM2_CMD, "save"],
             capture_output=True,
             text=True,
             timeout=10,
-            shell=True,
+            shell=False,
+            env=_SUBPROCESS_ENV,
         )
 
         if result.returncode == 0:
@@ -198,11 +213,12 @@ def is_pm2_available() -> bool:
     """Check if PM2 is installed and available."""
     try:
         result = subprocess.run(
-            "pm2 --version",
+            [_PM2_CMD, "--version"],
             capture_output=True,
             text=True,
             timeout=5,
-            shell=True,
+            shell=False,
+            env=_SUBPROCESS_ENV,
         )
         return result.returncode == 0
     except:

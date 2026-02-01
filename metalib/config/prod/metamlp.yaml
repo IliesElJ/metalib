@@ -10,6 +10,6 @@ AUDCHF_H1_MLP:
   horizons: [4, 8, 10, 12]
   hidden_layers: [32, 16]
   max_iter: 500
-  fit_lookback_days: 90
+  fit_lookback_days: 1460
   train_ratio: 0.9
-  risk_reward: 1.0
+  risk_reward: 1.10
