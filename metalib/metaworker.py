@@ -10,6 +10,7 @@ from metalib.metagomano import MetaGO
 from metalib.metafvg import MetaFVG
 from metalib.metane import MetaNE
 from metalib.metaob import MetaOB
+from metalib.metamlp import MetaMLP
 
 strategy_registry = {
     "metane": {
@@ -82,6 +83,24 @@ strategy_registry = {
             "tp_atr_mult",
         ],
     },
+    "metamlp": {
+        "class": MetaMLP,
+        "init_keys": [
+            "symbols",
+            "timeframe",
+            "tag",
+            "size_position",
+            "active_hours",
+            "rolling_windows",
+            "thresholds",
+            "horizons",
+            "hidden_layers",
+            "max_iter",
+            "fit_lookback_days",
+            "train_ratio",
+            "risk_reward",
+        ],
+    },
 }
 
 timeframe_mapping = {
@@ -131,7 +150,7 @@ def run_strategy_loop(strategy_type, init_args):
     schedule.every().day.at("00:00").do(instance.connect)
     schedule.every().day.at("00:01").do(instance.fit)
 
-    # For some stratgies, let us close all the positions every day
+    # For some strategies, let us close all the positions every day
     # at 8 PM UTC time (3 PM NYC)
     night_close_strategies = []  # [ MetaFVG ] should be the class itself.
 

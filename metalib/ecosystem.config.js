@@ -12,7 +12,7 @@
 //   pm2 startup                             # Enable auto-start on boot
 
 // Conda environment configuration
-const CONDA_ROOT = "C:\\ProgramData\\miniconda3";
+const CONDA_ROOT = "C:\\Users\\Trismegist\\anaconda3";
 const CONDA_ENV = "adonys";
 const PYTHON_PATH = `${CONDA_ROOT}\\envs\\${CONDA_ENV}\\python.exe`;
 
@@ -94,6 +94,18 @@ module.exports = {
       ...commonConfig,
       output: "./logs/metane-out.log",
       error: "./logs/metane-error.log",
+    },
+
+    // ============================================
+    // MetaMLP Strategy
+    // ============================================
+    {
+      name: "metamlp",
+      script: "main_metamlp.py",
+      cwd: "./mains",
+      ...commonConfig,
+      output: "./logs/metamlp-out.log",
+      error: "./logs/metamlp-error.log",
     },
 
     // ============================================
