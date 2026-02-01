@@ -5,10 +5,10 @@ AUDCHF_H1_MLP:
   tag: metamlp_audchf
   size_position: 0.05
   active_hours: None
-  rolling_windows: [100, 500, 1000]
+  rolling_windows: [24, 120, 528]
   thresholds: [-7.0, -5.0, -1.0, 1.0, 5.0, 7.0]
   horizons: [4, 8, 10, 12]
-  hidden_layers: [32, 16]
+  hidden_layers: [64, 32]
   max_iter: 500
   fit_lookback_days: 1460
   train_ratio: 0.9
