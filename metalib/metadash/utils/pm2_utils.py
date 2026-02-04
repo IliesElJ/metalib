@@ -12,7 +12,7 @@ import sys
 from typing import List, Dict, Optional
 
 _NODE_DIR = r"C:\Program Files\nodejs"
-_PM2_CMD = r"C:\Users\Administrator\AppData\Roaming\npm"
+_PM2_CMD = r"C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd"
 
 _SUBPROCESS_ENV = os.environ.copy()
 _SUBPROCESS_ENV["PATH"] = _NODE_DIR + ";" + _SUBPROCESS_ENV.get("PATH", "")
