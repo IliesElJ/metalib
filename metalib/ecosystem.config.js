@@ -12,7 +12,7 @@
 //   pm2 startup                             # Enable auto-start on boot
 
 // Conda environment configuration
-const CONDA_ROOT = "C:\\Users\\Trismegist\\anaconda3";
+const CONDA_ROOT = "C:\\ProgramData\\miniconda3";
 const CONDA_ENV = "adonys";
 const PYTHON_PATH = `${CONDA_ROOT}\\envs\\${CONDA_ENV}\\python.exe`;
 
