@@ -101,9 +101,7 @@ class MetaMLP(MetaStrategy):
 
     def fit(self):
         utc = pytz.timezone("UTC")
-        end_time = datetime.now(utc).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
+        end_time = datetime.now(utc).replace(hour=0, minute=0, second=0, microsecond=0)
         start_time = end_time - timedelta(days=self.fit_lookback_days)
 
         self.loadData(start_time, end_time)
@@ -126,7 +124,9 @@ class MetaMLP(MetaStrategy):
             targets[h] = targets[h].loc[valid]
 
         if len(feat_df) < 50:
-            print(f"[{self.tag}] fit(): not enough data ({len(feat_df)} rows), skipping")
+            print(
+                f"[{self.tag}] fit(): not enough data ({len(feat_df)} rows), skipping"
+            )
             return
 
         self.feature_cols_ = list(feat_df.columns)
@@ -315,4 +315,3 @@ class MetaMLP(MetaStrategy):
             self.send_telegram_message(
                 f"[MetaMLP] CLOSED all positions for {symbol} | tag={self.tag}"
             )
-
