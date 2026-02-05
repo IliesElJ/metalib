@@ -283,7 +283,6 @@ class MetaMLP(MetaStrategy):
 
     def check_conditions(self):
         symbol = self.symbols[0]
-        mean_entry_price, num_positions = self.get_positions_info()
 
         if self.state == 0:
             pass
@@ -317,10 +316,3 @@ class MetaMLP(MetaStrategy):
                 f"[MetaMLP] CLOSED all positions for {symbol} | tag={self.tag}"
             )
 
-    # ------------------------------------------------------------------
-    # Override run() for longer history window
-    # ------------------------------------------------------------------
-
-    def run(self, start_date, end_date):
-        start_date = end_date - timedelta(days=self.fit_lookback_days)
-        return super().run(start_date, end_date)
