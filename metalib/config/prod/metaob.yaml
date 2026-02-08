@@ -18,7 +18,7 @@ EURUSD_M15_OB:
   atr_period: 14
   breakout_lookback: 3
   pivot_window: 60
-  size_position: 0.24
+  size_position: 0.23
   sl_atr_mult: 5
   sma_long_hours: 200
   sma_short_hours: 50
@@ -33,7 +33,7 @@ GBPUSD_M15_OB:
   atr_period: 14
   breakout_lookback: 2
   pivot_window: 55
-  size_position: 0.09
+  size_position: 0.06
   sl_atr_mult: 4
   sma_long_hours: 210
   sma_short_hours: 48
@@ -48,9 +48,8 @@ NASDAQ_M15_OB:
   atr_period: 14
   breakout_lookback: 4
   pivot_window: 58
-  size_position: 0.1
+  size_position: 0.04
   sl_atr_mult: 5
-
   sma_long_hours: 190
   sma_short_hours: 50
   strategy_type: metaob
@@ -64,7 +63,7 @@ DAX_M15_OB:
   atr_period: 14
   breakout_lookback: 4
   pivot_window: 58
-  size_position: 0.1
+  size_position: 0.08
   sl_atr_mult: 5
   sma_long_hours: 190
   sma_short_hours: 50
@@ -79,7 +78,7 @@ USDCAD_M15_OB:
   atr_period: 14
   breakout_lookback: 4
   pivot_window: 58
-  size_position: 0.5
+  size_position: 0.43
   sl_atr_mult: 5
   sma_long_hours: 190
   sma_short_hours: 50
@@ -94,7 +93,7 @@ USDJPY_M15_OB:
   atr_period: 14
   breakout_lookback: 3
   pivot_window: 50
-  size_position: 0.19
+  size_position: 0.16
   sl_atr_mult: 4.5
   sma_long_hours: 220
   sma_short_hours: 60

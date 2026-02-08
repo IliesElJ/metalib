@@ -7,7 +7,7 @@ BTCUSD_M1_NE:
   lookahead: 30
   ols_window: 120
   rrr: 4
-  size_position: 0.01
+  size_position: 0.0
   strategy_type: metane
   symbols:
   - BTCUSD
@@ -24,7 +24,7 @@ EURUSD_M1_NE:
   lookahead: 30
   ols_window: 120
   rrr: 4
-  size_position: 0.06
+  size_position: 0.03
   strategy_type: metane
   symbols:
   - EURUSD
@@ -41,7 +41,7 @@ GER40CASH_M1_NE:
   lookahead: 30
   ols_window: 120
   rrr: 4
-  size_position: 0.09
+  size_position: 0.03
   strategy_type: metane
   symbols:
   - GER40
@@ -58,7 +58,7 @@ US100CASH_M1_NE:
   lookahead: 30
   ols_window: 120
   rrr: 4
-  size_position: 0.04
+  size_position: 0.01
   strategy_type: metane
   symbols:
   - US100

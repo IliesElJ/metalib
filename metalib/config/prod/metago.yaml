@@ -1,152 +1,9 @@
-EURHUF_H1_GO:
-  active_hours: None
-  lookahead: 48
-  mean_rev_tf: monthly
-  risk_factor: 0.0001
-  size_position: 0.06
-  strategy_type: metago
-  symbols:
-  - EURHUF
-  tag: metago_eurhuf
-  timeframe: mt5.TIMEFRAME_H1
-EURHUF_H1_WEEKLY:
-  active_hours: None
-  lookahead: 48
-  mean_rev_tf: weekly
-  risk_factor: 0.0001
-  size_position: 0.06
-  strategy_type: metago
-  symbols:
-  - EURHUF
-  tag: metago_weekly_huf
-  timeframe: mt5.TIMEFRAME_H1
-EURUSD_H1_GO:
-  active_hours: None
-  lookahead: 48
-  mean_rev_tf: monthly
-  risk_factor: 0.0001
-  size_position: 0.52
-  strategy_type: metago
-  symbols:
-  - EURUSD
-  tag: metago_eurusd
-  timeframe: mt5.TIMEFRAME_H1
-EURNOK_H1_GO:
-  active_hours: None
-  lookahead: 48
-  mean_rev_tf: monthly
-  risk_factor: 0.0001
-  size_position: 0.02
-  strategy_type: metago
-  symbols:
-    - EURNOK
-  tag: metago_enok
-  timeframe: mt5.TIMEFRAME_H1
-USDNOK_H1_GO:
-  active_hours: None
-  lookahead: 48
-  mean_rev_tf: monthly
-  risk_factor: 0.0001
-  size_position: 0.02
-  strategy_type: metago
-  symbols:
-    - USDNOK
-  tag: metago_unok
-  timeframe: mt5.TIMEFRAME_H1
-EURUSD_H1_WEEKLY:
-  active_hours: None
-  lookahead: 48
-  mean_rev_tf: weekly
-  risk_factor: 0.0001
-  size_position: 0.52
-  strategy_type: metago
-  symbols:
-  - EURUSD
-  tag: metago_weekly_eur
-  timeframe: mt5.TIMEFRAME_H1
-USDCAD_H1_GO:
-  active_hours: None
-  lookahead: 48
-  mean_rev_tf: monthly
-  risk_factor: 0.0001
-  size_position: 0.45
-  strategy_type: metago
-  symbols:
-  - USDCAD
-  tag: metago_usdcad
-  timeframe: mt5.TIMEFRAME_H1
-USDCHF_H1_GO:
-  active_hours: None
-  lookahead: 48
-  mean_rev_tf: monthly
-  risk_factor: 0.0001
-  size_position: 0.55
-  strategy_type: metago
-  symbols:
-  - USDCHF
-  tag: metago_usdchf
-  timeframe: mt5.TIMEFRAME_H1
-USDCNH_H1_GO:
-  active_hours: None
-  lookahead: 48
-  mean_rev_tf: monthly
-  risk_factor: 0.0001
-  size_position: 0.28
-  strategy_type: metago
-  symbols:
-  - USDCNH
-  tag: metago_f9
-  timeframe: mt5.TIMEFRAME_H1
-USDCNH_H1_WEEKLY:
-  active_hours: None
-  lookahead: 48
-  mean_rev_tf: weekly
-  risk_factor: 0.0001
-  size_position: 0.28
-  strategy_type: metago
-  symbols:
-  - USDCNH
-  tag: metago_weekly_cnh
-  timeframe: mt5.TIMEFRAME_H1
-USDJPY_H1_GO:
-  active_hours: None
-  lookahead: 48
-  mean_rev_tf: monthly
-  risk_factor: 0.0001
-  size_position: 0.25
-  strategy_type: metago
-  symbols:
-  - USDJPY
-  tag: metago_usdjpy
-  timeframe: mt5.TIMEFRAME_H1
-USDZAR_H1_GO:
-  active_hours: None
-  lookahead: 48
-  mean_rev_tf: monthly
-  risk_factor: 0.0001
-  size_position: 0.06
-  strategy_type: metago
-  symbols:
-  - USDZAR
-  tag: metago_usdzar
-  timeframe: mt5.TIMEFRAME_H1
-USDZAR_H1_WEEKLY:
-  active_hours: None
-  lookahead: 48
-  mean_rev_tf: weekly
-  risk_factor: 0.0001
-  size_position: 0.06
-  strategy_type: metago
-  symbols:
-  - USDZAR
-  tag: metago_weekly_zar
-  timeframe: mt5.TIMEFRAME_H1
 AUDJPY_H1_GO:
   active_hours: None
   lookahead: 48
   mean_rev_tf: monthly
   risk_factor: 0.0001
-  size_position: 0.06
+  size_position: 0.05
   strategy_type: metago
   symbols:
   - AUDJPY
@@ -157,9 +14,152 @@ AUDJPy_H1_WEEKLY:
   lookahead: 48
   mean_rev_tf: weekly
   risk_factor: 0.0001
-  size_position: 0.06
+  size_position: 0.05
   strategy_type: metago
   symbols:
   - AUDJPY
   tag: metago_w_audjpy
+  timeframe: mt5.TIMEFRAME_H1
+EURHUF_H1_GO:
+  active_hours: None
+  lookahead: 48
+  mean_rev_tf: monthly
+  risk_factor: 0.0001
+  size_position: 0.01
+  strategy_type: metago
+  symbols:
+  - EURHUF
+  tag: metago_eurhuf
+  timeframe: mt5.TIMEFRAME_H1
+EURHUF_H1_WEEKLY:
+  active_hours: None
+  lookahead: 48
+  mean_rev_tf: weekly
+  risk_factor: 0.0001
+  size_position: 0.01
+  strategy_type: metago
+  symbols:
+  - EURHUF
+  tag: metago_weekly_huf
+  timeframe: mt5.TIMEFRAME_H1
+EURNOK_H1_GO:
+  active_hours: None
+  lookahead: 48
+  mean_rev_tf: monthly
+  risk_factor: 0.0001
+  size_position: 0.0
+  strategy_type: metago
+  symbols:
+  - EURNOK
+  tag: metago_enok
+  timeframe: mt5.TIMEFRAME_H1
+EURUSD_H1_GO:
+  active_hours: None
+  lookahead: 48
+  mean_rev_tf: monthly
+  risk_factor: 0.0001
+  size_position: 0.21
+  strategy_type: metago
+  symbols:
+  - EURUSD
+  tag: metago_eurusd
+  timeframe: mt5.TIMEFRAME_H1
+EURUSD_H1_WEEKLY:
+  active_hours: None
+  lookahead: 48
+  mean_rev_tf: weekly
+  risk_factor: 0.0001
+  size_position: 0.21
+  strategy_type: metago
+  symbols:
+  - EURUSD
+  tag: metago_weekly_eur
+  timeframe: mt5.TIMEFRAME_H1
+USDCAD_H1_GO:
+  active_hours: None
+  lookahead: 48
+  mean_rev_tf: monthly
+  risk_factor: 0.0001
+  size_position: 0.13
+  strategy_type: metago
+  symbols:
+  - USDCAD
+  tag: metago_usdcad
+  timeframe: mt5.TIMEFRAME_H1
+USDCHF_H1_GO:
+  active_hours: None
+  lookahead: 48
+  mean_rev_tf: monthly
+  risk_factor: 0.0001
+  size_position: 0.21
+  strategy_type: metago
+  symbols:
+  - USDCHF
+  tag: metago_usdchf
+  timeframe: mt5.TIMEFRAME_H1
+USDCNH_H1_GO:
+  active_hours: None
+  lookahead: 48
+  mean_rev_tf: monthly
+  risk_factor: 0.0001
+  size_position: 0.1
+  strategy_type: metago
+  symbols:
+  - USDCNH
+  tag: metago_f9
+  timeframe: mt5.TIMEFRAME_H1
+USDCNH_H1_WEEKLY:
+  active_hours: None
+  lookahead: 48
+  mean_rev_tf: weekly
+  risk_factor: 0.0001
+  size_position: 0.1
+  strategy_type: metago
+  symbols:
+  - USDCNH
+  tag: metago_weekly_cnh
+  timeframe: mt5.TIMEFRAME_H1
+USDJPY_H1_GO:
+  active_hours: None
+  lookahead: 48
+  mean_rev_tf: monthly
+  risk_factor: 0.0001
+  size_position: 0.01
+  strategy_type: metago
+  symbols:
+  - USDJPY
+  tag: metago_usdjpy
+  timeframe: mt5.TIMEFRAME_H1
+USDNOK_H1_GO:
+  active_hours: None
+  lookahead: 48
+  mean_rev_tf: monthly
+  risk_factor: 0.0001
+  size_position: 0.06
+  strategy_type: metago
+  symbols:
+  - USDNOK
+  tag: metago_unok
+  timeframe: mt5.TIMEFRAME_H1
+USDZAR_H1_GO:
+  active_hours: None
+  lookahead: 48
+  mean_rev_tf: monthly
+  risk_factor: 0.0001
+  size_position: 0.02
+  strategy_type: metago
+  symbols:
+  - USDZAR
+  tag: metago_usdzar
+  timeframe: mt5.TIMEFRAME_H1
+USDZAR_H1_WEEKLY:
+  active_hours: None
+  lookahead: 48
+  mean_rev_tf: weekly
+  risk_factor: 0.0001
+  size_position: 0.02
+  strategy_type: metago
+  symbols:
+  - USDZAR
+  tag: metago_weekly_zar
   timeframe: mt5.TIMEFRAME_H1
