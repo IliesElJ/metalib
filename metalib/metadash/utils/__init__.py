@@ -45,6 +45,10 @@ from .pm2_utils import (
     pm2_restart,
     pm2_save,
 )
+from .calibration_utils import (
+    run_metascale_optimization,
+    save_weights_to_yaml,
+)
 
 __all__ = [
     'initialize_mt5',
@@ -75,4 +79,6 @@ __all__ = [
     'pm2_stop',
     'pm2_restart',
     'pm2_save',
+    'run_metascale_optimization',
+    'save_weights_to_yaml',
 ]

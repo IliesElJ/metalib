@@ -26,6 +26,7 @@ STRATEGY_NAME_MAP = {
     'metaob_': 'Order Blocks',
     'metane_': 'Seasonality Decision Tree',
     'metafvg_': 'Fair Value Gaps',
+    'metamlp_': 'Multi-Horizon MLP',
 }
 
 # Sort by prefix length (longest first) for correct matching

@@ -19,6 +19,12 @@ from .instance_trades_tab import (
     create_instance_trades_stats,
     create_trade_candlestick_chart,
 )
+from .calibration_tab import (
+    render_calibration_tab,
+    create_results_table,
+    create_results_chart,
+    DEFAULT_STRATEGY_PARAMS,
+)
 
 __all__ = [
     'render_overview_tab',
@@ -44,4 +50,8 @@ __all__ = [
     'create_instance_trades_grid',
     'create_instance_trades_stats',
     'create_trade_candlestick_chart',
+    'render_calibration_tab',
+    'create_results_table',
+    'create_results_chart',
+    'DEFAULT_STRATEGY_PARAMS',
 ]

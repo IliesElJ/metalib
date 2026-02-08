@@ -53,6 +53,10 @@ from components import (
     create_instance_trades_grid,
     create_instance_trades_stats,
     create_trade_candlestick_chart,
+    render_calibration_tab,
+    create_results_table,
+    create_results_chart,
+    DEFAULT_STRATEGY_PARAMS,
 )
 from components.log_tab import get_filtered_instances
 from components.detailed_tab import create_hourly_chart
@@ -208,6 +212,9 @@ def register_callbacks(app):
 
         if active_tab == "logs":
             return render_log_tab()
+
+        if active_tab == "calibration":
+            return render_calibration_tab()
 
         if data is None or not data.get("data_available", False):
             return html.Div(
@@ -802,5 +809,163 @@ def register_callbacks(app):
                 f"{process_name}: {result['message']}",
                 color="danger",
                 dismissable=True,
+                duration=5000,
+            )
+
+    # ------------------------------
+    # Weight Calibration Tab callbacks
+    # ------------------------------
+
+    @app.callback(
+        Output({"type": "calib-weight-display", "index": ALL}, "children"),
+        Input({"type": "calib-numerator", "index": ALL}, "value"),
+        Input({"type": "calib-trades-per-day", "index": ALL}, "value"),
+        prevent_initial_call=True,
+    )
+    def update_weight_displays(numerators, trades_per_days):
+        """Update computed weight displays when inputs change."""
+        import numpy as np
+        weights = []
+        for num, tpd in zip(numerators, trades_per_days):
+            if num is not None and tpd is not None and tpd > 0:
+                weight = num / np.sqrt(tpd)
+                weights.append(f"{weight:.3f}")
+            else:
+                weights.append("--")
+        return weights
+
+    @app.callback(
+        Output("calib-results-store", "data"),
+        Output("calib-results-table-container", "children"),
+        Output("calib-results-chart-container", "children"),
+        Output("calib-save-section", "style"),
+        Output("calib-save-btn", "disabled"),
+        Output("calib-status-msg", "children"),
+        Input("calib-run-btn", "n_clicks"),
+        State({"type": "calib-strategy-enabled", "index": ALL}, "value"),
+        State({"type": "calib-strategy-enabled", "index": ALL}, "id"),
+        State({"type": "calib-numerator", "index": ALL}, "value"),
+        State({"type": "calib-trades-per-day", "index": ALL}, "value"),
+        State("calib-risk-pct", "value"),
+        State("calib-lookback-days", "value"),
+        State("calib-config-dir", "value"),
+        prevent_initial_call=True,
+    )
+    def run_calibration_optimization(
+        n_clicks, enabled_list, enabled_ids, numerators, trades_per_days,
+        risk_pct, lookback_days, config_dir
+    ):
+        """Run the MetaScale optimization and display results."""
+        import numpy as np
+
+        if not n_clicks:
+            return no_update, no_update, no_update, no_update, no_update, no_update
+
+        try:
+            # Build strategy params dict from UI inputs
+            # Format: {strategy_type: {"numerator": N, "trades_per_day": T}}
+            strategy_params = {}
+            for enabled, id_obj, num, tpd in zip(enabled_list, enabled_ids, numerators, trades_per_days):
+                strategy_key = id_obj["index"]
+                if enabled and num is not None and tpd is not None and tpd > 0:
+                    strategy_params[strategy_key] = {
+                        "numerator": num,
+                        "trades_per_day": tpd,
+                    }
+
+            if not strategy_params:
+                return (
+                    None,
+                    html.Div("No strategies enabled", className="text-warning text-center p-4"),
+                    html.Div(),
+                    {"display": "none"},
+                    True,
+                    dbc.Alert("Please enable at least one strategy", color="warning"),
+                )
+
+            # Run optimization using MetaScale
+            from utils.calibration_utils import run_metascale_optimization
+
+            result = run_metascale_optimization(
+                strategy_params=strategy_params,
+                risk_pct=risk_pct / 100.0,  # Convert from percentage
+                lookback_days=lookback_days,
+                config_dir=config_dir,
+            )
+
+            if result["success"]:
+                weights_df = result["weights_df"]
+
+                # Create results display
+                table = create_results_table(weights_df)
+                chart = create_results_chart(weights_df)
+
+                return (
+                    weights_df.to_dict("records"),
+                    table,
+                    chart,
+                    {"display": "block"},
+                    False,
+                    dbc.Alert(
+                        f"Optimization completed. {len(weights_df)} positions computed.",
+                        color="success",
+                        duration=4000,
+                    ),
+                )
+            else:
+                return (
+                    None,
+                    html.Div(f"Optimization failed: {result['error']}", className="text-danger text-center p-4"),
+                    html.Div(),
+                    {"display": "none"},
+                    True,
+                    dbc.Alert(f"Error: {result['error']}", color="danger"),
+                )
+
+        except Exception as e:
+            return (
+                None,
+                html.Div(f"Error: {str(e)}", className="text-danger text-center p-4"),
+                html.Div(),
+                {"display": "none"},
+                True,
+                dbc.Alert(f"Error: {str(e)}", color="danger"),
+            )
+
+    @app.callback(
+        Output("calib-save-feedback", "children"),
+        Input("calib-save-btn", "n_clicks"),
+        State("calib-results-store", "data"),
+        State("calib-config-dir", "value"),
+        prevent_initial_call=True,
+    )
+    def save_calibration_results(n_clicks, results_data, config_dir):
+        """Save optimization results to YAML config files."""
+        if not n_clicks or not results_data:
+            return no_update
+
+        try:
+            from utils.calibration_utils import save_weights_to_yaml
+
+            weights_df = pd.DataFrame(results_data)
+            result = save_weights_to_yaml(weights_df, config_dir)
+
+            if result["success"]:
+                return dbc.Alert(
+                    f"Saved to {result['files_updated']} config files",
+                    color="success",
+                    duration=4000,
+                )
+            else:
+                return dbc.Alert(
+                    f"Save failed: {result['error']}",
+                    color="danger",
+                    duration=5000,
+                )
+
+        except Exception as e:
+            return dbc.Alert(
+                f"Error saving: {str(e)}",
+                color="danger",
                 duration=5000,
             )
