@@ -101,6 +101,7 @@ class MetaFVG(MetaStrategy):
         size_position: float,
         tag: str,
         limit_number_position: int = 1,
+        active_hours=None,
     ):
         """
         Initialize the MetaFVG strategy.
@@ -111,8 +112,9 @@ class MetaFVG(MetaStrategy):
             size_position: Position size
             tag: Strategy tag/identifier
             limit_number_position: Maximum number of positions
+            active_hours: List of hours (MT5 server time) to trade, None for all hours
         """
-        super().__init__(symbols, timeframe, tag, size_position)
+        super().__init__(symbols, timeframe, tag, size_position, active_hours)
         self._log(f"Initializing MetaFVG strategy with {symbols[0]}")
 
         # Trading state

@@ -44,7 +44,7 @@ class MetaOB(MetaStrategy):
         tp_atr_mult=6.0,
     ):
         super().__init__(
-            symbols, timeframe, tag, size_position, active_hours, size_position
+            symbols, timeframe, tag, size_position, active_hours
         )
 
         # Strategy parameters

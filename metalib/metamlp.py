@@ -315,3 +315,7 @@ class MetaMLP(MetaStrategy):
             self.send_telegram_message(
                 f"[MetaMLP] CLOSED all positions for {symbol} | tag={self.tag}"
             )
+
+    def run(self, start_date, end_date):
+        start_date = end_date - timedelta(days=self.fit_lookback_days)
+        return super().run(start_date, end_date)

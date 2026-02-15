@@ -10,38 +10,105 @@ import cvxpy as cx
 import sys
 
 
-class MetaScale(MetaStrategy):
-    """MetaTrader FVG (Fair Value Gap) Trading Strategy"""
+# Default strategy weight parameters: (numerator, trades_per_day)
+# Weight = numerator / sqrt(trades_per_day)
+DEFAULT_STRATEGY_PARAMS = {
+    "metafvg": {"numerator": 20, "trades_per_day": 48},
+    "metago": {"numerator": 1.5, "trades_per_day": 1},
+    "metane": {"numerator": 10, "trades_per_day": 12},
+    "metaga": {"numerator": 30, "trades_per_day": 48},
+    "metaob": {"numerator": 1, "trades_per_day": 1},
+}
 
-    def __init__(self, tag, risk_pct=0.005, config_dir="../config/prod"):
+
+def compute_weight(numerator: float, trades_per_day: float) -> float:
+    """Compute strategy weight from numerator and trades per day."""
+    return numerator / np.sqrt(trades_per_day)
+
+
+def params_to_weights(strategy_params: dict) -> dict:
+    """Convert strategy params dict to weights dict."""
+    return {
+        k: compute_weight(v["numerator"], v["trades_per_day"])
+        for k, v in strategy_params.items()
+    }
+
+
+class MetaScale(MetaStrategy):
+    """Portfolio Weight Optimization Strategy using convex optimization."""
+
+    def __init__(
+        self,
+        tag,
+        risk_pct=0.005,
+        config_dir="../config/prod",
+        strategy_params=None,
+        lookback_days=92,
+        auto_connect=True,
+        verbose=True,
+    ):
         """
-        Initialize the Position Sizing Strategy
+        Initialize the Position Sizing Strategy.
+
+        Args:
+            tag: Strategy identifier for logging
+            risk_pct: Fraction of account balance to risk (e.g., 0.015 = 1.5%)
+            config_dir: Path to YAML config directory
+            strategy_params: Dict of {strategy_type: {"numerator": N, "trades_per_day": T}}
+                             If None, uses DEFAULT_STRATEGY_PARAMS
+            lookback_days: Days of price history for covariance calculation
+            auto_connect: Whether to connect to MT5 on init
+            verbose: Whether to print progress messages
         """
         super().__init__([], 0, tag, 0)  # Init with empty symbols and timeframe
 
-        print(f"{self.tag}::    Initializing MetaScaler strategy..")
+        self.verbose = verbose
+        self._log(f"Initializing MetaScaler strategy..")
         self.timeframe = mt5.TIMEFRAME_M15
-        self.connect()
-        # Strategy weights
-        strategy_weights = dict()
-        strategy_weights["metafvg"] = 20 / np.sqrt(48)
-        strategy_weights["metago"] = np.sqrt(1.5)
-        strategy_weights["metane"] = 10 / np.sqrt(12)
-        strategy_weights["metaga"] = 30 / np.sqrt(48)
-        strategy_weights["metaob"] = np.sqrt(1)
+        self.lookback_days = lookback_days
 
-        self.running_strategies = list(strategy_weights.keys())
-        self.strategy_weights = strategy_weights
+        if auto_connect:
+            self.connect()
+
+        # Strategy weights - use provided params or defaults
+        if strategy_params is None:
+            strategy_params = DEFAULT_STRATEGY_PARAMS
+
+        self.strategy_params = strategy_params
+        self.strategy_weights = params_to_weights(strategy_params)
+        self.running_strategies = list(self.strategy_weights.keys())
+
         self.risk_pct = risk_pct
-        self.balance = mt5.account_info().balance
-        self.mu = self.balance * self.risk_pct
         self.config_dir = config_dir
         self.weights = None
+        self.weights_df = None  # DataFrame version of results
+        self.old_sizes = {}  # Track old sizes for comparison
 
-        print(f"{self.tag}::    Running strategies:     {self.running_strategies}")
-        print(f"{self.tag}::    Risk percentage:        {self.risk_pct}")
-        print(f"{self.tag}::    Initial balance:        {self.balance}")
-        print(f"{self.tag}::    Amount to risk:         {self.mu}")
+        # Get balance if connected
+        if auto_connect:
+            account_info = mt5.account_info()
+            self.balance = account_info.balance if account_info else 0
+        else:
+            self.balance = 0
+
+        self.mu = self.balance * self.risk_pct
+
+        self._log(f"Running strategies:     {self.running_strategies}")
+        self._log(f"Strategy weights:       {self.strategy_weights}")
+        self._log(f"Risk percentage:        {self.risk_pct}")
+        self._log(f"Initial balance:        {self.balance}")
+        self._log(f"Amount to risk:         {self.mu}")
+
+    def _log(self, message: str):
+        """Print log message if verbose mode is enabled."""
+        if self.verbose:
+            print(f"{self.tag}::    {message}")
+
+    def set_balance(self, balance: float):
+        """Manually set account balance (useful when MT5 not connected)."""
+        self.balance = balance
+        self.mu = self.balance * self.risk_pct
+        self._log(f"Balance set to: {self.balance}, mu = {self.mu}")
 
     def _pull_yaml_configs(self, config_dir: str):
         """
@@ -51,8 +118,7 @@ class MetaScale(MetaStrategy):
             config_dir (str): The path to the directory containing the YAML files.
 
         Returns:
-            dict: A dictionary where the keys are strategy names (file names without extensions),
-                  and values are the asset data from each YAML file.
+            None (sets self.instances, self.symbols, self.old_sizes)
 
         Raises:
             FileNotFoundError: If the specified directory does not exist.
@@ -63,20 +129,27 @@ class MetaScale(MetaStrategy):
             raise FileNotFoundError(f"Directory '{config_dir}' does not exist.")
 
         instances = []
+        old_sizes = {}
         yaml_files = [f for f in os.listdir(config_dir) if f.endswith(".yaml")]
 
         for yaml_file in yaml_files:
-            strategy_name = os.path.splitext(yaml_file)[
-                0
-            ]  # Get the file name without extension
             yaml_path = os.path.join(config_dir, yaml_file)
 
             with open(yaml_path, "r") as file:
                 try:
                     data = yaml.safe_load(file)  # Safely load the YAML data
-                    instances += [
-                        (i["strategy_type"], i["symbols"][0]) for i in data.values()
-                    ]
+                    if data is None:
+                        continue
+                    for instance_config in data.values():
+                        if not isinstance(instance_config, dict):
+                            continue
+                        strategy_type = instance_config.get("strategy_type")
+                        symbols = instance_config.get("symbols", [])
+                        size_position = instance_config.get("size_position", 0.0)
+                        if strategy_type and symbols:
+                            symbol = symbols[0]
+                            instances.append((strategy_type, symbol))
+                            old_sizes[(strategy_type, symbol)] = size_position
 
                 except yaml.YAMLError as e:
                     raise ValueError(f"Error reading YAML file '{yaml_file}': {e}")
@@ -84,6 +157,7 @@ class MetaScale(MetaStrategy):
         instances = pd.DataFrame(instances, columns=["strategy_type", "symbol"])
         self.instances = instances
         self.symbols = instances["symbol"].unique()
+        self.old_sizes = old_sizes
         return
 
     def _apply_mt5_tick_params(self, diff_df: pd.DataFrame):
@@ -97,18 +171,22 @@ class MetaScale(MetaStrategy):
             DataFrame with adjusted price differences based on tick value and size
         """
         for symbol in self.symbols:
+            if symbol not in diff_df.columns:
+                continue
             symbol_info = mt5.symbol_info(symbol)
+            if symbol_info is None:
+                self._log(f"Warning: Could not get symbol info for {symbol}")
+                continue
+
             tick_value = symbol_info.trade_tick_value
             tick_size = symbol_info.trade_tick_size
 
-            assert (
-                tick_size > 0
-            ), f"Tick size must be greater than 0, current value: {tick_size}"
-            assert (
-                tick_value > 0
-            ), f"Tick value must be greater than 0, current value: {tick_value}"
-            print(f"{self.tag}::    Applying MT5 tick params for {symbol}")
-            print(f"{self.tag}::    Tick value: {tick_value}, Tick size: {tick_size}")
+            if tick_size <= 0 or tick_value <= 0:
+                self._log(f"Warning: Invalid tick params for {symbol}")
+                continue
+
+            self._log(f"Applying MT5 tick params for {symbol}: "
+                      f"tick_value={tick_value}, tick_size={tick_size}")
             diff_df.loc[:, symbol] = diff_df.loc[:, symbol].apply(
                 lambda x: x * tick_value / tick_size
             )
@@ -164,11 +242,14 @@ class MetaScale(MetaStrategy):
         # Numerical stability
         Sigma = Sigma + 1e-3 * np.eye(n_instances)
 
-        # Ensure Sig is symmetric
-        assert np.allclose(Sigma, Sigma.T), "Covariance matrix not symmetric"
+        # Ensure symmetric
+        Sigma = (Sigma + Sigma.T) / 2
+
         # Check positive semidefinite
         eigenvalues = np.linalg.eigvals(Sigma)
-        assert np.all(eigenvalues >= -1e-8), "Matrix not positive semidefinite"
+        if not np.all(eigenvalues >= -1e-8):
+            self._log("Warning: Matrix not positive semidefinite, adjusting...")
+            Sigma = Sigma + (abs(min(eigenvalues)) + 1e-3) * np.eye(n_instances)
 
         sigma_diag = np.sqrt(np.diag(Sigma))
 
@@ -178,23 +259,31 @@ class MetaScale(MetaStrategy):
         )
         prob.solve()
         if prob.status == "optimal":
-            print(f"{self.tag}::    Optimization successful..")
+            self._log("Optimization successful..")
             return w
         else:
-            raise ValueError("Optimization failed..")
+            raise ValueError(f"Optimization failed with status: {prob.status}")
 
-    def fit(self):
-        print(f"{self.tag}::    Starting the MetaScaler fit!!..")
+    def fit(self, save_to_yaml: bool = True):
+        """
+        Run the optimization and compute optimal position sizes.
+
+        Args:
+            save_to_yaml: If True, write results to YAML config files
+
+        Returns:
+            pd.DataFrame with columns: strategy_type, symbol, old_size, new_size
+        """
+        self._log("Starting the MetaScaler fit!!..")
+
         # Pulling YAML configs
         self._pull_yaml_configs(self.config_dir)
-        print(f"{self.tag}::    Running symbols: {self.symbols}")
+        self._log(f"Running symbols: {list(self.symbols)}")
 
-        # Load the last 92 days of data
+        # Load price data
         utc = pytz.timezone("UTC")
-        # Get the current time in UTC
         end_time = datetime.now(utc)
-        start_time = end_time - timedelta(days=92)
-        # Set the time components to 0 (midnight) and maintain the timezone
+        start_time = end_time - timedelta(days=self.lookback_days)
         end_time = end_time.replace(
             hour=0, minute=0, second=0, microsecond=0
         ).astimezone(utc)
@@ -202,66 +291,127 @@ class MetaScale(MetaStrategy):
 
         # Pulling last days of data
         self.loadData(start_time, end_time)
-        data = pd.concat([self.data[s].close for s in self.symbols], axis=1)
-        data.columns = self.symbols
+
+        # Build price matrix for available symbols
+        available_symbols = [s for s in self.symbols if s in self.data]
+        if not available_symbols:
+            raise ValueError("No price data available for any symbol")
+
+        data = pd.concat([self.data[s].close for s in available_symbols], axis=1)
+        data.columns = available_symbols
 
         # Convert using mt5 tick value and size
         price_diffs = data.diff()
         price_diffs_adj = self._apply_mt5_tick_params(price_diffs)
-        # Compute daily covariance of price differences
-        self.cov_assets = price_diffs_adj.cov() * 4 * 24  # Assuming 15-minute bars
+
+        # Compute daily covariance of price differences (scale from 15-min to daily)
+        self.cov_assets = price_diffs_adj.cov() * 4 * 24
         self.cov_strategies = self._fetch_strategies_cov()
 
         # Run optimization and save rounded weights
         Sigma = self.cov_strategies.values
         weights = self._run_optimization(Sigma, self.mu)
         weights = np.round(weights.value, 2)
+
         self.weights = {
             tuple(k): v for k, v in zip(self.running_instances.values, weights)
         }
-        print(f"{self.tag}::    Weights: {self.weights}")
+        self._log(f"Weights: {self.weights}")
 
-        # Write changes to yaml config files
-        self._write_changes_to_yamls(self.config_dir)
-        print(f"{self.tag}::    Done!")
+        # Build results DataFrame
+        results = []
+        for (strat, sym), new_size in self.weights.items():
+            old_size = self.old_sizes.get((strat, sym), 0.0)
+            results.append({
+                "strategy_type": strat,
+                "symbol": sym,
+                "old_size": old_size,
+                "new_size": float(new_size),
+            })
 
-    def _write_changes_to_yamls(self, config_dir: str):
+        self.weights_df = pd.DataFrame(results)
+
+        # Write changes to yaml config files if requested
+        if save_to_yaml:
+            self._write_changes_to_yamls(self.config_dir)
+
+        self._log("Done!")
+        return self.weights_df
+
+    def _write_changes_to_yamls(self, config_dir: str = None) -> dict:
+        """
+        Write optimized weights to YAML config files.
+
+        Args:
+            config_dir: Path to config directory (uses self.config_dir if None)
+
+        Returns:
+            dict with keys: success, files_updated, errors
+        """
+        if config_dir is None:
+            config_dir = self.config_dir
+
         if not os.path.exists(config_dir):
             raise FileNotFoundError(f"Directory '{config_dir}' does not exist.")
 
         yaml_files = [f for f in os.listdir(config_dir) if f.endswith(".yaml")]
+        files_updated = 0
+        errors = []
 
         for yaml_file in yaml_files:
             yaml_path = os.path.join(config_dir, yaml_file)
             write_yaml = False
 
-            with open(yaml_path, "r+") as file:
-                try:
-                    data = yaml.safe_load(file)  # Safely load the YAML data
-                    for instance in data:
-                        if data[instance]["strategy_type"] in self.running_strategies:
-                            write_yaml = True
-                            strategy_type = data[instance]["strategy_type"]
-                            asset = data[instance]["symbols"][0]
-                            weight = self.weights[(strategy_type, asset)]
-                            data[instance]["size_position"] = float(weight)
-                        else:
-                            print(
-                                f"{self.tag}::    Strategy {instance['strategy_type']} not running.."
-                            )
-                    if write_yaml:
-                        file.seek(0)  # Go to the start of the file
-                        yaml.dump(
-                            data, file, default_flow_style=False
-                        )  # Write updated data
-                        file.truncate()  # Remove any leftover content
-                        print(
-                            f"{self.tag}::    Changes written to YAML file '{yaml_file}'"
-                        )
-                except Exception as e:
-                    print(
-                        f"{self.tag}::    Error writing to YAML file '{yaml_file}': {e}"
-                    )
+            try:
+                with open(yaml_path, "r") as file:
+                    data = yaml.safe_load(file)
+
+                if data is None:
+                    continue
+
+                for instance in data:
+                    if not isinstance(data[instance], dict):
+                        continue
+                    strategy_type = data[instance].get("strategy_type")
+                    if strategy_type in self.running_strategies:
+                        symbols = data[instance].get("symbols", [])
+                        if symbols:
+                            asset = symbols[0]
+                            key = (strategy_type, asset)
+                            if key in self.weights:
+                                write_yaml = True
+                                data[instance]["size_position"] = float(self.weights[key])
+
+                if write_yaml:
+                    with open(yaml_path, "w") as file:
+                        yaml.dump(data, file, default_flow_style=False, sort_keys=False)
+                    files_updated += 1
+                    self._log(f"Changes written to YAML file '{yaml_file}'")
+
+            except Exception as e:
+                error_msg = f"Error writing to '{yaml_file}': {e}"
+                errors.append(error_msg)
+                self._log(error_msg)
+
+        return {
+            "success": len(errors) == 0,
+            "files_updated": files_updated,
+            "errors": errors,
+        }
+
+    def save_weights(self, config_dir: str = None) -> dict:
+        """
+        Public method to save weights to YAML files.
+
+        Args:
+            config_dir: Path to config directory (uses self.config_dir if None)
+
+        Returns:
+            dict with keys: success, files_updated, errors
+        """
+        if self.weights is None:
+            raise ValueError("No weights to save. Run fit() first.")
+        return self._write_changes_to_yamls(config_dir)
 
     def signals(self):
         return

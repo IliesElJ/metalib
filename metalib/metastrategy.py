@@ -287,14 +287,14 @@ class MetaStrategy(ABC):
 
             # Check if we should execute the strategy
             if not self.are_positions_with_tag_open():
-                # Time-based filtering
+                # Time-based filtering (hours are in MT5 server time, typically UTC+2/+3)
                 if (
                     self.active_hours is not None
                     and current_hour not in self.active_hours
                     and self.state != -2
                 ):
                     print(
-                        f"Current hour ({current_hour}) is not within active hours. Strategy will not run."
+                        f"Current MT5 server hour ({current_hour}) not in active_hours {self.active_hours}. Skipping."
                     )
                     return False
 

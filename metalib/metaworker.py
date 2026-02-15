@@ -65,6 +65,7 @@ strategy_registry = {
             "tag",
             "size_position",
             "limit_number_position",
+            "active_hours",
         ],
     },
     "metaob": {
@@ -74,6 +75,7 @@ strategy_registry = {
             "timeframe",
             "tag",
             "size_position",
+            "active_hours",
             "pivot_window",
             "breakout_lookback",
             "sma_short_hours",
