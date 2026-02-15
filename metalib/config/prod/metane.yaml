@@ -16,7 +16,30 @@ BTCUSD_M1_NE:
   timeframe: mt5.TIMEFRAME_M5
   tz: UTC
 EURUSD_M1_NE:
-  active_hours: None
+  active_hours:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+  - 6
+  - 7
+  - 9
+  - 10
+  - 11
+  - 12
+  - 13
+  - 14
+  - 15
+  - 16
+  - 17
+  - 18
+  - 19
+  - 20
+  - 21
+  - 22
+  - 23
   don_lag: 60
   don_window: 240
   ewma_ewm_span: 15
@@ -33,7 +56,30 @@ EURUSD_M1_NE:
   timeframe: mt5.TIMEFRAME_M5
   tz: UTC
 GER40CASH_M1_NE:
-  active_hours: None
+  active_hours:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+  - 6
+  - 7
+  - 8
+  - 9
+  - 10
+  - 11
+  - 12
+  - 13
+  - 14
+  - 15
+  - 16
+  - 18
+  - 19
+  - 20
+  - 21
+  - 22
+  - 23
   don_lag: 60
   don_window: 240
   ewma_ewm_span: 15

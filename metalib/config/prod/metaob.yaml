@@ -3,7 +3,7 @@ AUDUSD_M15_OB:
   atr_period: 14
   breakout_lookback: 4
   pivot_window: 65
-  size_position: 0.16
+  size_position: 0.15
   sl_atr_mult: 5.5
   sma_long_hours: 200
   sma_short_hours: 55
@@ -18,7 +18,7 @@ EURUSD_M15_OB:
   atr_period: 14
   breakout_lookback: 3
   pivot_window: 60
-  size_position: 0.23
+  size_position: 0.24
   sl_atr_mult: 5
   sma_long_hours: 200
   sma_short_hours: 50
@@ -33,7 +33,7 @@ GBPUSD_M15_OB:
   atr_period: 14
   breakout_lookback: 2
   pivot_window: 55
-  size_position: 0.06
+  size_position: 0.07
   sl_atr_mult: 4
   sma_long_hours: 210
   sma_short_hours: 48
@@ -93,7 +93,7 @@ USDJPY_M15_OB:
   atr_period: 14
   breakout_lookback: 3
   pivot_window: 50
-  size_position: 0.16
+  size_position: 0.15
   sl_atr_mult: 4.5
   sma_long_hours: 220
   sma_short_hours: 60

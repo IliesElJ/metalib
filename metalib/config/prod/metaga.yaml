@@ -16,7 +16,7 @@ EURUSD_H1_GA:
   low_length: 60
   mid_length: 480
   prob_bound: 0.075
-  size_position: 0.01
+  size_position: 0.02
   strategy_type: metaga
   symbols:
   - EURUSD
@@ -28,7 +28,7 @@ GER40CASH_H1_GA:
   low_length: 60
   mid_length: 480
   prob_bound: 0.075
-  size_position: 0.01
+  size_position: 0.02
   strategy_type: metaga
   symbols:
   - GER40
@@ -40,7 +40,7 @@ US100CASH_H1_GA:
   low_length: 60
   mid_length: 480
   prob_bound: 0.075
-  size_position: 0.0
+  size_position: 0.01
   strategy_type: metaga
   symbols:
   - US100
