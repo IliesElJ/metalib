@@ -9,6 +9,7 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler
 
 from metalib.metastrategy import MetaStrategy
+from metalib.indicators import ols_tval_nb
 
 
 class MetaMLP(MetaStrategy):
@@ -66,7 +67,7 @@ class MetaMLP(MetaStrategy):
     # Feature engineering
     # ------------------------------------------------------------------
 
-    def _build_features(self, log_close: pd.Series) -> pd.DataFrame:
+    def _build_features(self, log_ret: pd.Series) -> pd.DataFrame:
         """
         Build z-score features from log-close prices.
 
@@ -80,12 +81,17 @@ class MetaMLP(MetaStrategy):
 
         z_scores = {}
         for w in self.rolling_windows:
-            sma = log_close.rolling(w).mean()
-            std = log_close.rolling(w).std()
-            z = (log_close - sma) / std
+            sma = log_ret.rolling(w).mean()
+            std = log_ret.rolling(w).std()
+            z = (log_ret - sma) / std
             z_scores[w] = z
 
             features[f"z_{w}"] = z
+            features[f"ols_{w}"] = log_ret.rolling(w).apply(
+                ols_tval_nb, engine="numba", raw=True
+            )
+            features[f"std_{w}"] = log_ret.rolling(w).std()
+
             for th in self.thresholds:
                 features[f"z_{w}_gt_{th}"] = (z > th).astype(float)
 
@@ -93,7 +99,7 @@ class MetaMLP(MetaStrategy):
         for w1, w2 in combinations(sorted(self.rolling_windows), 2):
             features[f"z_diff_{w1}_{w2}"] = z_scores[w1] - z_scores[w2]
 
-        return pd.DataFrame(features, index=log_close.index)
+        return pd.DataFrame(features, index=log_ret.index)
 
     # ------------------------------------------------------------------
     # Model training
@@ -110,7 +116,7 @@ class MetaMLP(MetaStrategy):
         log_close = np.log(close)
 
         # Features and targets
-        feat_df = self._build_features(log_close)
+        feat_df = self._build_features(log_close.diff())
         targets = {}
         for h in self.horizons:
             targets[h] = log_close.shift(-h) - log_close
@@ -138,8 +144,8 @@ class MetaMLP(MetaStrategy):
 
         # Fit scaler on training set
         self.scaler_ = StandardScaler()
-        X_train_scaled = self.scaler_.fit_transform(X_train)
-        X_val_scaled = self.scaler_.transform(X_val)
+        X_train_scaled = X_train
+        X_val_scaled = X_val
 
         # Train one MLP per horizon
         self.mlp_models_ = {}
