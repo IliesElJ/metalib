@@ -5,11 +5,107 @@ AUDCHF_H1_MLP:
   tag: metamlp_audchf
   size_position: 0.05
   active_hours: None
-  rolling_windows: [24, 120, 528]
+  rolling_windows: [6, 24, 120]
   thresholds: [-7.0, -5.0, -1.0, 1.0, 5.0, 7.0]
-  horizons: [4, 8, 10, 12]
+  horizons: [4, 6, 8]
   hidden_layers: [64, 32]
   max_iter: 500
+  fit_lookback_days: 365
+  train_ratio: 0.9
+  risk_reward: 1.10
+
+AUDCAD_H1_MLP:
+  strategy_type: metamlp
+  symbols: [AUDCAD]
+  timeframe: mt5.TIMEFRAME_H1
+  tag: metamlp_audcad
+  size_position: 0.05
+  active_hours: None
+  rolling_windows: [6, 24, 120]
+  thresholds: [ -7.0, -5.0, -1.0, 1.0, 5.0, 7.0 ]
+  horizons: [ 4, 6, 8 ]
+  hidden_layers: [ 64, 32 ]
+  max_iter: 500
+  fit_lookback_days: 365
+  train_ratio: 0.9
+  risk_reward: 1.10
+
+NZDCHF_H1_MLP:
+  strategy_type: metamlp
+  symbols: [NZDCHF]
+  timeframe: mt5.TIMEFRAME_H1
+  tag: metamlp_nzdchf
+  size_position: 0.05
+  active_hours: None
+  rolling_windows: [6, 24, 120]
+  thresholds: [ -7.0, -5.0, -1.0, 1.0, 5.0, 7.0 ]
+  horizons: [ 4, 6, 8 ]
+  hidden_layers: [ 64, 32 ]
+  max_iter: 500
+  fit_lookback_days: 365
+  train_ratio: 0.9
+  risk_reward: 1.10
+
+EURCHF_H1_MLP:
+  strategy_type: metamlp
+  symbols: [EURCHF]
+  timeframe: mt5.TIMEFRAME_H1
+  tag: metamlp_eurchf
+  size_position: 0.05
+  active_hours: None
+  rolling_windows: [ 6, 24, 120 ]
+  thresholds: [ -7.0, -5.0, -1.0, 1.0, 5.0, 7.0 ]
+  horizons: [ 4, 6, 8 ]
+  hidden_layers: [ 64, 32 ]
+  max_iter: 500
   fit_lookback_days: 1460
+  train_ratio: 0.9
+  risk_reward: 1.10
+
+CADCHF_H1_MLP:
+  strategy_type: metamlp
+  symbols: [CADCHF]
+  timeframe: mt5.TIMEFRAME_H1
+  tag: metamlp_cadchf
+  size_position: 0.05
+  active_hours: None
+  rolling_windows: [ 6, 24, 120 ]
+  thresholds: [ -7.0, -5.0, -1.0, 1.0, 5.0, 7.0 ]
+  horizons: [ 4, 6, 8 ]
+  hidden_layers: [ 64, 32 ]
+  max_iter: 500
+  fit_lookback_days: 365
+  train_ratio: 0.9
+  risk_reward: 1.10
+
+GBPCHF_H1_MLP:
+  strategy_type: metamlp
+  symbols: [GBPCHF]
+  timeframe: mt5.TIMEFRAME_H1
+  tag: metamlp_gbpchf
+  size_position: 0.05
+  active_hours: None
+  rolling_windows: [ 6, 24, 120 ]
+  thresholds: [ -7.0, -5.0, -1.0, 1.0, 5.0, 7.0 ]
+  horizons: [ 4, 6, 8 ]
+  hidden_layers: [ 64, 32 ]
+  max_iter: 500
+  fit_lookback_days: 365
+  train_ratio: 0.9
+  risk_reward: 1.10
+
+EURGBP_H1_MLP:
+  strategy_type: metamlp
+  symbols: [EURGBP]
+  timeframe: mt5.TIMEFRAME_H1
+  tag: metamlp_eurgbp
+  size_position: 0.05
+  active_hours: None
+  rolling_windows: [ 6, 24, 120 ]
+  thresholds: [ -7.0, -5.0, -1.0, 1.0, 5.0, 7.0 ]
+  horizons: [ 4, 6, 8 ]
+  hidden_layers: [ 64, 32 ]
+  max_iter: 500
+  fit_lookback_days: 365
   train_ratio: 0.9
   risk_reward: 1.10
