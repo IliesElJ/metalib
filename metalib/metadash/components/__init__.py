@@ -23,6 +23,7 @@ from .calibration_tab import (
     render_calibration_tab,
     create_results_table,
     create_results_chart,
+    create_asset_matrices,
     DEFAULT_STRATEGY_PARAMS,
 )
 
@@ -53,5 +54,6 @@ __all__ = [
     'render_calibration_tab',
     'create_results_table',
     'create_results_chart',
+    'create_asset_matrices',
     'DEFAULT_STRATEGY_PARAMS',
 ]

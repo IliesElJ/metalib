@@ -323,6 +323,8 @@ def create_results_section() -> html.Div:
             html.Div(id="calib-results-table-container"),
             # Results chart container
             html.Div(id="calib-results-chart-container", className="mt-4"),
+            # Asset matrices (correlation & covariance)
+            html.Div(id="calib-matrices-container", className="mt-4"),
             # Save button (hidden until results available)
             html.Div(
                 id="calib-save-section",
@@ -460,6 +462,64 @@ def create_results_chart(weights_df: pd.DataFrame) -> dcc.Graph:
     )
 
     return dcc.Graph(figure=fig, config={"displayModeBar": False})
+
+
+def create_asset_matrices(cov_assets: pd.DataFrame) -> html.Div:
+    """Create correlation and covariance heatmaps from the asset covariance matrix."""
+    if cov_assets is None or cov_assets.empty:
+        return html.Div()
+
+    # Compute correlation from covariance
+    std = np.sqrt(np.diag(cov_assets.values))
+    corr_matrix = cov_assets.values / np.outer(std, std)
+    corr_df = pd.DataFrame(corr_matrix, index=cov_assets.index, columns=cov_assets.columns)
+
+    assets = list(cov_assets.columns)
+    n = len(assets)
+    # Square sizing: scale with number of assets, min 450
+    cell_px = 70
+    size = max(450, n * cell_px + 160)
+
+    # Linear red-negative to blue-positive colorscale
+    rb_scale = [
+        [0.0, "rgb(180, 30, 30)"],
+        [0.25, "rgb(220, 120, 100)"],
+        [0.5, "rgb(245, 245, 245)"],
+        [0.75, "rgb(100, 140, 220)"],
+        [1.0, "rgb(30, 60, 180)"],
+    ]
+
+    # Correlation heatmap
+    corr_fig = go.Figure(
+        data=go.Heatmap(
+            z=corr_df.values,
+            x=assets,
+            y=assets,
+            colorscale=rb_scale,
+            zmid=0,
+            zmin=-1,
+            zmax=1,
+            text=np.round(corr_df.values, 2),
+            texttemplate="%{text}",
+            textfont={"size": 12, "color": "black"},
+            hovertemplate="<b>%{x}</b> vs <b>%{y}</b><br>Correlation: %{z:.3f}<extra></extra>",
+        )
+    )
+    corr_fig.update_layout(
+        title="Asset Correlation Matrix",
+        template="plotly_white",
+        width=size,
+        height=size,
+        margin=dict(l=100, r=60, t=60, b=100),
+        xaxis=dict(tickangle=-45, scaleanchor="y"),
+        yaxis=dict(autorange="reversed"),
+    )
+
+    return html.Div(
+        dcc.Graph(figure=corr_fig, config={"displayModeBar": False},
+                  style={"height": size}),
+        className="mt-4",
+    )
 
 
 def render_calibration_tab() -> html.Div:

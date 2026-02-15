@@ -55,7 +55,12 @@ def run_metascale_optimization(
         # Run optimization without auto-saving
         weights_df = scaler.fit(save_to_yaml=False)
 
-        return {"success": True, "weights_df": weights_df, "scaler": scaler}
+        return {
+            "success": True,
+            "weights_df": weights_df,
+            "scaler": scaler,
+            "cov_assets": scaler.cov_assets,
+        }
 
     except Exception as e:
         import traceback

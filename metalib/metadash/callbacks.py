@@ -56,6 +56,7 @@ from components import (
     render_calibration_tab,
     create_results_table,
     create_results_chart,
+    create_asset_matrices,
     DEFAULT_STRATEGY_PARAMS,
 )
 from components.log_tab import get_filtered_instances
@@ -838,6 +839,7 @@ def register_callbacks(app):
         Output("calib-results-store", "data"),
         Output("calib-results-table-container", "children"),
         Output("calib-results-chart-container", "children"),
+        Output("calib-matrices-container", "children"),
         Output("calib-save-section", "style"),
         Output("calib-save-btn", "disabled"),
         Output("calib-status-msg", "children"),
@@ -859,7 +861,7 @@ def register_callbacks(app):
         import numpy as np
 
         if not n_clicks:
-            return no_update, no_update, no_update, no_update, no_update, no_update
+            return no_update, no_update, no_update, no_update, no_update, no_update, no_update
 
         try:
             # Build strategy params dict from UI inputs
@@ -877,6 +879,7 @@ def register_callbacks(app):
                 return (
                     None,
                     html.Div("No strategies enabled", className="text-warning text-center p-4"),
+                    html.Div(),
                     html.Div(),
                     {"display": "none"},
                     True,
@@ -899,11 +902,13 @@ def register_callbacks(app):
                 # Create results display
                 table = create_results_table(weights_df)
                 chart = create_results_chart(weights_df)
+                matrices = create_asset_matrices(result.get("cov_assets"))
 
                 return (
                     weights_df.to_dict("records"),
                     table,
                     chart,
+                    matrices,
                     {"display": "block"},
                     False,
                     dbc.Alert(
@@ -917,6 +922,7 @@ def register_callbacks(app):
                     None,
                     html.Div(f"Optimization failed: {result['error']}", className="text-danger text-center p-4"),
                     html.Div(),
+                    html.Div(),
                     {"display": "none"},
                     True,
                     dbc.Alert(f"Error: {result['error']}", color="danger"),
@@ -926,6 +932,7 @@ def register_callbacks(app):
             return (
                 None,
                 html.Div(f"Error: {str(e)}", className="text-danger text-center p-4"),
+                html.Div(),
                 html.Div(),
                 {"display": "none"},
                 True,
