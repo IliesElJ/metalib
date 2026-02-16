@@ -204,7 +204,7 @@ class MetaMLP(MetaStrategy):
             self.state = 0
             return
 
-        last_scaled = self.scaler_.transform(last_row.values)
+        last_scaled = last_row.values
 
         # Predictions per horizon
         preds = {}
