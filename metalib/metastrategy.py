@@ -4,7 +4,7 @@ import pandas as pd
 from requests import get
 import sys
 from datetime import datetime
-from metalib.constants import SIGNALS_FILE, LOG_EXTENSION
+from metalib.constants import SIGNALS_FILE, LOG_EXTENSION, ensure_directories
 import os
 from uuid import uuid4
 import traceback
@@ -76,40 +76,30 @@ class MetaStrategy(ABC):
 
     def save_signal_data_to_db(self):
         """
-        Saves the signal data to a single HDF5 file ("signals.hdf5"), organized by tag and date.
+        Saves the signal data to a single HDF5 file ("signals.hdf5"), organized by tag.
         """
-
         signal_line = self.signalData
-
-        # Check if signal_line is a pd.Series
         if not isinstance(signal_line, pd.Series):
-            raise ValueError(
-                "The signal vector must be in a pandas Series not: ", type(signal_line)
-            )
-
-        # Check if 'timestamp' key exists and is valid
+            return
         if "timestamp" not in signal_line or pd.isna(signal_line["timestamp"]):
-            raise ValueError("The signal vector must contain a valid 'timestamp'.")
+            return
 
-        # Get the current day from the timestamp
-        current_day = pd.to_datetime(signal_line["timestamp"]).strftime("%Y-%m-%d")[0]
+        row_df = signal_line.to_frame().T
+        row_df["timestamp"] = pd.to_datetime(row_df["timestamp"])
 
-        # Define the file name and group paths
         file_name = SIGNALS_FILE
-        tag_group = f"/{self.tag}"
-        day_group = f"{tag_group}/{current_day}"
+        # Sanitize tag for HDF5 key (replace hyphens, dots)
+        key = "/" + self.tag.replace("-", "_").replace(".", "_")
 
-        # Append to the file and create groups if they do not exist
+        ensure_directories()
+
         with pd.HDFStore(file_name, mode="a") as store:
-            if day_group in store:
-                existing_data = store[day_group]
-                updated_data = pd.concat(
-                    [existing_data, signal_line.to_frame().T], ignore_index=True
-                )
-                store.put(day_group, updated_data)
+            if key in store:
+                existing = store[key]
+                updated = pd.concat([existing, row_df], ignore_index=True)
+                store.put(key, updated)
             else:
-                # Create the tag group and day group, if they do not exist
-                store.put(day_group, signal_line.to_frame().T)
+                store.put(key, row_df)
 
     @abstractmethod
     def signals(self):
@@ -265,13 +255,10 @@ class MetaStrategy(ABC):
                 print(f"Error generating signals: {err_ctx}")
                 return False
 
-            # Let's re-enable this when we have a better way to save the signal data
-            # try:
-            #     # self.save_signal_data_to_db()
-            #     print("Signal data not saved to db")
-            # except Exception as e:
-            #     print(f"Error saving signal data: {str(e)}")
-            #     # Continue execution as this is not critical
+            try:
+                self.save_signal_data_to_db()
+            except Exception as e:
+                print(f"Error saving signal data: {str(e)}")
 
             # Get current hour from the last data point
             try:

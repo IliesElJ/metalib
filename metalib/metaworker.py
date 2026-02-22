@@ -100,7 +100,7 @@ strategy_registry = {
             "max_iter",
             "fit_lookback_days",
             "train_ratio",
-            "risk_reward",
+            "bollinger_k",
         ],
     },
 }

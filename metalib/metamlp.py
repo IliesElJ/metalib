@@ -9,7 +9,7 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler
 
 from metalib.metastrategy import MetaStrategy
-from metalib.indicators import ols_tval_nb
+from metalib.indicators import ols_tval_nb, calculate_half_life_nb
 
 
 class MetaMLP(MetaStrategy):
@@ -40,7 +40,7 @@ class MetaMLP(MetaStrategy):
         fit_lookback_days=90,
         train_ratio=0.8,
         # risk
-        risk_reward=2.0,
+        bollinger_k=2.0,
     ):
         super().__init__(symbols, timeframe, tag, size_position, active_hours)
 
@@ -51,7 +51,7 @@ class MetaMLP(MetaStrategy):
         self.max_iter = int(max_iter)
         self.fit_lookback_days = int(fit_lookback_days)
         self.train_ratio = float(train_ratio)
-        self.risk_reward = float(risk_reward)
+        self.bollinger_k = float(bollinger_k)
 
         # Set by fit()
         self.mlp_models_ = {}
@@ -60,6 +60,7 @@ class MetaMLP(MetaStrategy):
 
         # Set by signals()
         self.sma_target_ = None
+        self.half_life_ = None
         self.sl_ = None
         self.tp_ = None
 
@@ -251,14 +252,25 @@ class MetaMLP(MetaStrategy):
         else:
             self.state = 0
 
-        # Compute TP / SL
-        self.tp_ = sma_target
+        # Compute TP / SL via Bollinger Bands on OU half-life
+        half_life = calculate_half_life_nb(close.values.astype(np.float64))
+        if np.isnan(half_life) or half_life <= 0:
+            half_life = 50.0  # fallback
+        self.half_life_ = half_life
+
+        bb_period = max(int(20 * half_life), 20)
+        bb_period = min(bb_period, len(close) - 1)
+
+        bb_sma = close.rolling(bb_period).mean().iloc[-1]
+        bb_std = close.rolling(bb_period).std().iloc[-1]
+        bb_upper = bb_sma + self.bollinger_k * bb_std
+        bb_lower = bb_sma - self.bollinger_k * bb_std
+
+        self.tp_ = bb_sma  # TP = center of bands
         if self.state == 1:
-            sl_distance = abs(sma_target - current_price) / self.risk_reward
-            self.sl_ = current_price - sl_distance
+            self.sl_ = bb_lower  # SL at lower band
         elif self.state == -1:
-            sl_distance = abs(current_price - sma_target) / self.risk_reward
-            self.sl_ = current_price + sl_distance
+            self.sl_ = bb_upper  # SL at upper band
         else:
             self.sl_ = None
 
@@ -268,6 +280,7 @@ class MetaMLP(MetaStrategy):
             f"[{self.tag}] signals(): {preds_str} | "
             f"consensus={'BUY' if all_positive else 'SELL' if all_negative else 'NONE'} | "
             f"sma_target={sma_target:.5f} | price={current_price:.5f} | "
+            f"HL={half_life:.1f} | BB({bb_period})=[{bb_lower:.5f}, {bb_sma:.5f}, {bb_upper:.5f}] | "
             f"state={self.state}"
         )
 
@@ -275,8 +288,16 @@ class MetaMLP(MetaStrategy):
         signal_line = pd.Series(
             {
                 "timestamp": ohlc.index[-1],
+                "symbol": self.symbols[0],
                 "price": current_price,
                 "sma_target": sma_target,
+                "half_life": half_life,
+                "bb_period": bb_period,
+                "bb_upper": bb_upper,
+                "bb_sma": bb_sma,
+                "bb_lower": bb_lower,
+                "tp": self.tp_,
+                "sl": self.sl_,
                 "state": self.state,
                 **{f"pred_h{h}": v for h, v in preds.items()},
             }

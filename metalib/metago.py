@@ -77,11 +77,14 @@ class MetaGO(MetaStrategy):
             f"{self.tag}::: Vote of indicators: {vote}, and last 3 predicted probabilities: {y_hat}"
         )
 
-        signal_line = indicators.iloc[[-1]]
-        signal_line.loc[:, "vote"] = vote
-        signal_line.loc[:, "predicted_proba"] = y_hat[-1]
+        signal_line = indicators.iloc[-1]
+        signal_line["vote"] = vote
+        signal_line["predicted_proba"] = y_hat[-1]
+        signal_line["timestamp"] = indicators.index[-1]
+        signal_line["state"] = self.state
+        signal_line["symbol"] = self.symbols[0]
 
-        self.signals_data = signal_line
+        self.signalData = signal_line
 
     def check_conditions(self):
         mean_entry_price, num_positions = self.get_positions_info()

@@ -58,10 +58,15 @@ from components import (
     create_results_chart,
     create_asset_matrices,
     DEFAULT_STRATEGY_PARAMS,
+    render_indicators_tab,
+    create_indicator_chart,
+    create_indicator_info_cards,
+    pull_price_for_indicators,
 )
 from components.log_tab import get_filtered_instances
 from components.detailed_tab import create_hourly_chart
 from utils.health_utils import get_all_strategy_statuses, get_health_summary
+from utils.indicator_utils import load_indicator_data, list_available_tags
 
 
 # Default configuration
@@ -216,6 +221,9 @@ def register_callbacks(app):
 
         if active_tab == "calibration":
             return render_calibration_tab()
+
+        if active_tab == "indicators":
+            return render_indicators_tab()
 
         if data is None or not data.get("data_available", False):
             return html.Div(
@@ -976,3 +984,91 @@ def register_callbacks(app):
                 color="danger",
                 duration=5000,
             )
+
+    # ------------------------------
+    # Indicators Tab callbacks
+    # ------------------------------
+
+    @app.callback(
+        Output("indicators-tag-dropdown", "options"),
+        Output("indicators-tag-dropdown", "value"),
+        Input("tabs", "active_tab"),
+        prevent_initial_call=True,
+    )
+    def populate_indicator_tags(active_tab):
+        """Populate tag dropdown when indicators tab is selected."""
+        if active_tab != "indicators":
+            return no_update, no_update
+
+        tags = list_available_tags()
+        if not tags:
+            return [], None
+
+        options = [{"label": t, "value": t} for t in tags]
+        return options, tags[0]
+
+    @app.callback(
+        Output("indicators-chart-container", "children"),
+        Output("indicators-info-cards", "children"),
+        Input("indicators-tag-dropdown", "value"),
+        Input("indicators-refresh-btn", "n_clicks"),
+        Input("indicators-date-range", "start_date"),
+        Input("indicators-date-range", "end_date"),
+        prevent_initial_call=True,
+    )
+    def update_indicator_chart(tag, refresh_clicks, start_date, end_date):
+        """Load indicator data and build chart when tag is selected."""
+        from dash import dcc
+
+        if not tag:
+            empty = html.Div(
+                "Select a strategy tag to view indicators.",
+                style={"color": "#94a3b8", "textAlign": "center", "padding": "60px 20px"},
+            )
+            return empty, html.Div()
+
+        df = load_indicator_data(tag)
+
+        if df is None or df.empty:
+            empty = html.Div(
+                f"No indicator data found for '{tag}'.",
+                style={"color": "#94a3b8", "textAlign": "center", "padding": "60px 20px"},
+            )
+            return empty, html.Div()
+
+        # Apply date range filter if provided
+        if start_date and "timestamp" in df.columns:
+            df = df[df["timestamp"] >= pd.to_datetime(start_date)]
+        if end_date and "timestamp" in df.columns:
+            df = df[df["timestamp"] <= pd.to_datetime(end_date)]
+
+        if df.empty:
+            empty = html.Div(
+                "No data in the selected date range.",
+                style={"color": "#94a3b8", "textAlign": "center", "padding": "60px 20px"},
+            )
+            return empty, html.Div()
+
+        # Try to pull price data from MT5
+        df_price = None
+        if "symbol" in df.columns:
+            symbol = df["symbol"].dropna().iloc[0] if not df["symbol"].dropna().empty else None
+            if symbol:
+                df_price = pull_price_for_indicators(symbol, df)
+
+        fig = create_indicator_chart(tag, df, df_price)
+        info_cards = create_indicator_info_cards(df)
+
+        chart = dcc.Graph(
+            figure=fig,
+            config={"displayModeBar": True, "scrollZoom": True},
+            style={
+                "backgroundColor": "white",
+                "borderRadius": "12px",
+                "border": "1px solid #e2e8f0",
+                "boxShadow": "0 1px 3px rgba(0,0,0,0.05)",
+                "padding": "16px",
+            },
+        )
+
+        return chart, info_cards

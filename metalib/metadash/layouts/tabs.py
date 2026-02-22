@@ -20,6 +20,7 @@ def create_tabs_layout():
             dbc.Tab(label="Trades Table", tab_id="trades"),
             dbc.Tab(label="Instance Trades", tab_id="instance_trades"),
             dbc.Tab(label="Weight Calibration", tab_id="calibration"),
+            dbc.Tab(label="Indicators", tab_id="indicators"),
             dbc.Tab(label="View Logs", tab_id="logs"),
             dbc.Tab(label="Raw Data", tab_id="raw"),
         ],

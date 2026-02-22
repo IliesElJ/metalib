@@ -299,6 +299,9 @@ class MetaNE(MetaStrategy):
 
         signal_line = indicators.iloc[-1]
         signal_line["predicted_fwd_return"] = y_hat
+        signal_line["timestamp"] = indicators.index[-1]
+        signal_line["state"] = self.state
+        signal_line["symbol"] = self.symbols[0]
 
         self.signalData = signal_line
 

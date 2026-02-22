@@ -26,6 +26,12 @@ from .calibration_tab import (
     create_asset_matrices,
     DEFAULT_STRATEGY_PARAMS,
 )
+from .indicators_tab import (
+    render_indicators_tab,
+    create_indicator_chart,
+    create_indicator_info_cards,
+    pull_price_for_indicators,
+)
 
 __all__ = [
     'render_overview_tab',
@@ -56,4 +62,8 @@ __all__ = [
     'create_results_chart',
     'create_asset_matrices',
     'DEFAULT_STRATEGY_PARAMS',
+    'render_indicators_tab',
+    'create_indicator_chart',
+    'create_indicator_info_cards',
+    'pull_price_for_indicators',
 ]

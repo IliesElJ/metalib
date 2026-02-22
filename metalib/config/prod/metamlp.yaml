@@ -12,7 +12,7 @@ AUDCHF_H1_MLP:
   max_iter: 500
   fit_lookback_days: 365
   train_ratio: 0.9
-  risk_reward: 1.10
+  bollinger_k: 2.0
 
 AUDCAD_H1_MLP:
   strategy_type: metamlp
@@ -28,7 +28,7 @@ AUDCAD_H1_MLP:
   max_iter: 500
   fit_lookback_days: 365
   train_ratio: 0.9
-  risk_reward: 1.10
+  bollinger_k: 2.0
 
 NZDCHF_H1_MLP:
   strategy_type: metamlp
@@ -44,7 +44,7 @@ NZDCHF_H1_MLP:
   max_iter: 500
   fit_lookback_days: 365
   train_ratio: 0.9
-  risk_reward: 1.10
+  bollinger_k: 2.0
 
 EURCHF_H1_MLP:
   strategy_type: metamlp
@@ -60,7 +60,7 @@ EURCHF_H1_MLP:
   max_iter: 500
   fit_lookback_days: 1460
   train_ratio: 0.9
-  risk_reward: 1.10
+  bollinger_k: 2.0
 
 CADCHF_H1_MLP:
   strategy_type: metamlp
@@ -76,12 +76,12 @@ CADCHF_H1_MLP:
   max_iter: 500
   fit_lookback_days: 365
   train_ratio: 0.9
-  risk_reward: 1.10
+  bollinger_k: 2.0
 
 GBPCHF_H1_MLP:
   strategy_type: metamlp
   symbols: [GBPCHF]
-  timeframe: mt5.TIMEFRAME_H1
+  timeframe: mt5.TIMEFRAME_M1
   tag: metamlp_gbpchf
   size_position: 0.05
   active_hours: None
@@ -90,9 +90,9 @@ GBPCHF_H1_MLP:
   horizons: [ 4, 6, 8 ]
   hidden_layers: [ 64, 32 ]
   max_iter: 500
-  fit_lookback_days: 365
+  fit_lookback_days: 40
   train_ratio: 0.9
-  risk_reward: 1.10
+  bollinger_k: 2.0
 
 EURGBP_H1_MLP:
   strategy_type: metamlp
@@ -108,4 +108,4 @@ EURGBP_H1_MLP:
   max_iter: 500
   fit_lookback_days: 365
   train_ratio: 0.9
-  risk_reward: 1.10
+  bollinger_k: 2.0

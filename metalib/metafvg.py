@@ -462,6 +462,22 @@ class MetaFVG(MetaStrategy):
 
         self._log_htf_results()
 
+    def _save_signal(self, price=None):
+        """Build and store a signal line for persistence."""
+        ohlc_ltf = self.data.get(self.symbols[0])
+        timestamp = ohlc_ltf.index[-1] if ohlc_ltf is not None and len(ohlc_ltf) else pd.Timestamp.now()
+        self.signalData = pd.Series(
+            {
+                "timestamp": timestamp,
+                "symbol": self.symbols[0],
+                "state": self.state,
+                "price": price,
+                "entry": self.entry,
+                "sl": self.sl,
+                "tp": self.tp,
+            }
+        )
+
     def signals(self) -> None:
         """Generate trading signals based on FVG patterns."""
         self.state = 0
@@ -473,11 +489,13 @@ class MetaFVG(MetaStrategy):
 
         if current_open_position >= self.limit_number_position:
             self._log(f"Maximum open position reached: {current_open_position}")
+            self._save_signal()
             return
 
         # Validate HTF results exist
         if self.bullish_htf_result is None or self.bearish_htf_result is None:
             self._log("HTF FVG patterns not initialized. Run fit() first.")
+            self._save_signal()
             return
 
         # Get filtered patterns
@@ -486,6 +504,7 @@ class MetaFVG(MetaStrategy):
 
         if bullish_filtered.is_empty() and bearish_filtered.is_empty():
             self._log("No HTF FVG patterns detected, no action required")
+            self._save_signal()
             return
 
         # Get current price data
@@ -502,6 +521,7 @@ class MetaFVG(MetaStrategy):
 
         if direction is None:
             self._log("Price not in any Bullish OR Bearish FVG H4, no action required")
+            self._save_signal(last_price)
             return
 
         # Look for LTF momentum FVG confirmation
@@ -512,6 +532,7 @@ class MetaFVG(MetaStrategy):
 
         if not momentum_patterns:
             self._log("No LTF FVG patterns detected, no action required")
+            self._save_signal(last_price)
             return
 
         current_momentum = momentum_patterns[0]
@@ -520,12 +541,14 @@ class MetaFVG(MetaStrategy):
         momentum_is_bullish = current_momentum.direction == "bullish"
         if momentum_is_bullish != is_bullish:
             self._log("LTF FVG direction doesn't match HTF, no action required")
+            self._save_signal(last_price)
             return
 
         self._log("We are in FVG H4!")
 
         # Calculate trade parameters
         self._calculate_trade_parameters(ohlc_ltf, current_momentum, is_bullish)
+        self._save_signal(last_price)
 
     def _determine_direction(
         self,

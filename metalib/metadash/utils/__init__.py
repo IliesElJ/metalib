@@ -49,6 +49,11 @@ from .calibration_utils import (
     run_metascale_optimization,
     save_weights_to_yaml,
 )
+from .indicator_utils import (
+    load_indicator_data,
+    list_available_tags,
+    classify_indicators,
+)
 
 __all__ = [
     'initialize_mt5',
@@ -81,4 +86,7 @@ __all__ = [
     'pm2_save',
     'run_metascale_optimization',
     'save_weights_to_yaml',
+    'load_indicator_data',
+    'list_available_tags',
+    'classify_indicators',
 ]

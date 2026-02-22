@@ -99,6 +99,8 @@ class MetaOB(MetaStrategy):
         # Save signal data
         signal_line = indicators.iloc[-1].copy()
         signal_line["timestamp"] = ohlc.index[-1]
+        signal_line["state"] = self.state
+        signal_line["symbol"] = self.symbols[0]
         signal_line["long_signal"] = long_signal
         signal_line["short_signal"] = short_signal
         self.signalData = signal_line

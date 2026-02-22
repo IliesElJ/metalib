@@ -8,7 +8,7 @@ AUDJPY_H1_GO:
   symbols:
   - AUDJPY
   tag: metago_audjpy
-  timeframe: mt5.TIMEFRAME_H1
+  timeframe: mt5.TIMEFRAME_H4
 AUDJPy_H1_WEEKLY:
   active_hours: None
   lookahead: 48
@@ -19,7 +19,7 @@ AUDJPy_H1_WEEKLY:
   symbols:
   - AUDJPY
   tag: metago_w_audjpy
-  timeframe: mt5.TIMEFRAME_H1
+  timeframe: mt5.TIMEFRAME_H4
 EURNOK_H1_GO:
   active_hours: None
   lookahead: 48
@@ -30,7 +30,7 @@ EURNOK_H1_GO:
   symbols:
   - EURNOK
   tag: metago_enok
-  timeframe: mt5.TIMEFRAME_H1
+  timeframe: mt5.TIMEFRAME_H4
 EURUSD_H1_GO:
   active_hours: None
   lookahead: 48
@@ -41,7 +41,7 @@ EURUSD_H1_GO:
   symbols:
   - EURUSD
   tag: metago_eurusd
-  timeframe: mt5.TIMEFRAME_H1
+  timeframe: mt5.TIMEFRAME_H4
 EURUSD_H1_WEEKLY:
   active_hours: None
   lookahead: 48
@@ -52,7 +52,7 @@ EURUSD_H1_WEEKLY:
   symbols:
   - EURUSD
   tag: metago_weekly_eur
-  timeframe: mt5.TIMEFRAME_H1
+  timeframe: mt5.TIMEFRAME_H4
 USDCAD_H1_GO:
   active_hours: None
   lookahead: 48
@@ -63,7 +63,7 @@ USDCAD_H1_GO:
   symbols:
   - USDCAD
   tag: metago_usdcad
-  timeframe: mt5.TIMEFRAME_H1
+  timeframe: mt5.TIMEFRAME_H4
 USDCHF_H1_GO:
   active_hours: None
   lookahead: 48
@@ -74,7 +74,7 @@ USDCHF_H1_GO:
   symbols:
   - USDCHF
   tag: metago_usdchf
-  timeframe: mt5.TIMEFRAME_H1
+  timeframe: mt5.TIMEFRAME_H4
 USDJPY_H1_GO:
   active_hours: None
   lookahead: 48
@@ -85,7 +85,7 @@ USDJPY_H1_GO:
   symbols:
   - USDJPY
   tag: metago_usdjpy
-  timeframe: mt5.TIMEFRAME_H1
+  timeframe: mt5.TIMEFRAME_H4
 USDNOK_H1_GO:
   active_hours: None
   lookahead: 48
@@ -96,7 +96,7 @@ USDNOK_H1_GO:
   symbols:
   - USDNOK
   tag: metago_unok
-  timeframe: mt5.TIMEFRAME_H1
+  timeframe: mt5.TIMEFRAME_H4
 USDZAR_H1_GO:
   active_hours: None
   lookahead: 48
@@ -107,7 +107,7 @@ USDZAR_H1_GO:
   symbols:
   - USDZAR
   tag: metago_usdzar
-  timeframe: mt5.TIMEFRAME_H1
+  timeframe: mt5.TIMEFRAME_H4
 USDZAR_H1_WEEKLY:
   active_hours: None
   lookahead: 48
@@ -118,4 +118,4 @@ USDZAR_H1_WEEKLY:
   symbols:
   - USDZAR
   tag: metago_weekly_zar
-  timeframe: mt5.TIMEFRAME_H1
+  timeframe: mt5.TIMEFRAME_H4

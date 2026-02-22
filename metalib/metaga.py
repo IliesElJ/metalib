@@ -100,6 +100,8 @@ class MetaGA(MetaStrategy):
         signal_line["quorum"] = quorum
         signal_line["predicted_proba"] = y_hat[-1]
         signal_line["timestamp"] = timestamp
+        signal_line["state"] = self.state
+        signal_line["symbol"] = self.symbols[0]
 
         self.signalData = signal_line
 
