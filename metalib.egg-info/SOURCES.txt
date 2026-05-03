@@ -8,7 +8,8 @@ metalib/metaanalyser.py
 metalib/metaapi.py
 metalib/metabacktester.py
 metalib/metacontroller.py
-metalib/metadash.py
+metalib/metadash2.py
+metalib/metadash_old.py
 metalib/metado.py
 metalib/metado2.py
 metalib/metafvg.py
@@ -17,6 +18,10 @@ metalib/metago.py
 metalib/metagomano.py
 metalib/metahar.py
 metalib/metama.py
+metalib/metamlp.py
+metalib/metane.py
+metalib/metaob.py
+metalib/metascal.py
 metalib/metastrategy.py
 metalib/metaworker.py
 metalib/utils.py

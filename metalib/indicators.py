@@ -545,8 +545,7 @@ def is_valid_fvg(arr):
 ## MetaGO indicators
 
 
-# Function to find the open of the second Monday of the month
-def get_second_monday_open_ffill(ohlc_df, index_to_refill):
+def get_second_monday_open_ffill(ohlc_df, index_to_refill, i=0):
     """
     Returns a Pandas Series containing the 'open' prices of the second Monday of each month,
     forward-filled to match the original DataFrame's index.
@@ -554,32 +553,23 @@ def get_second_monday_open_ffill(ohlc_df, index_to_refill):
     Parameters:
         ohlc_df (pd.DataFrame): Daily OHLC DataFrame with a datetime index and an 'open' column.
         index_to_refill (pd.Index): Index to which the returned Series will be reindexed and forward-filled.
+        i (int): Lag. 0 returns the current anchor value; i>0 returns the i-th previous anchor value.
 
     Returns:
-        pd.Series: Series with the same index as ohlc_df, containing forward-filled second Monday 'open' prices.
+        pd.Series: Series with the same index as index_to_refill, containing forward-filled
+                   second Monday 'open' prices, optionally lagged by i periods.
     """
-    # Ensure the index is a datetime index
     if not isinstance(ohlc_df.index, pd.DatetimeIndex):
         ohlc_df.index = pd.to_datetime(ohlc_df.index)
 
-    # Extract Mondays
-    mondays = ohlc_df[ohlc_df.index.weekday == 0]  # 0 represents Monday
+    mondays = ohlc_df[ohlc_df.index.weekday == 0]
+    second_mondays = mondays.groupby([mondays.index.year, mondays.index.month]).nth(1)
+    second_monday_series = second_mondays["open"].shift(i)
 
-    # Group by year and month to find the second Monday
-    second_mondays = mondays.groupby([mondays.index.year, mondays.index.month]).nth(
-        1
-    )  # nth(1) is the second Monday
-
-    # Create a Series for second Monday opens
-    second_monday_series = second_mondays["open"]
-
-    # Reindex to match the original DataFrame and forward-fill missing values
-    second_monday_ffill = second_monday_series.reindex(index_to_refill, method="ffill")
-
-    return second_monday_ffill
+    return second_monday_series.reindex(index_to_refill, method="ffill")
 
 
-def get_first_monday_of_april_open_ffill(ohlc_df, index_to_refill):
+def get_first_monday_of_april_open_ffill(ohlc_df, index_to_refill, i=0):
     """
     Returns a Pandas Series containing the 'open' prices of the first Monday
     in April for each year, forward-filled to match the given index.
@@ -587,31 +577,24 @@ def get_first_monday_of_april_open_ffill(ohlc_df, index_to_refill):
     Parameters:
         ohlc_df (pd.DataFrame): A daily (or intraday) DataFrame with a DateTime index and an 'open' column.
         index_to_refill (pd.Index): Index to which the returned Series will be reindexed and then forward-filled.
+        i (int): Lag. 0 returns the current anchor value; i>0 returns the i-th previous anchor value.
 
     Returns:
         pd.Series: A Series (same index as index_to_refill) with forward-filled
-                   first Monday of April 'open' prices.
+                   first Monday of April 'open' prices, optionally lagged by i periods.
     """
-    # Ensure the index is a datetime index
     if not isinstance(ohlc_df.index, pd.DatetimeIndex):
         ohlc_df.index = pd.to_datetime(ohlc_df.index)
 
-    # Filter for Mondays in April
     april_mondays = ohlc_df[(ohlc_df.index.month == 4) & (ohlc_df.index.weekday == 0)]
+    first_april_open = (
+        april_mondays.groupby(april_mondays.index.year).nth(0)["open"].shift(i)
+    )
 
-    # Group by year to find the first Monday in April for each year
-    first_mondays_april = april_mondays.groupby(april_mondays.index.year).nth(0)
-
-    # Extract the 'open' column
-    first_april_open = first_mondays_april["open"]
-
-    # Reindex to match the target index, then forward-fill
-    first_april_open_ffill = first_april_open.reindex(index_to_refill, method="ffill")
-
-    return first_april_open_ffill
+    return first_april_open.reindex(index_to_refill, method="ffill")
 
 
-def get_last_monday_6pm_open_ffill(ohlc_df, index_to_refill):
+def get_last_monday_6pm_open_ffill(ohlc_df, index_to_refill, i=0):
     """
     Returns a Pandas Series containing the 'open' prices of the last Monday at 6 PM
     for each month, forward-filled to match the given index.
@@ -620,32 +603,23 @@ def get_last_monday_6pm_open_ffill(ohlc_df, index_to_refill):
         ohlc_df (pd.DataFrame): An intraday DataFrame with a DateTime index (including hour)
                                 and an 'open' column.
         index_to_refill (pd.Index): Index to which the returned Series will be reindexed and then forward-filled.
+        i (int): Lag. 0 returns the current anchor value; i>0 returns the i-th previous anchor value.
 
     Returns:
         pd.Series: A Series (same index as index_to_refill) with the forward-filled
-                   last Monday 6 PM 'open' prices in each month.
+                   last Monday 6 PM 'open' prices in each month, optionally lagged by i periods.
     """
-
-    # Ensure the index is a datetime index
     if not isinstance(ohlc_df.index, pd.DatetimeIndex):
         ohlc_df.index = pd.to_datetime(ohlc_df.index)
 
-    # Filter to Mondays at 6 PM (18:00)
     monday_6pm = ohlc_df[(ohlc_df.index.weekday == 0) & (ohlc_df.index.hour == 23)]
-
-    # Group by year-month and select the last entry for each group
-    last_monday_6pm = monday_6pm.groupby(
-        [monday_6pm.index.year, monday_6pm.index.month]
-    ).tail(1)
-
-    # Extract the 'open' column
-    last_monday_6pm_open = last_monday_6pm["open"]
-
-    # Reindex to match the target index, then forward-fill
-    last_monday_6pm_open_ffill = last_monday_6pm_open.reindex(
-        index_to_refill, method="ffill"
+    last_monday_6pm_open = (
+        monday_6pm.groupby([monday_6pm.index.year, monday_6pm.index.month])
+        .tail(1)["open"]
+        .shift(i)
     )
-    return last_monday_6pm_open_ffill
+
+    return last_monday_6pm_open.reindex(index_to_refill, method="ffill")
 
 
 def get_previous_levels(static_series):
