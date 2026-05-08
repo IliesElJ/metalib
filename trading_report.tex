@@ -1,0 +1,232 @@
+\documentclass[11pt,a4paper]{article}
+
+% ── Packages ──────────────────────────────────────────────────────────────────
+\usepackage[margin=2cm]{geometry}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{tabularx}
+\usepackage{colortbl}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{hyperref}
+\usepackage{parskip}
+\usepackage{microtype}
+\usepackage{fontenc}
+
+% ── Colors ────────────────────────────────────────────────────────────────────
+\definecolor{bg}{HTML}{0f1117}
+\definecolor{panel}{HTML}{1a1d27}
+\definecolor{green}{HTML}{00c853}
+\definecolor{red}{HTML}{ff3d3d}
+\definecolor{blue}{HTML}{4a9eff}
+\definecolor{textcol}{HTML}{e0e0e0}
+\definecolor{muted}{HTML}{888899}
+\definecolor{accent}{HTML}{2a2d3a}
+\definecolor{headerblue}{HTML}{1e3a5f}
+
+% ── Page style ────────────────────────────────────────────────────────────────
+\pagecolor{bg}
+\color{textcol}
+
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{muted}\leaders\hrule height \headrulewidth\hfill}}
+\fancyhead[L]{\color{muted}\small Trading Report}
+\fancyhead[R]{\color{muted}\small Mar 29 – Apr 12, 2026}
+\fancyfoot[C]{\color{muted}\small\thepage}
+
+% ── Section styling ───────────────────────────────────────────────────────────
+\titleformat{\section}
+  {\large\bfseries\color{blue}}
+  {}
+  {0em}
+  {}
+  [\color{muted}\titlerule]
+
+% ── Hyperref ──────────────────────────────────────────────────────────────────
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  urlcolor=blue,
+}
+
+% ── Table helpers ─────────────────────────────────────────────────────────────
+\newcolumntype{R}{>{\raggedleft\arraybackslash}X}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+
+\setlength{\arrayrulewidth}{0.3pt}
+\arrayrulecolor{accent}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{document}
+
+% ── Title block ───────────────────────────────────────────────────────────────
+\begin{center}
+  {\Huge\bfseries\color{textcol} Trading Report}\\[6pt]
+  {\large\color{muted} Mar 29 to Apr 12, 2026}\\[10pt]
+  \color{muted}\rule{0.6\linewidth}{0.4pt}\\[6pt]
+  {\normalsize
+    Account \textbf{\color{textcol}Ilies El Jaouhari}
+    \quad|\quad
+    Server: \texttt{\color{blue}FPTradingLLC-Demo}
+    \quad|\quad
+    Currency: USD
+  }
+\end{center}
+
+\vspace{8pt}
+
+% ── Account Snapshot ──────────────────────────────────────────────────────────
+\section{Account Snapshot}
+
+\begin{tabularx}{0.55\linewidth}{L R}
+  \toprule
+  \rowcolor{panel}
+  \textbf{Metric} & \textbf{Value} \\
+  \midrule
+  \rowcolor{panel} Balance    & \textbf{\$87,185.94} \\
+  \rowcolor{panel} Equity     & \textbf{\$86,477.13} \\
+  \rowcolor{panel} Open P\&L  & \textcolor{red}{\textbf{\$-708.81}} \\
+  \rowcolor{panel} Margin Used & \$93.59 \\
+  \bottomrule
+\end{tabularx}
+
+% ── Executive Summary ─────────────────────────────────────────────────────────
+\section{Executive Summary}
+
+The portfolio closed the two-week period with a net loss of \textcolor{red}{\textbf{\$80.78}} across 209 trades, driven primarily by \texttt{metafvg} running on EURUSD. The Sharpe ratio of \textbf{-2.29} and profit factor of \textbf{0.60} indicate that the current configuration is not generating risk-adjusted alpha. The first two trading days (Mar 30--31) were modestly profitable, but a sustained drawdown began on Apr 1 and accelerated into the Apr 3 session (\textcolor{red}{\$-36.39}), which coincided with heightened macro volatility driven by US tariff announcements. A partial recovery on Apr 8--9 was reversed by the final session loss on Apr 10.
+
+The key structural issue is \texttt{metafvg}'s win rate of \textbf{12.5\%}. With an RRR of 3.58, the strategy would need at least a \textbf{22\%} win rate to break even — meaning the current regime is approximately 10 percentage points below viability. \texttt{metamlp} compounds the loss with an RRR below 1 (0.95), a configuration that cannot be profitable regardless of win rate unless corrected.
+
+% ── Equity Curve ──────────────────────────────────────────────────────────────
+\section{Equity Curve}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{report_imgs/equity_curve.png}
+\end{figure}
+
+The equity curve shows two distinct phases: a brief period of stability in the final days of March, followed by a near-monotonic decline through the first two weeks of April. There is no meaningful mean-reversion in the drawdown, which suggests the losses are regime-driven rather than random noise. The curve flattened slightly mid-week (Apr 7--9) before resuming lower.
+
+% ── Daily P&L ─────────────────────────────────────────────────────────────────
+\section{Daily P\&L}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{report_imgs/daily_pnl.png}
+\end{figure}
+
+\begin{tabularx}{0.7\linewidth}{L R R}
+  \toprule
+  \rowcolor{panel}
+  \textbf{Date} & \textbf{Daily P\&L} & \textbf{Cumulative} \\
+  \midrule
+  \rowcolor{panel} Mar 30 & \textcolor{green}{+\$1.19}   & \textcolor{green}{+\$1.19}   \\
+  \rowcolor{panel} Mar 31 & \textcolor{green}{+\$3.65}   & \textcolor{green}{+\$4.84}   \\
+  \rowcolor{panel} Apr 01 & \textcolor{red}{\$-14.95}  & \textcolor{red}{\$-10.11}  \\
+  \rowcolor{panel} Apr 02 & \textcolor{red}{\$-19.06}  & \textcolor{red}{\$-29.17}  \\
+  \rowcolor{panel} Apr 03 & \textcolor{red}{\$-36.39}  & \textcolor{red}{\$-65.56}  \\
+  \rowcolor{panel} Apr 06 & \textcolor{red}{\$-11.87}  & \textcolor{red}{\$-77.43}  \\
+  \rowcolor{panel} Apr 07 & \textcolor{red}{\$-1.91}   & \textcolor{red}{\$-79.34}  \\
+  \rowcolor{panel} Apr 08 & \textcolor{green}{+\$6.65}  & \textcolor{red}{\$-72.69}  \\
+  \rowcolor{panel} Apr 09 & \textcolor{green}{+\$2.67}  & \textcolor{red}{\$-70.02}  \\
+  \rowcolor{panel} Apr 10 & \textcolor{red}{\$-10.76}  & \textcolor{red}{\$-80.78}  \\
+  \bottomrule
+\end{tabularx}
+
+The sharpest single-day loss occurred on \textbf{Apr 3} (\textcolor{red}{\$-36.39}), representing nearly half the total two-week drawdown in a single session. The two green days (Apr 8--9, totalling +\$9.32) were insufficient to offset the broader trend. Notably, no single day produced a meaningful upside outlier, whereas the downside saw two outsized events (Apr 3 and Apr 2).
+
+% ── Overall Performance ───────────────────────────────────────────────────────
+\section{Overall Performance}
+
+\begin{tabularx}{0.6\linewidth}{L R}
+  \toprule
+  \rowcolor{panel}
+  \textbf{Metric} & \textbf{Value} \\
+  \midrule
+  \rowcolor{panel} Closed Trades  & 209 \\
+  \rowcolor{panel} Total P\&L     & \textcolor{red}{\textbf{\$-80.78}} \\
+  \rowcolor{panel} Win Rate       & 18.2\% \\
+  \rowcolor{panel} Profit Factor  & 0.60 \\
+  \rowcolor{panel} Sharpe Ratio   & -2.29 \\
+  \rowcolor{panel} RRR (avg win / avg loss) & 2.71 \\
+  \rowcolor{panel} Max Drawdown   & -0.11\% \\
+  \bottomrule
+\end{tabularx}
+
+Despite a high average win-to-loss ratio (\textbf{RRR = 2.71}), the portfolio's 18.2\% win rate falls well short of the minimum required for the aggregate RRR to generate positive expectancy ($\approx$27\%). This divergence between RRR quality and win rate frequency is the defining problem of this period: the system finds large winners but not often enough to overcome the volume of small losses.
+
+% ── Strategy Breakdown ────────────────────────────────────────────────────────
+\section{Strategy Breakdown}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{report_imgs/strategy_breakdown.png}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.75\linewidth]{report_imgs/win_rate.png}
+\end{figure}
+
+\begin{tabularx}{\linewidth}{l R R R R R R}
+  \toprule
+  \rowcolor{panel}
+  \textbf{Strategy} & \textbf{Trades} & \textbf{Total P\&L} & \textbf{Win Rate} & \textbf{Profit Factor} & \textbf{RRR} & \textbf{Max DD} \\
+  \midrule
+  \rowcolor{panel} metafvg  & 168 & \textcolor{red}{-52.11}  & 12.5\%  & 0.51 & 3.58 & -0.1\% \\
+  \rowcolor{panel} metago   & 2   & \textcolor{green}{+10.67} & 100.0\% & inf  & inf  & 0.0\%  \\
+  \rowcolor{panel} metamlp  & 39  & \textcolor{red}{-39.34}  & 38.5\%  & 0.59 & 0.95 & -0.1\% \\
+  \bottomrule
+\end{tabularx}
+
+\textbf{metafvg} (168 trades, 80\% of total volume) is the primary driver of losses. Its 12.5\% win rate on EURUSD is structurally insufficient for its 3.58 RRR — the breakeven threshold sits around 22\%. The strategy is likely entering too frequently in a trending or noisy regime unfavorable to FVG fills. Reducing position frequency or adding a regime filter (e.g., ATR-based volatility gate or trend direction filter) would be the first lever to pull.
+
+\textbf{metamlp} (39 trades) presents a different problem: its RRR of 0.95 means average losses exceed average wins. An MLP mean-reversion strategy with sub-1 RRR suggests the take-profit targets are set too tight relative to stop losses, or that the model's predicted direction is correct but the sizing of moves is underestimated. Widening TP or tightening SL should be explored in backtesting.
+
+\textbf{metago} (2 trades, +\$10.67, 100\% win rate) is the only profitable strategy this period, but the sample is far too small to draw conclusions. It should be monitored closely as trade count grows.
+
+% ── Symbol P&L ────────────────────────────────────────────────────────────────
+\section{Symbol P\&L}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\linewidth]{report_imgs/symbol_pnl.png}
+\end{figure}
+
+\begin{tabularx}{0.85\linewidth}{l R R R R}
+  \toprule
+  \rowcolor{panel}
+  \textbf{Symbol} & \textbf{Trades} & \textbf{Total P\&L} & \textbf{Win Rate} & \textbf{Avg P\&L} \\
+  \midrule
+  \rowcolor{panel} AUDJPY & 1   & \textcolor{green}{+\$8.27}   & 100.0\% & \textcolor{green}{+\$8.27}  \\
+  \rowcolor{panel} USDJPY & 1   & \textcolor{green}{+\$2.40}   & 100.0\% & \textcolor{green}{+\$2.40}  \\
+  \rowcolor{panel} EURCHF & 7   & \textcolor{green}{+\$1.69}   & 42.9\%  & \textcolor{green}{+\$0.24}  \\
+  \rowcolor{panel} CADCHF & 19  & \textcolor{red}{\$-17.09}  & 47.4\%  & \textcolor{red}{\$-0.90}   \\
+  \rowcolor{panel} NZDCHF & 13  & \textcolor{red}{\$-23.94}  & 23.1\%  & \textcolor{red}{\$-1.84}   \\
+  \rowcolor{panel} EURUSD & 168 & \textcolor{red}{\$-52.11}  & 12.5\%  & \textcolor{red}{\$-0.31}   \\
+  \bottomrule
+\end{tabularx}
+
+EURUSD accounts for \textbf{\$-52.11} (64\% of total losses) with 168 trades at a 12.5\% win rate — this is entirely the \texttt{metafvg} exposure. NZDCHF is the second largest detractor (\$-23.94, 23.1\% win rate), driven by \texttt{metamlp}. CADCHF (\$-17.09, 47.4\% win rate) is marginally below breakeven and likely improvable with better TP/SL calibration. The three profitable symbols (AUDJPY, USDJPY, EURCHF) are small in trade count and likely represent \texttt{metago} and isolated \texttt{metamlp} wins.
+
+\subsection*{Key Actions}
+
+\begin{itemize}
+  \item \textbf{metafvg / EURUSD}: Pause or reduce lot size until win rate can be improved above 22\%. Investigate entry conditions — consider adding a higher-timeframe trend filter to avoid fading strong directional moves.
+  \item \textbf{metamlp}: Recalibrate TP/SL ratio. Backtest with RRR $\geq$ 1.5 to ensure positive expectancy at observed win rates ($\sim$38\%).
+  \item \textbf{metago}: Let it run. Accumulate more trades before drawing conclusions, but flag as the most promising strategy this period.
+  \item \textbf{Macro awareness}: The Apr 3 spike loss aligns with a known high-volatility macro event. Consider implementing a news/event blackout around scheduled high-impact releases.
+\end{itemize}
+
+\vspace{16pt}
+\begin{center}
+  \color{muted}\small Generated 2026-04-12 14:50 UTC
+\end{center}
+
+\end{document}

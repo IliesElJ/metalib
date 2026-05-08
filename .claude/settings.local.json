@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep:*)",
+      "Bash(xargs -I {} basename {})",
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "Bash(where py:*)",
+      "Bash(py --version)",
+      "Read(//c/Users/Hermes/AppData/Local/Programs/**)",
+      "Read(//c/Users/Hermes/miniconda3/**)",
+      "Read(//c/Users/Hermes/anaconda3/**)",
+      "Read(//c/ProgramData/miniconda3/**)",
+      "Bash(/c/Users/Hermes/miniconda3/python.exe:*)",
+      "Bash(/c/Users/Hermes/miniconda3/envs/adonys/python.exe:*)",
+      "Bash(start:*)",
+      "Bash(pdflatex --version)",
+      "Bash(where pdflatex:*)",
+      "Bash(where xelatex:*)",
+      "Bash(where lualatex:*)",
+      "Bash(where latexmk:*)",
+      "Bash(cmd.exe /c \"where pdflatex\")",
+      "Bash(cmd.exe /c \"where xelatex\")",
+      "Bash(cmd.exe /c \"where miktex\")",
+      "Bash(cmd.exe:*)",
+      "Bash(C:/Users/Hermes/miniconda3/envs/adonys/python.exe:*)"
+    ]
+  }
+}

@@ -12,3 +12,5 @@ statsmodels
 requests
 scikit-learn
 setuptools
+cot_reports
+ecbdata
