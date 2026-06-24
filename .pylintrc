@@ -1,0 +1,21 @@
+[MASTER]
+jobs=0
+
+[MESSAGES CONTROL]
+disable=
+    missing-module-docstring,
+    missing-class-docstring,
+    missing-function-docstring,
+    invalid-name,
+    too-many-arguments,
+    too-many-locals,
+    too-many-instance-attributes,
+    too-few-public-methods,
+    too-many-lines,
+    duplicate-code
+
+[FORMAT]
+max-line-length=120
+
+[DESIGN]
+max-args=10
