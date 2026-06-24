@@ -1,6 +1,8 @@
 import schedule
 import pytz
 import time
+import os
+import sys
 from datetime import datetime, timedelta
 import MetaTrader5 as mt5
 
@@ -11,6 +13,7 @@ from metalib.metafvg import MetaFVG
 from metalib.metane import MetaNE
 from metalib.metaob import MetaOB
 from metalib.metamlp import MetaMLP
+from metalib.metamtou import MetaMTOU
 
 strategy_registry = {
     "metane": {
@@ -101,6 +104,23 @@ strategy_registry = {
             "fit_lookback_days",
             "train_ratio",
             "bollinger_k",
+        ],
+    },
+    "metamtou": {
+        "class": MetaMTOU,
+        "init_keys": [
+            "symbols",
+            "timeframe",
+            "tag",
+            "size_position",
+            "active_hours",
+            "k_min",
+            "rr_min",
+            "horizon",
+            "stop_mult",
+            "max_hold_days",
+            "check_interval",
+            "trail_threshold",
         ],
     },
 }

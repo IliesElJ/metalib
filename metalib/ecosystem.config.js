@@ -109,6 +109,18 @@ module.exports = {
     },
 
     // ============================================
+    // MetaMTOU Strategy
+    // ============================================
+    {
+      name: "metamtou",
+      script: "main_metamtou.py",
+      cwd: "./mains",
+      ...commonConfig,
+      output: "./logs/metamtou-out.log",
+      error: "./logs/metamtou-error.log",
+    },
+
+    // ============================================
     // MetaDash Dashboard (optional - uncomment to manage via PM2)
     // ============================================
     // {

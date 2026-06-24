@@ -1,0 +1,282 @@
+# ─── k=3 (full quorum) setups ──────────────────────────────────────────────
+# All 3 OU lag anchors must agree in direction.
+# Parameters tuned per asset from backtest sweep (sweep_results.csv).
+# Horizon: most symbols h=3; AUDUSD and USDCHF robustly favour h=6.
+
+NZDUSD_D1_MTOU_K3:
+  active_hours: None
+  check_interval: 5
+  horizon: 3
+  k_min: 3
+  max_hold_days: 30
+  rr_min: 2.0
+  size_position: 0.01
+  stop_mult: 2.0
+  strategy_type: metamtou
+  symbols:
+  - NZDUSD
+  tag: mtou-nzd-k3
+  timeframe: mt5.TIMEFRAME_D1
+  trail_threshold: 0.8
+
+EURGBP_D1_MTOU_K3:
+  active_hours: None
+  check_interval: 5
+  horizon: 3
+  k_min: 3
+  max_hold_days: 30
+  rr_min: 1.5
+  size_position: 0.01
+  stop_mult: 2.5
+  strategy_type: metamtou
+  symbols:
+  - EURGBP
+  tag: mtou-egbp-k3
+  timeframe: mt5.TIMEFRAME_D1
+  trail_threshold: 0.8
+
+EURUSD_D1_MTOU_K3:
+  active_hours: None
+  check_interval: 5
+  horizon: 3
+  k_min: 3
+  max_hold_days: 30
+  rr_min: 2.0
+  size_position: 0.01
+  stop_mult: 2.0
+  strategy_type: metamtou
+  symbols:
+  - EURUSD
+  tag: mtou-eur-k3
+  timeframe: mt5.TIMEFRAME_D1
+  trail_threshold: 0.8
+
+GBPJPY_D1_MTOU_K3:
+  active_hours: None
+  check_interval: 5
+  horizon: 3
+  k_min: 3
+  max_hold_days: 30
+  rr_min: 2.0
+  size_position: 0.01
+  stop_mult: 1.5
+  strategy_type: metamtou
+  symbols:
+  - GBPJPY
+  tag: mtou-gjpy-k3
+  timeframe: mt5.TIMEFRAME_D1
+  trail_threshold: 0.8
+
+AUDUSD_D1_MTOU_K3:
+  active_hours: None
+  check_interval: 5
+  horizon: 6
+  k_min: 3
+  max_hold_days: 30
+  rr_min: 1.0
+  size_position: 0.01
+  stop_mult: 2.0
+  strategy_type: metamtou
+  symbols:
+  - AUDUSD
+  tag: mtou-aud-k3
+  timeframe: mt5.TIMEFRAME_D1
+  trail_threshold: 0.8
+
+USDCAD_D1_MTOU_K3:
+  active_hours: None
+  check_interval: 5
+  horizon: 3
+  k_min: 3
+  max_hold_days: 30
+  rr_min: 2.0
+  size_position: 0.01
+  stop_mult: 2.0
+  strategy_type: metamtou
+  symbols:
+  - USDCAD
+  tag: mtou-cad-k3
+  timeframe: mt5.TIMEFRAME_D1
+  trail_threshold: 0.8
+
+EURJPY_D1_MTOU_K3:
+  active_hours: None
+  check_interval: 5
+  horizon: 3
+  k_min: 3
+  max_hold_days: 30
+  rr_min: 2.0
+  size_position: 0.01
+  stop_mult: 2.0
+  strategy_type: metamtou
+  symbols:
+  - EURJPY
+  tag: mtou-ejpy-k3
+  timeframe: mt5.TIMEFRAME_D1
+  trail_threshold: 0.8
+
+USDCHF_D1_MTOU_K3:
+  active_hours: None
+  check_interval: 5
+  horizon: 6
+  k_min: 3
+  max_hold_days: 60
+  rr_min: 1.0
+  size_position: 0.01
+  stop_mult: 2.0
+  strategy_type: metamtou
+  symbols:
+  - USDCHF
+  tag: mtou-chf-k3
+  timeframe: mt5.TIMEFRAME_D1
+  trail_threshold: 0.8
+
+USDJPY_D1_MTOU_K3:
+  active_hours: None
+  check_interval: 5
+  horizon: 3
+  k_min: 3
+  max_hold_days: 30
+  rr_min: 1.5
+  size_position: 0.01
+  stop_mult: 1.5
+  strategy_type: metamtou
+  symbols:
+  - USDJPY
+  tag: mtou-jpy-k3
+  timeframe: mt5.TIMEFRAME_D1
+  trail_threshold: 0.8
+
+GBPUSD_D1_MTOU_K3:
+  active_hours: None
+  check_interval: 5
+  horizon: 3
+  k_min: 3
+  max_hold_days: 30
+  rr_min: 1.0
+  size_position: 0.01
+  stop_mult: 1.5
+  strategy_type: metamtou
+  symbols:
+  - GBPUSD
+  tag: mtou-gbp-k3
+  timeframe: mt5.TIMEFRAME_D1
+  trail_threshold: 0.8
+
+# ─── k=1 (any quorum) setups ───────────────────────────────────────────────
+# At least 1 OU lag active — more trades, looser filter.
+# Compensated with higher rr_min (2.0) and stop_mult (2.5) to screen quality.
+# Only symbols where best in-sample Sharpe >= 1.0 at k=1 are included.
+# USDJPY (S=0.47), GBPJPY (S=0.63), EURUSD (S=0.70) excluded.
+
+NZDUSD_D1_MTOU_K1:
+  active_hours: None
+  check_interval: 5
+  horizon: 3
+  k_min: 1
+  max_hold_days: 30
+  rr_min: 2.0
+  size_position: 0.01
+  stop_mult: 2.5
+  strategy_type: metamtou
+  symbols:
+  - NZDUSD
+  tag: mtou-nzd-k1
+  timeframe: mt5.TIMEFRAME_D1
+  trail_threshold: 0.8
+
+GBPUSD_D1_MTOU_K1:
+  active_hours: None
+  check_interval: 5
+  horizon: 3
+  k_min: 1
+  max_hold_days: 30
+  rr_min: 2.0
+  size_position: 0.01
+  stop_mult: 2.5
+  strategy_type: metamtou
+  symbols:
+  - GBPUSD
+  tag: mtou-gbp-k1
+  timeframe: mt5.TIMEFRAME_D1
+  trail_threshold: 0.8
+
+USDCHF_D1_MTOU_K1:
+  active_hours: None
+  check_interval: 5
+  horizon: 3
+  k_min: 1
+  max_hold_days: 30
+  rr_min: 2.0
+  size_position: 0.01
+  stop_mult: 2.5
+  strategy_type: metamtou
+  symbols:
+  - USDCHF
+  tag: mtou-chf-k1
+  timeframe: mt5.TIMEFRAME_D1
+  trail_threshold: 0.8
+
+AUDUSD_D1_MTOU_K1:
+  active_hours: None
+  check_interval: 5
+  horizon: 3
+  k_min: 1
+  max_hold_days: 30
+  rr_min: 1.5
+  size_position: 0.01
+  stop_mult: 2.5
+  strategy_type: metamtou
+  symbols:
+  - AUDUSD
+  tag: mtou-aud-k1
+  timeframe: mt5.TIMEFRAME_D1
+  trail_threshold: 0.8
+
+EURJPY_D1_MTOU_K1:
+  active_hours: None
+  check_interval: 5
+  horizon: 3
+  k_min: 1
+  max_hold_days: 60
+  rr_min: 2.0
+  size_position: 0.01
+  stop_mult: 2.5
+  strategy_type: metamtou
+  symbols:
+  - EURJPY
+  tag: mtou-ejpy-k1
+  timeframe: mt5.TIMEFRAME_D1
+  trail_threshold: 0.8
+
+USDCAD_D1_MTOU_K1:
+  active_hours: None
+  check_interval: 5
+  horizon: 3
+  k_min: 1
+  max_hold_days: 30
+  rr_min: 1.5
+  size_position: 0.01
+  stop_mult: 2.0
+  strategy_type: metamtou
+  symbols:
+  - USDCAD
+  tag: mtou-cad-k1
+  timeframe: mt5.TIMEFRAME_D1
+  trail_threshold: 0.8
+
+EURGBP_D1_MTOU_K1:
+  active_hours: None
+  check_interval: 5
+  horizon: 3
+  k_min: 1
+  max_hold_days: 30
+  rr_min: 2.0
+  size_position: 0.01
+  stop_mult: 2.5
+  strategy_type: metamtou
+  symbols:
+  - EURGBP
+  tag: mtou-egbp-k1
+  timeframe: mt5.TIMEFRAME_D1
+  trail_threshold: 0.8
