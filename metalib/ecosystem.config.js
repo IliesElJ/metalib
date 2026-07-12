@@ -12,7 +12,11 @@
 //   pm2 startup                             # Enable auto-start on boot
 
 // Conda environment configuration
-const CONDA_ROOT = "C:\\Users\\Hermes\\miniconda3";
+// Dev workstation has the env under the user profile; prod box under ProgramData.
+const fs = require("fs");
+const CONDA_ROOT = fs.existsSync("C:\\Users\\Hermes\\miniconda3")
+  ? "C:\\Users\\Hermes\\miniconda3"
+  : "C:\\ProgramData\\miniconda3";
 const CONDA_ENV = "adonys";
 const PYTHON_PATH = `${CONDA_ROOT}\\envs\\${CONDA_ENV}\\python.exe`;
 
