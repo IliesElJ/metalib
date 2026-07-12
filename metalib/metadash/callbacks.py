@@ -282,22 +282,28 @@ def register_callbacks(app):
         Input('nav-overview', 'n_clicks'),
         Input('nav-trades', 'n_clicks'),
         Input('nav-system', 'n_clicks'),
-        prevent_initial_call=True,
     )
     def handle_trade_click(row_clicks, close_clicks, *_nav):
         ctx = callback_context
         if not ctx.triggered:
             return no_update
         prop = ctx.triggered[0]['prop_id']
+        # Startup fire with no actual trigger
+        if not prop or prop == '.':
+            return no_update
         # Nav → close modal
         if any(x in prop for x in ('nav-overview', 'nav-trades', 'nav-system')):
             return None
         if 'modal-close' in prop:
             return None
         if 'trade-row' in prop:
+            # Guard: ignore zero-click fires (initial render)
             try:
-                trade_key = json.loads(prop.split('.')[0])['index']
-                return {'key': trade_key}
+                idx = json.loads(prop.split('.')[0])['index']
+                triggered_val = ctx.triggered[0].get('value', 0)
+                if not triggered_val:
+                    return no_update
+                return {'key': idx}
             except Exception:
                 return no_update
         return no_update
