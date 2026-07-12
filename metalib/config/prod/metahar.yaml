@@ -1,29 +1,56 @@
-XAUUSD_M1_MIX:
+# MetaHAR v2 (2026-07): univariate M15/4h vol-change forecaster.
+# One model bar = short_factor input bars (M15 x 16 = 4h).
+# symbols must equal [predicted_symbol] — cross-asset baskets were walk-forward
+# validated as harmful (see notebooks/metahar_wf_backtest.py, summary_dummies_own.csv).
+# Predictions are published to metalib/store/vol_predictions.db (volstore.py);
+# other strategies read them via MetaStrategy.get_vol_prediction(symbol).
+
+BTCUSD_M15_UNI:
   strategy_type: metahar
-  symbols: ['BTCUSD', 'EURUSD', 'XAUUSD', 'US500.cash', 'GBPUSD']
+  symbols: ['BTCUSD']
+  predicted_symbol: BTCUSD
+  timeframe: mt5.TIMEFRAME_M15
+  tag: metahar_uni_btcusd_m15
+  active_hours: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]
+  short_factor: 16
+  long_factor: 256
+
+EURUSD_M15_UNI:
+  strategy_type: metahar
+  symbols: ['EURUSD']
+  predicted_symbol: EURUSD
+  timeframe: mt5.TIMEFRAME_M15
+  tag: metahar_uni_eurusd_m15
+  active_hours: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]
+  short_factor: 16
+  long_factor: 256
+
+XAUUSD_M15_UNI:
+  strategy_type: metahar
+  symbols: ['XAUUSD']
   predicted_symbol: XAUUSD
-  timeframe: mt5.TIMEFRAME_M1
-  tag: metahar_mix_xauusd_m1
+  timeframe: mt5.TIMEFRAME_M15
+  tag: metahar_uni_xauusd_m15
   active_hours: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]
-  short_factor: 15
-  long_factor: 240
+  short_factor: 16
+  long_factor: 256
 
-US500_cash_M1_MIX:
+US500_cash_M15_UNI:
   strategy_type: metahar
-  symbols: ['BTCUSD', 'EURUSD', 'XAUUSD', 'US500.cash', 'GBPUSD']
+  symbols: ['US500.cash']
   predicted_symbol: US500.cash
-  timeframe: mt5.TIMEFRAME_M1
-  tag: metahar_mix_us500_m1
+  timeframe: mt5.TIMEFRAME_M15
+  tag: metahar_uni_us500_m15
   active_hours: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]
-  short_factor: 15
-  long_factor: 240
+  short_factor: 16
+  long_factor: 256
 
-GBPUSD_M1_MIX:
+GBPUSD_M15_UNI:
   strategy_type: metahar
-  symbols: ['BTCUSD', 'EURUSD', 'XAUUSD', 'US500.cash', 'GBPUSD']
+  symbols: ['GBPUSD']
   predicted_symbol: GBPUSD
-  timeframe: mt5.TIMEFRAME_M1
-  tag: metahar_mix_gbpusd_m1
+  timeframe: mt5.TIMEFRAME_M15
+  tag: metahar_uni_gbpusd_m15
   active_hours: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]
-  short_factor: 15
-  long_factor: 240
+  short_factor: 16
+  long_factor: 256

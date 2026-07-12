@@ -12,7 +12,7 @@
 //   pm2 startup                             # Enable auto-start on boot
 
 // Conda environment configuration
-const CONDA_ROOT = "C:\\ProgramData\\miniconda3";
+const CONDA_ROOT = "C:\\Users\\Hermes\\miniconda3";
 const CONDA_ENV = "adonys";
 const PYTHON_PATH = `${CONDA_ROOT}\\envs\\${CONDA_ENV}\\python.exe`;
 
@@ -118,6 +118,18 @@ module.exports = {
       ...commonConfig,
       output: "./logs/metamtou-out.log",
       error: "./logs/metamtou-error.log",
+    },
+
+    // ============================================
+    // MetaHAR Vol Forecaster (univariate M15/4h, publishes to volstore)
+    // ============================================
+    {
+      name: "metahar",
+      script: "main_metahar.py",
+      cwd: "./mains",
+      ...commonConfig,
+      output: "./logs/metahar-out.log",
+      error: "./logs/metahar-error.log",
     },
 
     // ============================================
