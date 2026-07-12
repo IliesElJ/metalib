@@ -102,6 +102,7 @@ class MetaGA(MetaStrategy):
         signal_line["timestamp"] = timestamp
         signal_line["state"] = self.state
         signal_line["symbol"] = self.symbols[0]
+        signal_line["tag"] = self.tag
 
         self.signalData = signal_line
 
@@ -220,7 +221,7 @@ class MetaGA(MetaStrategy):
             colsample_bytree=0.7,
             reg_lambda=2.0,
             eval_metric="logloss",
-            n_jobs=-1,
+            n_jobs=1,
             random_state=42,
         )
         cal = CalibratedClassifierCV(base, method="isotonic", cv=3)
@@ -369,7 +370,7 @@ class MetaGA(MetaStrategy):
         bollinger_bands_compute(ohlc)
         macd_compute(ohlc)
         technical_indicators = ohlc.drop(
-            axis=1, columns=["open", "high", "low", "close", "spread", "real_volume"]
+            columns=["open", "high", "low", "close", "spread", "real_volume"]
         )
         print(f"{self.tag}::: Computed technical indicators")
 

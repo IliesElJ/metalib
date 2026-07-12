@@ -159,7 +159,7 @@ def parse_log_content(log_content):
                 level = "ERROR"
             elif "warning" in line.lower():
                 level = "WARNING"
-            elif "success" in line.lower() or "entered" in line.lower():
+            elif any(kw in line.lower() for kw in ("success", "entered", "signal", " in long", " in short")):
                 level = "SUCCESS"
 
             entries.append({

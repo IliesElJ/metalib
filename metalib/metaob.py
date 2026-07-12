@@ -103,6 +103,7 @@ class MetaOB(MetaStrategy):
         signal_line["symbol"] = self.symbols[0]
         signal_line["long_signal"] = long_signal
         signal_line["short_signal"] = short_signal
+        signal_line["tag"] = self.tag
         self.signalData = signal_line
 
     def calculate_indicators(self, ohlc: pd.DataFrame) -> pd.DataFrame:

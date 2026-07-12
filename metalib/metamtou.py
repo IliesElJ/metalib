@@ -226,6 +226,7 @@ class MetaMTOU(MetaStrategy):
         # Latest snapshot for target horizon
         snap = self._latest_snap()
         if snap is None or snap.empty:
+            print(f"{self.tag}:: FLAT  no active snap for horizon={self.horizon}")
             self._set_signal_data(symbol)
             return
 
@@ -241,12 +242,14 @@ class MetaMTOU(MetaStrategy):
         q = _compute_quorum(snap)
         self._signal_q = q   # always record for logging even on early return
         if q < self.k_min:
+            print(f"{self.tag}:: FLAT  Q={q}/{self.k_min}  close={close:.5f}")
             self._set_signal_data(symbol, q=q, close=close)
             return
 
         # ── wz for direction ─────────────────────────────────────────────
         wz = _compute_wz(snap)
         if math.isnan(wz) or wz == 0.0:
+            print(f"{self.tag}:: FLAT  Q={q}/{self.k_min}  wz=invalid  close={close:.5f}")
             self._set_signal_data(symbol, q=q, close=close)
             return
         direction = -1 if wz > 0 else 1
@@ -254,12 +257,14 @@ class MetaMTOU(MetaStrategy):
         # ── Entry condition 2: at least 1 true open level ─────────────────
         n_to = _true_open_count(snap, close, direction)
         if n_to < 1:
+            print(f"{self.tag}:: FLAT  Q={q}/{self.k_min}  wz={wz:+.3f}  no_true_open  close={close:.5f}")
             self._set_signal_data(symbol, q=q, wz=wz, close=close)
             return
 
         # ── Weighted target and vol ───────────────────────────────────────
         tv = _weighted_target_and_vol(snap)
         if tv is None:
+            print(f"{self.tag}:: FLAT  Q={q}/{self.k_min}  wz={wz:+.3f}  no_weighted_target  close={close:.5f}")
             self._set_signal_data(symbol, q=q, wz=wz, close=close)
             return
         target_log, w_vol_1d = tv
@@ -276,10 +281,12 @@ class MetaMTOU(MetaStrategy):
         dist_target = abs(target_px - close)
         dist_stop = abs(stop_px - close)
         if dist_stop == 0:
+            print(f"{self.tag}:: FLAT  Q={q}/{self.k_min}  wz={wz:+.3f}  zero_stop_dist  close={close:.5f}")
             self._set_signal_data(symbol, q=q, wz=wz, close=close)
             return
         rr = dist_target / dist_stop
         if rr < self.rr_min:
+            print(f"{self.tag}:: FLAT  Q={q}/{self.k_min}  wz={wz:+.3f}  R/R={rr:.2f}<{self.rr_min}  close={close:.5f}")
             self._set_signal_data(symbol, q=q, wz=wz, rr=rr, close=close)
             return
 
@@ -367,6 +374,13 @@ class MetaMTOU(MetaStrategy):
 
         now_utc = datetime.now(pytz.utc)
         cal_days = (now_utc - self.trade_entry_date).days if self.trade_entry_date else 0
+
+        side = "LONG" if self.trade_direction == 1 else "SHORT"
+        pnl_pips = ((close - self.trade_entry_px) * self.trade_direction
+                    / _pip_size(symbol)) if self.trade_entry_px else float("nan")
+        print(f"{self.tag}:: IN {side}  bar={self.trade_bars_in}  day={cal_days}  "
+              f"close={close:.5f}  pnl={pnl_pips:+.1f}pips  "
+              f"sl={self.trade_stop:.5f}  tp={self.trade_target:.5f}")
 
         # ── Max hold exit ─────────────────────────────────────────────────
         if cal_days >= self.max_hold_days:
@@ -555,6 +569,7 @@ class MetaMTOU(MetaStrategy):
         self.signalData = pd.Series({
             "timestamp": datetime.now(pytz.utc),
             "symbol":    symbol,
+            "tag":       self.tag,
             "state":     self.state,
             "quorum_k":  q,
             "wz":        wz,

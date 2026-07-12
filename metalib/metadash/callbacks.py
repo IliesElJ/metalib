@@ -1,1074 +1,346 @@
 """
-Callbacks Module
-Handles all Dash callbacks for the MetaDAsh application
+Callbacks for the redesigned PM dashboard.
+Three views: Overview, Trades, System.
 """
 
-from dash import Input, Output, State, html, no_update, callback_context, ALL, MATCH
-import dash_bootstrap_components as dbc
+import json
 from datetime import datetime, date
-import plotly.graph_objects as go
-import pandas as pd
+
+from dash import Input, Output, State, html, no_update, callback_context, ALL
+import dash_bootstrap_components as dbc
 
 from utils import (
     initialize_mt5,
     get_historical_data,
     process_deals_data,
     get_account_info,
-    strategy_metrics,
-    calculate_hourly_performance,
-    get_candles_for_trade,
 )
-from utils.log_utils import (
-    get_dates_for_strategy,
-    read_log_file,
-    get_log_statistics,
-)
-from utils.pm2_utils import (
-    get_pm2_status,
-    pm2_start,
-    pm2_stop,
-    pm2_restart,
+from components.pm_views import (
+    render_overview,
+    render_trades,
+    render_system,
+    loading_placeholder,
+    trade_modal_overlay,
 )
 
-from components import (
-    render_overview_tab,
-    render_detailed_tab,
-    create_detailed_metrics_figure,
-    render_pnl_tab,
-    render_trades_tab,
-    create_trades_table,
-    render_raw_tab,
-    render_strategy_type_tab,
-    render_log_tab,
-    create_log_stats_display,
-    format_log_content,
-    render_status_tab,
-    create_status_summary,
-    create_status_table,
-    create_pm2_process_table,
-    render_welcome_tab,
-    render_instance_trades_tab,
-    get_filtered_strategy_instances,
-    get_dates_for_instance,
-    create_instance_trades_grid,
-    create_instance_trades_stats,
-    create_trade_candlestick_chart,
-    render_calibration_tab,
-    create_results_table,
-    create_results_chart,
-    create_asset_matrices,
-    DEFAULT_STRATEGY_PARAMS,
-    render_indicators_tab,
-    create_indicator_chart,
-    create_indicator_info_cards,
-    pull_price_for_indicators,
-)
-from components.log_tab import get_filtered_instances
-from components.detailed_tab import create_hourly_chart
-from utils.health_utils import get_all_strategy_statuses, get_health_summary
-from utils.indicator_utils import load_indicator_data, list_available_tags
-
-
-# Default configuration
 DEFAULT_START_DATE = date(2025, 1, 1)
-DEFAULT_ACCOUNT_SIZE = 100000
+ACCENT = '#BF6A3D'
+SIDEBAR_BG = '#EFECE6'
+BORDER = 'rgba(38,34,29,0.10)'
+TEXT_PRIMARY = '#26221D'
+TEXT_SECONDARY = '#7A756C'
+GREEN = '#3D7A54'
 
-
-# Global storage for data
-stored_data = {
-    "history_orders": None,
-    "history_deals": None,
+# In-process cache (shared across callbacks in same worker)
+_cache = {
     "merged_deals": None,
-    "account_size": DEFAULT_ACCOUNT_SIZE,
+    "account_info": None,
 }
+
+NAV_IDS = ['overview', 'trades', 'system']
+
+
+def _fetch_trade_for_chart(trade_key):
+    """Return (trade_data dict, candles_df) for a trade key like 'o_12345' or 'c_67890'."""
+    import MetaTrader5 as mt5
+    from datetime import datetime, timedelta
+
+    trade_data = None
+
+    if trade_key.startswith('o_'):
+        ticket = int(trade_key[2:])
+        positions = mt5.positions_get(ticket=ticket)
+        if not positions:
+            return None, None
+        pos = positions[0]
+        time_open = datetime.fromtimestamp(pos.time)
+        trade_data = {
+            'symbol': pos.symbol,
+            'time_open': time_open,
+            'time_close': None,
+            'price_open': pos.price_open,
+            'price_close': pos.price_current,
+            'total_profit': pos.profit,
+            'side': 'Buy' if pos.type == 0 else 'Sell',
+            'is_open': True,
+        }
+        duration_secs = (datetime.now() - time_open).total_seconds()
+
+    elif trade_key.startswith('c_'):
+        pos_id = int(trade_key[2:])
+        merged = _cache.get('merged_deals')
+        if merged is None or merged.empty:
+            return None, None
+        row = merged[merged['position_id'] == pos_id]
+        if row.empty:
+            return None, None
+        r = row.iloc[0]
+        time_open = r['time_open'].to_pydatetime()
+        time_close = r['time_close'].to_pydatetime()
+        trade_data = {
+            'symbol': str(r.get('symbol_open', '')),
+            'time_open': time_open,
+            'time_close': time_close,
+            'price_open': float(r.get('price_open', 0)),
+            'price_close': float(r.get('price_close', 0)),
+            'total_profit': float(r.get('profit_open', 0)) + float(r.get('profit_close', 0)),
+            'side': 'Buy' if r.get('type_open', 0) == 0 else 'Sell',
+            'is_open': False,
+        }
+        duration_secs = (time_close - time_open).total_seconds()
+    else:
+        return None, None
+
+    # Pick timeframe and buffer based on trade duration
+    if duration_secs < 3600:
+        tf, buf = mt5.TIMEFRAME_M1, timedelta(minutes=20)
+    elif duration_secs < 28800:
+        tf, buf = mt5.TIMEFRAME_M5, timedelta(hours=2)
+    elif duration_secs < 259200:
+        tf, buf = mt5.TIMEFRAME_H1, timedelta(hours=10)
+    else:
+        tf, buf = mt5.TIMEFRAME_H4, timedelta(days=3)
+
+    t0 = trade_data['time_open']
+    t1 = trade_data['time_close'] or datetime.now()
+
+    import pandas as pd
+    rates = mt5.copy_rates_range(trade_data['symbol'], tf, t0 - buf, t1 + buf)
+    if rates is None or len(rates) == 0:
+        return trade_data, None
+
+    candles_df = pd.DataFrame(rates)
+    candles_df['time'] = pd.to_datetime(candles_df['time'], unit='s')
+    return trade_data, candles_df
 
 
 def register_callbacks(app):
-    """
-    Register all callbacks for the application
-    """
 
-    # ------------------------------
-    # Auto-startup data loading
-    # ------------------------------
+    # ── 1. Auto-load MT5 data on startup ──────────────────────────────────────
 
     @app.callback(
-        [
-            Output("data-store", "data"),
-            Output("connection-status", "children"),
-            Output("account-info-store", "data"),
-        ],
-        [Input("startup-trigger", "n_intervals")],
+        Output('data-store', 'data'),
+        Output('account-info-store', 'data'),
+        Output('connection-status', 'children'),
+        Input('startup-trigger', 'n_intervals'),
         prevent_initial_call=False,
     )
     def auto_load_data(n_intervals):
-        """Automatically connect to MT5 and load data on startup"""
         if n_intervals == 0:
-            # First call - show loading status
-            return (
-                None,
-                dbc.Alert(
-                    "Connecting to MT5...",
-                    color="info",
-                    className="status-alert",
-                    dismissable=True,
-                ),
-                None,
-            )
+            return no_update, no_update, "Connecting…"
 
-        # Connect to MT5
-        success, message = initialize_mt5()
-        if not success:
-            return (
-                None,
-                dbc.Alert(
-                    f"MT5 Connection Failed: {message}",
-                    color="danger",
-                    className="status-alert",
-                    dismissable=True,
-                ),
-                None,
-            )
+        ok, msg = initialize_mt5()
+        if not ok:
+            return None, None, f"MT5 error: {msg}"
 
-        # Fetch data with defaults
-        from_date = datetime.combine(DEFAULT_START_DATE, datetime.min.time())
-        to_date = datetime.now().replace(hour=23, minute=59, second=59)
+        from_dt = datetime.combine(DEFAULT_START_DATE, datetime.min.time())
+        to_dt = datetime.now().replace(hour=23, minute=59, second=59)
+        orders, deals, err = get_historical_data(from_dt, to_dt)
 
-        history_orders, history_deals, error = get_historical_data(from_date, to_date)
+        if err or orders is None or deals is None:
+            return None, None, f"Fetch error: {err or 'no data'}"
 
-        if error:
-            return (
-                None,
-                dbc.Alert(
-                    f"Data Fetch Error: {error}",
-                    color="danger",
-                    className="status-alert",
-                    dismissable=True,
-                ),
-                None,
-            )
-
-        if history_orders is None or history_deals is None:
-            return (
-                None,
-                dbc.Alert(
-                    "Failed to retrieve trading data",
-                    color="danger",
-                    className="status-alert",
-                    dismissable=True,
-                ),
-                None,
-            )
-
-        # Process deals data
-        merged_deals = process_deals_data(history_deals)
-
-        if merged_deals is None or merged_deals.empty:
-            return (
-                None,
-                dbc.Alert(
-                    "No valid trades found in the specified period",
-                    color="warning",
-                    className="status-alert",
-                    dismissable=True,
-                ),
-                None,
-            )
-
-        # Get account info
+        merged = process_deals_data(deals)
         account_info = get_account_info()
 
-        # Store data globally
-        stored_data["history_orders"] = history_orders
-        stored_data["history_deals"] = history_deals
-        stored_data["merged_deals"] = merged_deals
-        stored_data["account_size"] = DEFAULT_ACCOUNT_SIZE
+        if merged is None or merged.empty:
+            return None, account_info, "Connected — no trades found"
 
-        # Success message (will auto-dismiss)
-        success_message = dbc.Alert(
-            f"Loaded {len(history_orders)} orders, {len(history_deals)} deals",
-            color="success",
-            className="status-alert",
-            dismissable=True,
-            duration=4000,  # Auto-dismiss after 4 seconds
-        )
+        _cache['merged_deals'] = merged
+        _cache['account_info'] = account_info
 
-        return (
-            {"data_available": True},
-            success_message,
-            account_info,
-        )
+        return {'ok': True, 'rows': len(merged)}, account_info, f"Connected · {len(merged)} trades"
+
+    # ── 2. Nav clicks → nav-store ──────────────────────────────────────────────
 
     @app.callback(
-        Output("tab-content", "children"),
-        [
-            Input("tabs", "active_tab"),
-            Input("data-store", "data"),
-            Input("account-info-store", "data"),
-        ],
-    )
-    def render_tab_content(active_tab, data, account_info):
-        """Render content based on selected tab"""
-        # Welcome, Status, and Log tabs don't require MT5 data
-        if active_tab == "welcome":
-            return render_welcome_tab()
-
-        if active_tab == "status":
-            return render_status_tab()
-
-        if active_tab == "logs":
-            return render_log_tab()
-
-        if active_tab == "calibration":
-            return render_calibration_tab()
-
-        if active_tab == "indicators":
-            return render_indicators_tab()
-
-        if data is None or not data.get("data_available", False):
-            return html.Div(
-                [
-                    dbc.Spinner(
-                        color="primary",
-                        size="lg",
-                        spinner_style={"width": "3rem", "height": "3rem"},
-                    ),
-                    html.P(
-                        "Loading trading data...",
-                        className="text-center text-muted mt-3",
-                        style={"fontSize": "14px"},
-                    ),
-                ],
-                style={
-                    "display": "flex",
-                    "flexDirection": "column",
-                    "alignItems": "center",
-                    "justifyContent": "center",
-                    "minHeight": "300px",
-                },
-            )
-
-        merged_deals = stored_data["merged_deals"]
-        account_size = stored_data["account_size"]
-
-        if not account_info:
-            account_info = {"balance": 0, "equity": 0, "margin": 0}
-
-        if active_tab == "overview":
-            return render_overview_tab(merged_deals, account_size, account_info)
-        elif active_tab == "strategy_types":
-            return render_strategy_type_tab(merged_deals, account_size)
-        elif active_tab == "detailed":
-            return render_detailed_tab(merged_deals, account_size)
-        elif active_tab == "pnl":
-            return render_pnl_tab(merged_deals, account_size)
-        elif active_tab == "trades":
-            return render_trades_tab(merged_deals)
-        elif active_tab == "instance_trades":
-            return render_instance_trades_tab(merged_deals)
-        elif active_tab == "raw":
-            return render_raw_tab(merged_deals, stored_data["history_orders"])
-
-        return html.Div()
-
-    @app.callback(
-        Output("detailed-metrics-graph", "figure"),
-        [Input("metrics-dropdown", "value")],
-        [State("data-store", "data")],
-    )
-    def update_detailed_metrics(selected_metrics, data):
-        """Update detailed metrics chart based on selection"""
-        if not data or not selected_metrics:
-            return go.Figure()
-
-        merged_deals = stored_data["merged_deals"]
-        account_size = stored_data["account_size"]
-
-        if merged_deals is None:
-            return go.Figure()
-
-        # Calculate metrics
-        strategy_metrics_df = merged_deals[
-            ["profit_open", "profit_close", "comment_open", "symbol_open", "time_open"]
-        ].copy()
-
-        grouped_metrics = strategy_metrics_df.groupby(
-            ["comment_open", "symbol_open"]
-        ).apply(lambda x: strategy_metrics(x, account_size))
-
-        return create_detailed_metrics_figure(grouped_metrics, selected_metrics)
-
-    @app.callback(
-        [
-            Output("hourly-graph", "figure"),
-            Output("hourly-stats", "children"),
-        ],
-        [Input("strategy-dropdown", "value")],
-        [State("data-store", "data")],
-    )
-    def update_hourly_graph(selected_strategy, data):
-        """Update hourly performance graph and stats"""
-        if not data or not selected_strategy:
-            return go.Figure(), html.Div()
-
-        merged_deals = stored_data["merged_deals"]
-
-        if merged_deals is None:
-            return go.Figure(), html.Div()
-
-        # Use the new create_hourly_chart function
-        fig, stats = create_hourly_chart(merged_deals, selected_strategy)
-
-        return fig, stats
-
-    @app.callback(
-        Output("trades-table-container", "children"),
-        [Input("bot-dropdown", "value")],
-        [State("data-store", "data")],
-    )
-    def update_trades_table(selected_bot, data):
-        """Update trades table based on selected bot"""
-        if not data or not selected_bot:
-            return html.Div(
-                "Please select a bot/strategy", className="text-center text-muted"
-            )
-
-        merged_deals = stored_data["merged_deals"]
-
-        if merged_deals is None:
-            return html.Div("No data available", className="text-center text-muted")
-
-        return create_trades_table(merged_deals, selected_bot)
-
-    # ------------------------------
-    # Log Tab callbacks
-    # ------------------------------
-
-    @app.callback(
-        Output("log-strategy-dropdown", "options"),
-        Output("log-strategy-dropdown", "value"),
-        Input("log-strategy-type-dropdown", "value"),
+        Output('nav-store', 'data'),
+        Input('nav-overview', 'n_clicks'),
+        Input('nav-trades', 'n_clicks'),
+        Input('nav-system', 'n_clicks'),
         prevent_initial_call=True,
     )
-    def update_log_strategy_instances(strategy_type):
-        """Update strategy instances when type filter changes"""
-        instances = get_filtered_instances(strategy_type)
-
-        def format_label(s):
-            parts = s.split("_")
-            if len(parts) >= 2:
-                strategy_t = parts[0].upper()
-                instance_name = "_".join(parts[1:])
-                return f"{strategy_t} - {instance_name}"
-            return s
-
-        options = [{"label": format_label(s), "value": s} for s in instances]
-        default_value = instances[0] if instances else None
-
-        return options, default_value
-
-    @app.callback(
-        Output("log-date-dropdown", "options"),
-        Output("log-date-dropdown", "value"),
-        Input("log-strategy-dropdown", "value"),
-        prevent_initial_call=True,
-    )
-    def update_log_dates(strategy_instance):
-        """Update available dates when strategy instance changes"""
-        if not strategy_instance:
-            return [], None
-
-        dates = get_dates_for_strategy(strategy_instance)
-
-        def format_date(date_str):
-            try:
-                dt = datetime.strptime(date_str, "%Y-%m-%d")
-                return dt.strftime("%B %d, %Y (%A)")
-            except ValueError:
-                return date_str
-
-        def get_default_business_day(date_list):
-            """Get the most recent business day from available dates."""
-            for d in date_list:
-                try:
-                    dt = datetime.strptime(d, "%Y-%m-%d")
-                    if dt.weekday() < 5:  # Mon-Fri
-                        return d
-                except ValueError:
-                    continue
-            return date_list[0] if date_list else None
-
-        options = [{"label": format_date(d), "value": d} for d in dates]
-        default_value = get_default_business_day(dates)
-
-        return options, default_value
-
-    @app.callback(
-        Output("log-stats-container", "children"),
-        Output("log-content-display", "children"),
-        Output("log-filename-display", "children"),
-        Input("log-strategy-dropdown", "value"),
-        Input("log-date-dropdown", "value"),
-        Input("log-refresh-btn", "n_clicks"),
-        prevent_initial_call=False,
-    )
-    def update_log_display(strategy_instance, date_str, refresh_clicks):
-        """Update log content and statistics display"""
-        if not strategy_instance or not date_str:
-            empty_stats = create_log_stats_display({
-                "total_lines": 0,
-                "timestamp_markers": 0,
-                "errors": 0,
-                "warnings": 0
-            })
-            empty_content = html.Div(
-                "Please select a strategy instance and date to view logs.",
-                style={"color": "#888", "textAlign": "center", "padding": "40px"}
-            )
-            return empty_stats, empty_content, ""
-
-        # Read log file
-        log_content = read_log_file(strategy_instance, date_str)
-        filename = f"output_{strategy_instance}_{date_str}.log"
-
-        if log_content is None:
-            empty_stats = create_log_stats_display({
-                "total_lines": 0,
-                "timestamp_markers": 0,
-                "errors": 0,
-                "warnings": 0
-            })
-            error_content = html.Div(
-                f"Log file not found for {strategy_instance} on {date_str}",
-                style={"color": "#f48771", "textAlign": "center", "padding": "40px"}
-            )
-            return empty_stats, error_content, filename
-
-        # Get statistics
-        stats = get_log_statistics(log_content)
-        stats_display = create_log_stats_display(stats)
-
-        # Format content
-        formatted_content = format_log_content(log_content)
-
-        return stats_display, formatted_content, filename
-
-    @app.callback(
-        Output("download-log-file", "data"),
-        Input("log-download-btn", "n_clicks"),
-        State("log-strategy-dropdown", "value"),
-        State("log-date-dropdown", "value"),
-        prevent_initial_call=True,
-    )
-    def download_log_file(n_clicks, strategy_instance, date_str):
-        """Handle log file download"""
-        if not n_clicks or not strategy_instance or not date_str:
-            return None
-
-        log_content = read_log_file(strategy_instance, date_str)
-        if log_content is None:
-            return None
-
-        filename = f"output_{strategy_instance}_{date_str}.log"
-        return dict(content=log_content, filename=filename)
-
-    # ------------------------------
-    # Status Monitoring callbacks
-    # ------------------------------
-
-    @app.callback(
-        Output("status-summary-container", "children"),
-        Output("status-table-container", "children"),
-        Output("status-last-refresh", "children"),
-        Input("status-refresh-btn", "n_clicks"),
-        Input("status-auto-refresh", "n_intervals"),
-        prevent_initial_call=False,
-    )
-    def update_status_display(n_clicks, n_intervals):
-        """Update status summary and table"""
-        # Get current status
-        summary = get_health_summary()
-        statuses = get_all_strategy_statuses()
-
-        # Create components
-        summary_component = create_status_summary(summary)
-        table_component = create_status_table(statuses)
-
-        # Last refresh time
-        last_refresh = f"Last updated: {datetime.now().strftime('%H:%M:%S')}"
-
-        return summary_component, table_component, last_refresh
-
-    # ------------------------------
-    # Instance Trades Tab callbacks
-    # ------------------------------
-
-    @app.callback(
-        Output("instance-trades-strategy-dropdown", "options"),
-        Output("instance-trades-strategy-dropdown", "value"),
-        Input("instance-trades-type-dropdown", "value"),
-        State("data-store", "data"),
-        prevent_initial_call=True,
-    )
-    def update_instance_trades_strategy_options(strategy_type, data):
-        """Update strategy instances when type filter changes"""
-        if not data or not data.get("data_available"):
-            return [], None
-
-        merged_deals = stored_data["merged_deals"]
-        instances = get_filtered_strategy_instances(strategy_type, merged_deals)
-
-        def format_label(s):
-            parts = s.split("_")
-            if len(parts) >= 2:
-                strategy_t = parts[0].upper()
-                instance_name = "_".join(parts[1:])
-                return f"{strategy_t} - {instance_name}"
-            return s
-
-        options = [{"label": format_label(s), "value": s} for s in instances]
-        default_value = instances[0] if instances else None
-
-        return options, default_value
-
-    @app.callback(
-        Output("instance-trades-date-dropdown", "options"),
-        Output("instance-trades-date-dropdown", "value"),
-        Input("instance-trades-strategy-dropdown", "value"),
-        State("data-store", "data"),
-        prevent_initial_call=True,
-    )
-    def update_instance_trades_date_options(strategy_instance, data):
-        """Update available dates when strategy instance changes"""
-        if not strategy_instance or not data or not data.get("data_available"):
-            return [], None
-
-        merged_deals = stored_data["merged_deals"]
-        dates = get_dates_for_instance(strategy_instance, merged_deals)
-
-        def format_date(date_str):
-            try:
-                dt = datetime.strptime(date_str, "%Y-%m-%d")
-                return dt.strftime("%B %d, %Y (%A)")
-            except ValueError:
-                return date_str
-
-        options = [{"label": format_date(d), "value": d} for d in dates]
-        default_value = dates[0] if dates else None
-
-        return options, default_value
-
-    @app.callback(
-        Output("instance-trades-grid-container", "children"),
-        Output("instance-trades-stats-container", "children"),
-        Input("instance-trades-strategy-dropdown", "value"),
-        Input("instance-trades-date-dropdown", "value"),
-        State("data-store", "data"),
-        prevent_initial_call=False,
-    )
-    def update_instance_trades_grid(strategy_instance, date_str, data):
-        """Update AG Grid with trades for selected instance and date"""
-        if not strategy_instance or not date_str:
-            empty_msg = html.Div(
-                "Please select a strategy instance and date to view trades.",
-                style={"color": "#64748b", "textAlign": "center", "padding": "40px"},
-            )
-            return empty_msg, html.Div()
-
-        if not data or not data.get("data_available"):
-            return html.Div("Loading data...", style={"color": "#64748b", "textAlign": "center", "padding": "40px"}), html.Div()
-
-        merged_deals = stored_data["merged_deals"]
-        if merged_deals is None or merged_deals.empty:
-            return html.Div("No trade data available.", style={"color": "#64748b", "textAlign": "center", "padding": "40px"}), html.Div()
-
-        # Filter trades by instance and date
-        instance_deals = merged_deals[merged_deals["comment_open"] == strategy_instance].copy()
-        instance_deals["trade_date"] = instance_deals["time_open"].dt.strftime("%Y-%m-%d")
-        filtered_deals = instance_deals[instance_deals["trade_date"] == date_str]
-
-        if filtered_deals.empty:
-            return html.Div(
-                f"No trades found for {strategy_instance} on {date_str}.",
-                style={"color": "#64748b", "textAlign": "center", "padding": "40px"},
-            ), html.Div()
-
-        # Create grid and stats
-        grid = create_instance_trades_grid(filtered_deals)
-        stats = create_instance_trades_stats(filtered_deals)
-
-        return grid, stats
-
-    @app.callback(
-        Output("trade-chart-container", "children"),
-        Output("trade-chart-container", "style"),
-        Input("instance-trades-grid", "selectedRows"),
-        State("instance-trades-strategy-dropdown", "value"),
-        State("instance-trades-date-dropdown", "value"),
-        State("data-store", "data"),
-        prevent_initial_call=True,
-    )
-    def show_trade_chart(selected_rows, strategy_instance, date_str, data):
-        """Show candlestick chart when a trade row is selected"""
-        if not selected_rows or not strategy_instance or not date_str:
-            return html.Div(), {"display": "none"}
-
-        if not data or not data.get("data_available"):
-            return html.Div(), {"display": "none"}
-
-        # Get the first selected row
-        row_data = selected_rows[0] if selected_rows else {}
-        if not row_data:
-            return html.Div(), {"display": "none"}
-
-        # Extract trade info
-        symbol = row_data.get("symbol_open", "")
-        time_open_iso = row_data.get("time_open_iso")
-        time_close_iso = row_data.get("time_close_iso")
-        price_open = row_data.get("price_open", 0)
-        price_close = row_data.get("price_close", 0)
-        total_profit = row_data.get("total_profit", 0)
-
-        if not time_open_iso:
-            return html.Div("Could not retrieve trade time.", style={"color": "#ef4444"}), {
-                "display": "block",
-                "backgroundColor": "white",
-                "padding": "24px",
-                "borderRadius": "12px",
-                "border": "1px solid #e2e8f0",
-                "boxShadow": "0 1px 3px rgba(0,0,0,0.05)",
-            }
-
-        # Parse times
-        time_open = pd.to_datetime(time_open_iso)
-        time_close = pd.to_datetime(time_close_iso) if time_close_iso else None
-
-        # Fetch candle data from MT5
-        candles_df = get_candles_for_trade(symbol, time_open, time_close, buffer_minutes=30)
-
-        # Prepare trade data for chart
-        trade_data = {
-            "symbol": symbol,
-            "time_open": time_open,
-            "time_close": time_close,
-            "price_open": price_open,
-            "price_close": price_close,
-            "total_profit": total_profit,
-        }
-
-        # Create chart
-        from dash import dcc
-        fig = create_trade_candlestick_chart(candles_df, trade_data)
-
-        chart_container = html.Div([
-            html.Div(
-                [
-                    html.Span(
-                        "Trade Chart",
-                        style={
-                            "fontWeight": "600",
-                            "fontSize": "16px",
-                            "color": "#1e293b",
-                        },
-                    ),
-                    html.Span(
-                        f" - {symbol}",
-                        style={
-                            "color": "#64748b",
-                            "fontSize": "14px",
-                        },
-                    ),
-                ],
-                style={"marginBottom": "16px"},
-            ),
-            dcc.Graph(figure=fig, config={"displayModeBar": True, "scrollZoom": True}),
-        ])
-
-        visible_style = {
-            "display": "block",
-            "backgroundColor": "white",
-            "padding": "24px",
-            "borderRadius": "12px",
-            "border": "1px solid #e2e8f0",
-            "boxShadow": "0 1px 3px rgba(0,0,0,0.05)",
-        }
-
-        return chart_container, visible_style
-
-    # ------------------------------
-    # PM2 Process Manager callbacks
-    # ------------------------------
-
-    @app.callback(
-        Output("pm2-process-table-container", "children"),
-        Input("status-auto-refresh", "n_intervals"),
-        Input("status-refresh-btn", "n_clicks"),
-        Input("pm2-start-all-btn", "n_clicks"),
-        Input("pm2-stop-all-btn", "n_clicks"),
-        Input("pm2-restart-all-btn", "n_clicks"),
-        prevent_initial_call=False,
-    )
-    def update_pm2_process_table(n_intervals, refresh_clicks, start_clicks, stop_clicks, restart_clicks):
-        """Update PM2 process table"""
-        processes = get_pm2_status()
-        return create_pm2_process_table(processes)
-
-    @app.callback(
-        Output("pm2-action-feedback", "children"),
-        Input("pm2-start-all-btn", "n_clicks"),
-        Input("pm2-stop-all-btn", "n_clicks"),
-        Input("pm2-restart-all-btn", "n_clicks"),
-        prevent_initial_call=True,
-    )
-    def handle_pm2_bulk_actions(start_clicks, stop_clicks, restart_clicks):
-        """Handle PM2 bulk action buttons"""
+    def update_nav(ov, tr, sy):
         ctx = callback_context
         if not ctx.triggered:
             return no_update
+        triggered = ctx.triggered[0]['prop_id'].split('.')[0]
+        mapping = {'nav-overview': 'overview', 'nav-trades': 'trades', 'nav-system': 'system'}
+        return mapping.get(triggered, 'overview')
 
-        button_id = ctx.triggered[0]["prop_id"].split(".")[0]
-
-        if button_id == "pm2-start-all-btn":
-            result = pm2_start()
-        elif button_id == "pm2-stop-all-btn":
-            result = pm2_stop()
-        elif button_id == "pm2-restart-all-btn":
-            result = pm2_restart()
-        else:
-            return no_update
-
-        if result["success"]:
-            return dbc.Alert(
-                result["message"],
-                color="success",
-                dismissable=True,
-                duration=3000,
-            )
-        else:
-            return dbc.Alert(
-                f"Error: {result['message']}",
-                color="danger",
-                dismissable=True,
-                duration=5000,
-            )
-
-    # ------------------------------
-    # Overview Tab - Strategy Collapse Toggle
-    # ------------------------------
+    # ── 3. Sidebar nav item styling ────────────────────────────────────────────
 
     @app.callback(
-        Output({"type": "strategy-collapse", "index": MATCH}, "is_open"),
-        Input({"type": "strategy-header", "index": MATCH}, "n_clicks"),
-        State({"type": "strategy-collapse", "index": MATCH}, "is_open"),
-        prevent_initial_call=True,
+        *[Output(f'nav-{nav_id}', 'style') for nav_id in NAV_IDS],
+        *[Output(f'nav-dot-{nav_id}', 'style') for nav_id in NAV_IDS],
+        Input('nav-store', 'data'),
+        Input('selected-strategy-store', 'data'),
     )
-    def toggle_strategy_collapse(n_clicks, is_open):
-        if n_clicks:
-            return not is_open
-        return is_open
+    def style_nav(nav, selected):
+        active = nav if not selected else nav  # detail lives inside overview
 
-    @app.callback(
-        Output("pm2-action-feedback", "children", allow_duplicate=True),
-        Input({"type": "pm2-action-btn", "index": ALL, "action": ALL}, "n_clicks"),
-        prevent_initial_call=True,
-    )
-    def handle_pm2_individual_actions(n_clicks_list):
-        """Handle individual PM2 process action buttons"""
-        ctx = callback_context
-        if not ctx.triggered or not any(n_clicks_list):
-            return no_update
+        def btn_style(nav_id):
+            is_active = nav_id == active or (nav_id == 'overview' and active == 'detail')
+            return {
+                'display': 'flex', 'alignItems': 'center', 'gap': '10px',
+                'padding': '9px 10px', 'borderRadius': '8px', 'cursor': 'pointer',
+                'fontSize': '13.5px', 'border': 'none', 'width': '100%',
+                'textAlign': 'left', 'fontFamily': 'inherit',
+                'background': '#fff' if is_active else 'transparent',
+                'color': TEXT_PRIMARY if is_active else TEXT_SECONDARY,
+                'fontWeight': '600' if is_active else '500',
+            }
 
-        # Get the triggered button info
-        triggered = ctx.triggered[0]
-        prop_id = triggered["prop_id"]
+        def dot_style(nav_id):
+            is_active = nav_id == active or (nav_id == 'overview' and active == 'detail')
+            return {
+                'width': '7px', 'height': '7px', 'borderRadius': '50%', 'flex': 'none',
+                'background': ACCENT if is_active else 'rgba(38,34,29,0.25)',
+            }
 
-        # Parse the pattern-matching ID
-        import json
-        # prop_id looks like: '{"type":"pm2-action-btn","index":"metafvg","action":"restart"}.n_clicks'
-        id_str = prop_id.rsplit(".", 1)[0]
-        try:
-            button_info = json.loads(id_str)
-        except json.JSONDecodeError:
-            return no_update
-
-        process_name = button_info.get("index")
-        action = button_info.get("action")
-
-        if not process_name or not action:
-            return no_update
-
-        if action == "start":
-            result = pm2_start(process_name)
-        elif action == "stop":
-            result = pm2_stop(process_name)
-        elif action == "restart":
-            result = pm2_restart(process_name)
-        else:
-            return no_update
-
-        if result["success"]:
-            return dbc.Alert(
-                f"{process_name}: {result['message']}",
-                color="success",
-                dismissable=True,
-                duration=3000,
-            )
-        else:
-            return dbc.Alert(
-                f"{process_name}: {result['message']}",
-                color="danger",
-                dismissable=True,
-                duration=5000,
-            )
-
-    # ------------------------------
-    # Weight Calibration Tab callbacks
-    # ------------------------------
-
-    @app.callback(
-        Output({"type": "calib-weight-display", "index": ALL}, "children"),
-        Input({"type": "calib-numerator", "index": ALL}, "value"),
-        Input({"type": "calib-trades-per-day", "index": ALL}, "value"),
-        prevent_initial_call=True,
-    )
-    def update_weight_displays(numerators, trades_per_days):
-        """Update computed weight displays when inputs change."""
-        import numpy as np
-        weights = []
-        for num, tpd in zip(numerators, trades_per_days):
-            if num is not None and tpd is not None and tpd > 0:
-                weight = num / np.sqrt(tpd)
-                weights.append(f"{weight:.3f}")
-            else:
-                weights.append("--")
-        return weights
-
-    @app.callback(
-        Output("calib-results-store", "data"),
-        Output("calib-results-table-container", "children"),
-        Output("calib-results-chart-container", "children"),
-        Output("calib-matrices-container", "children"),
-        Output("calib-save-section", "style"),
-        Output("calib-save-btn", "disabled"),
-        Output("calib-status-msg", "children"),
-        Input("calib-run-btn", "n_clicks"),
-        State({"type": "calib-strategy-enabled", "index": ALL}, "value"),
-        State({"type": "calib-strategy-enabled", "index": ALL}, "id"),
-        State({"type": "calib-numerator", "index": ALL}, "value"),
-        State({"type": "calib-trades-per-day", "index": ALL}, "value"),
-        State("calib-risk-pct", "value"),
-        State("calib-lookback-days", "value"),
-        State("calib-config-dir", "value"),
-        prevent_initial_call=True,
-    )
-    def run_calibration_optimization(
-        n_clicks, enabled_list, enabled_ids, numerators, trades_per_days,
-        risk_pct, lookback_days, config_dir
-    ):
-        """Run the MetaScale optimization and display results."""
-        import numpy as np
-
-        if not n_clicks:
-            return no_update, no_update, no_update, no_update, no_update, no_update, no_update
-
-        try:
-            # Build strategy params dict from UI inputs
-            # Format: {strategy_type: {"numerator": N, "trades_per_day": T}}
-            strategy_params = {}
-            for enabled, id_obj, num, tpd in zip(enabled_list, enabled_ids, numerators, trades_per_days):
-                strategy_key = id_obj["index"]
-                if enabled and num is not None and tpd is not None and tpd > 0:
-                    strategy_params[strategy_key] = {
-                        "numerator": num,
-                        "trades_per_day": tpd,
-                    }
-
-            if not strategy_params:
-                return (
-                    None,
-                    html.Div("No strategies enabled", className="text-warning text-center p-4"),
-                    html.Div(),
-                    html.Div(),
-                    {"display": "none"},
-                    True,
-                    dbc.Alert("Please enable at least one strategy", color="warning"),
-                )
-
-            # Run optimization using MetaScale
-            from utils.calibration_utils import run_metascale_optimization
-
-            result = run_metascale_optimization(
-                strategy_params=strategy_params,
-                risk_pct=risk_pct / 100.0,  # Convert from percentage
-                lookback_days=lookback_days,
-                config_dir=config_dir,
-            )
-
-            if result["success"]:
-                weights_df = result["weights_df"]
-
-                # Create results display
-                table = create_results_table(weights_df)
-                chart = create_results_chart(weights_df)
-                matrices = create_asset_matrices(result.get("cov_assets"))
-
-                return (
-                    weights_df.to_dict("records"),
-                    table,
-                    chart,
-                    matrices,
-                    {"display": "block"},
-                    False,
-                    dbc.Alert(
-                        f"Optimization completed. {len(weights_df)} positions computed.",
-                        color="success",
-                        duration=4000,
-                    ),
-                )
-            else:
-                return (
-                    None,
-                    html.Div(f"Optimization failed: {result['error']}", className="text-danger text-center p-4"),
-                    html.Div(),
-                    html.Div(),
-                    {"display": "none"},
-                    True,
-                    dbc.Alert(f"Error: {result['error']}", color="danger"),
-                )
-
-        except Exception as e:
-            return (
-                None,
-                html.Div(f"Error: {str(e)}", className="text-danger text-center p-4"),
-                html.Div(),
-                html.Div(),
-                {"display": "none"},
-                True,
-                dbc.Alert(f"Error: {str(e)}", color="danger"),
-            )
-
-    @app.callback(
-        Output("calib-save-feedback", "children"),
-        Input("calib-save-btn", "n_clicks"),
-        State("calib-results-store", "data"),
-        State("calib-config-dir", "value"),
-        prevent_initial_call=True,
-    )
-    def save_calibration_results(n_clicks, results_data, config_dir):
-        """Save optimization results to YAML config files."""
-        if not n_clicks or not results_data:
-            return no_update
-
-        try:
-            from utils.calibration_utils import save_weights_to_yaml
-
-            weights_df = pd.DataFrame(results_data)
-            result = save_weights_to_yaml(weights_df, config_dir)
-
-            if result["success"]:
-                return dbc.Alert(
-                    f"Saved to {result['files_updated']} config files",
-                    color="success",
-                    duration=4000,
-                )
-            else:
-                return dbc.Alert(
-                    f"Save failed: {result['error']}",
-                    color="danger",
-                    duration=5000,
-                )
-
-        except Exception as e:
-            return dbc.Alert(
-                f"Error saving: {str(e)}",
-                color="danger",
-                duration=5000,
-            )
-
-    # ------------------------------
-    # Indicators Tab callbacks
-    # ------------------------------
-
-    @app.callback(
-        Output("indicators-tag-dropdown", "options"),
-        Output("indicators-tag-dropdown", "value"),
-        Input("tabs", "active_tab"),
-        prevent_initial_call=True,
-    )
-    def populate_indicator_tags(active_tab):
-        """Populate tag dropdown when indicators tab is selected."""
-        if active_tab != "indicators":
-            return no_update, no_update
-
-        tags = list_available_tags()
-        if not tags:
-            return [], None
-
-        options = [{"label": t, "value": t} for t in tags]
-        return options, tags[0]
-
-    @app.callback(
-        Output("indicators-chart-container", "children"),
-        Output("indicators-info-cards", "children"),
-        Input("indicators-tag-dropdown", "value"),
-        Input("indicators-refresh-btn", "n_clicks"),
-        Input("indicators-date-range", "start_date"),
-        Input("indicators-date-range", "end_date"),
-        prevent_initial_call=True,
-    )
-    def update_indicator_chart(tag, refresh_clicks, start_date, end_date):
-        """Load indicator data and build chart when tag is selected."""
-        from dash import dcc
-
-        if not tag:
-            empty = html.Div(
-                "Select a strategy tag to view indicators.",
-                style={"color": "#94a3b8", "textAlign": "center", "padding": "60px 20px"},
-            )
-            return empty, html.Div()
-
-        df = load_indicator_data(tag)
-
-        if df is None or df.empty:
-            empty = html.Div(
-                f"No indicator data found for '{tag}'.",
-                style={"color": "#94a3b8", "textAlign": "center", "padding": "60px 20px"},
-            )
-            return empty, html.Div()
-
-        # Apply date range filter if provided
-        if start_date and "timestamp" in df.columns:
-            df = df[df["timestamp"] >= pd.to_datetime(start_date)]
-        if end_date and "timestamp" in df.columns:
-            df = df[df["timestamp"] <= pd.to_datetime(end_date)]
-
-        if df.empty:
-            empty = html.Div(
-                "No data in the selected date range.",
-                style={"color": "#94a3b8", "textAlign": "center", "padding": "60px 20px"},
-            )
-            return empty, html.Div()
-
-        # Try to pull price data from MT5
-        df_price = None
-        if "symbol" in df.columns:
-            symbol = df["symbol"].dropna().iloc[0] if not df["symbol"].dropna().empty else None
-            if symbol:
-                df_price = pull_price_for_indicators(symbol, df)
-
-        fig = create_indicator_chart(tag, df, df_price)
-        info_cards = create_indicator_info_cards(df)
-
-        chart = dcc.Graph(
-            figure=fig,
-            config={"displayModeBar": True, "scrollZoom": True},
-            style={
-                "backgroundColor": "white",
-                "borderRadius": "12px",
-                "border": "1px solid #e2e8f0",
-                "boxShadow": "0 1px 3px rgba(0,0,0,0.05)",
-                "padding": "16px",
-            },
+        return (
+            *[btn_style(n) for n in NAV_IDS],
+            *[dot_style(n) for n in NAV_IDS],
         )
 
-        return chart, info_cards
+    # ── 4. Strategy row click → selected-strategy-store ───────────────────────
+
+    @app.callback(
+        Output('selected-strategy-store', 'data'),
+        Input({'type': 'strategy-row', 'index': ALL}, 'n_clicks'),
+        Input('nav-overview', 'n_clicks'),
+        Input('nav-trades', 'n_clicks'),
+        Input('nav-system', 'n_clicks'),
+        prevent_initial_call=True,
+    )
+    def handle_strategy_click(row_clicks, *_nav_clicks):
+        ctx = callback_context
+        if not ctx.triggered:
+            return no_update
+        prop = ctx.triggered[0]['prop_id']
+
+        # Any nav click clears selection (Overview returns to list, others switch view)
+        if any(x in prop for x in ('nav-overview', 'nav-trades', 'nav-system')):
+            return None
+
+        # Strategy row click → drill into detail
+        if 'strategy-row' in prop:
+            try:
+                idx = json.loads(prop.split('.')[0])['index']
+                return idx
+            except Exception:
+                return no_update
+
+        return no_update
+
+    # ── 5. Time range buttons ──────────────────────────────────────────────────
+
+    @app.callback(
+        Output('timerange-store', 'data'),
+        Input({'type': 'timerange-btn', 'index': ALL}, 'n_clicks'),
+        prevent_initial_call=True,
+    )
+    def update_timerange(clicks):
+        ctx = callback_context
+        if not ctx.triggered:
+            return no_update
+        prop = ctx.triggered[0]['prop_id']
+        try:
+            return json.loads(prop.split('.')[0])['index']
+        except Exception:
+            return no_update
+
+    # ── 6. Day navigation ─────────────────────────────────────────────────────
+
+    @app.callback(
+        Output('day-offset-store', 'data'),
+        Input('prev-day-btn', 'n_clicks'),
+        Input('next-day-btn', 'n_clicks'),
+        State('day-offset-store', 'data'),
+        prevent_initial_call=True,
+    )
+    def update_day_offset(prev, nxt, offset):
+        ctx = callback_context
+        if not ctx.triggered:
+            return no_update
+        prop = ctx.triggered[0]['prop_id']
+        offset = offset or 0
+        if 'prev-day-btn' in prop:
+            return offset - 1
+        if 'next-day-btn' in prop:
+            return min(0, offset + 1)
+        return offset
+
+    # ── 7. Trade row click → modal store ──────────────────────────────────────
+    # nav-overview/nav-trades as static inputs anchor the callback so Dash 4.x
+    # registers it at startup even before any trade-row components exist.
+
+    @app.callback(
+        Output('trade-modal-store', 'data'),
+        Input({'type': 'trade-row', 'index': ALL}, 'n_clicks'),
+        Input({'type': 'modal-close', 'index': ALL}, 'n_clicks'),
+        Input('nav-overview', 'n_clicks'),
+        Input('nav-trades', 'n_clicks'),
+        Input('nav-system', 'n_clicks'),
+        prevent_initial_call=True,
+    )
+    def handle_trade_click(row_clicks, close_clicks, *_nav):
+        ctx = callback_context
+        if not ctx.triggered:
+            return no_update
+        prop = ctx.triggered[0]['prop_id']
+        # Nav → close modal
+        if any(x in prop for x in ('nav-overview', 'nav-trades', 'nav-system')):
+            return None
+        if 'modal-close' in prop:
+            return None
+        if 'trade-row' in prop:
+            try:
+                trade_key = json.loads(prop.split('.')[0])['index']
+                return {'key': trade_key}
+            except Exception:
+                return no_update
+        return no_update
+
+    # ── 8. Modal store → modal overlay ────────────────────────────────────────
+
+    @app.callback(
+        Output('trade-modal-container', 'children'),
+        Input('trade-modal-store', 'data'),
+    )
+    def render_trade_modal_cb(data):
+        if not data:
+            return []
+        trade_key = data.get('key', '')
+        trade_data, candles_df = _fetch_trade_for_chart(trade_key)
+        if trade_data is None:
+            return []
+        return trade_modal_overlay(trade_data, candles_df)
+
+    # ── 9. Main content render ─────────────────────────────────────────────────
+
+    @app.callback(
+        Output('main-content', 'children'),
+        Input('nav-store', 'data'),
+        Input('data-store', 'data'),
+        Input('account-info-store', 'data'),
+        Input('selected-strategy-store', 'data'),
+        Input('timerange-store', 'data'),
+        Input('day-offset-store', 'data'),
+    )
+    def render_content(nav, data_store, account_info, selected_strategy, timerange, day_offset):
+        merged = _cache.get('merged_deals')
+        acc = _cache.get('account_info') or account_info or {}
+
+        # Show loading state until data arrives
+        if data_store is None and nav not in ('system',):
+            return loading_placeholder()
+
+        if nav == 'trades':
+            return render_trades(merged, day_offset or 0)
+
+        if nav == 'system':
+            return render_system()
+
+        # overview (default) + detail drill-down
+        return render_overview(merged, acc, timerange or '1M', selected_strategy)

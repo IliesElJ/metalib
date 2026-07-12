@@ -470,6 +470,7 @@ class MetaFVG(MetaStrategy):
             {
                 "timestamp": timestamp,
                 "symbol": self.symbols[0],
+                "tag": self.tag,
                 "state": self.state,
                 "price": price,
                 "entry": self.entry,

@@ -291,23 +291,40 @@ def kurtosis_nb(ts_arr):
 
 @njit(cache=True)
 def ols_tval_nb(prices_arr):
+    # Manual sum-based OLS to avoid np.linalg.inv (crashes on this Windows env).
+    # Fits y = a + b*t with t = 0,1,...,n-1 and returns the t-statistic for b.
     n = prices_arr.size
-    X = np.vstack(
-        (np.ones(n), np.arange(n))
-    ).T  # Design matrix with intercept and slope
-    y = prices_arr.reshape(-1, 1)
+    if n < 3:
+        return 0.0
 
-    XTX_inv = np.linalg.inv(X.T @ X)
-    betas = XTX_inv @ (X.T @ y)
+    sum_t = 0.0
+    sum_t2 = 0.0
+    sum_y = 0.0
+    sum_ty = 0.0
+    for i in range(n):
+        t = float(i)
+        y = prices_arr[i]
+        sum_t += t
+        sum_t2 += t * t
+        sum_y += y
+        sum_ty += t * y
 
-    y_hat = X @ betas
-    residuals = y - y_hat
+    D = n * sum_t2 - sum_t * sum_t
+    if D == 0.0:
+        return 0.0
 
-    sigma_squared = (residuals.T @ residuals) / (n - 2)
-    se_betas = np.sqrt(np.diag(sigma_squared * XTX_inv))
-    t_value = betas[1] / se_betas[1]
+    b = (n * sum_ty - sum_t * sum_y) / D
+    a = (sum_y - b * sum_t) / n
 
-    return t_value.item()
+    ss_res = 0.0
+    for i in range(n):
+        resid = prices_arr[i] - (a + b * float(i))
+        ss_res += resid * resid
+
+    sigma2 = ss_res / (n - 2)
+    se_b = (sigma2 * n / D) ** 0.5 if sigma2 > 0.0 else 1e-12
+
+    return b / se_b
 
 
 square_sum = njit(lambda x: np.sum(np.square(x)))
@@ -690,6 +707,157 @@ def build_lasso_cv(X, y, normalize=True, fit_intercept=True, alphas=None, cv=5):
     print(f"Selected alpha via {cv}-fold CV: {best_alpha:.5f}")
 
     return model, best_alpha
+
+
+@njit(cache=True)
+def lasso_path_cd_nb(X, y, alphas, max_iter, tol):
+    """Coordinate-descent Lasso path, sklearn objective
+    1/(2n)*||y-Xw||^2 + alpha*||w||_1, warm-started along descending alphas.
+
+    Explicit loops only: the BLAS in this env crashes the process on any
+    matrix-matrix multiply (np.dot GEMM), which rules out sklearn and also
+    numba's own np.dot (it lowers to the same BLAS). Do not "simplify" the
+    loops into matrix ops.
+    """
+    n, p = X.shape
+    coefs = np.zeros((alphas.shape[0], p))
+    w = np.zeros(p)
+    r = y.copy()
+    col_sq = np.zeros(p)
+    for j in range(p):
+        s = 0.0
+        for i in range(n):
+            s += X[i, j] * X[i, j]
+        col_sq[j] = s
+    for a in range(alphas.shape[0]):
+        lam = alphas[a] * n
+        for _ in range(max_iter):
+            max_delta = 0.0
+            for j in range(p):
+                if col_sq[j] <= 0.0:
+                    continue
+                rho = 0.0
+                for i in range(n):
+                    rho += X[i, j] * r[i]
+                rho += col_sq[j] * w[j]
+                if rho > lam:
+                    w_new = (rho - lam) / col_sq[j]
+                elif rho < -lam:
+                    w_new = (rho + lam) / col_sq[j]
+                else:
+                    w_new = 0.0
+                d = w_new - w[j]
+                if d != 0.0:
+                    for i in range(n):
+                        r[i] -= X[i, j] * d
+                    if abs(d) > max_delta:
+                        max_delta = abs(d)
+                w[j] = w_new
+            if max_delta < tol:
+                break
+        coefs[a] = w
+    return coefs
+
+
+class NumbaLassoCV:
+    """Fitted BLAS-free Lasso model. predict() uses elementwise ops only."""
+
+    def __init__(self, mu, sd, w, intercept, alpha, columns):
+        self.mu = mu
+        self.sd = sd
+        self.coef_ = w
+        self.intercept_ = intercept
+        self.alpha_ = alpha
+        self.columns = columns
+
+    def predict(self, X):
+        Xn = (X.to_numpy(dtype=np.float64) - self.mu) / self.sd
+        return self.intercept_ + (Xn * self.coef_).sum(axis=1)
+
+
+def build_lasso_cv_nb(X, y, n_alphas=100, cv=5, max_iter=500, tol=1e-7):
+    """Drop-in replacement for build_lasso_cv that avoids BLAS entirely
+    (sklearn LassoCV hard-crashes in the adonys env — GEMM is broken).
+    Standardizes features, picks alpha on contiguous K-fold CV MSE like
+    sklearn's default KFold, refits on the full sample.
+
+    Returns (model, best_alpha); model exposes predict()/coef_/alpha_.
+    """
+    Xv = X.to_numpy(dtype=np.float64)
+    yv = y.to_numpy(dtype=np.float64)
+    n = len(yv)
+
+    mu = Xv.mean(axis=0)
+    sd = Xv.std(axis=0)
+    sd[sd == 0] = 1.0  # constant cols become all-zero after centering, coef 0
+    Xs = (Xv - mu) / sd
+    ym = yv.mean()
+    yc = yv - ym
+
+    alpha_max = max(np.abs((Xs * yc[:, None]).sum(axis=0)).max() / n, 1e-12)
+    alphas = np.logspace(np.log10(alpha_max), np.log10(alpha_max * 1e-4), n_alphas)
+
+    fold_edges = np.linspace(0, n, cv + 1).astype(int)
+    mse = np.zeros(len(alphas))
+    for k in range(cv):
+        lo, hi = fold_edges[k], fold_edges[k + 1]
+        tr = np.ones(n, dtype=bool)
+        tr[lo:hi] = False
+        coefs = lasso_path_cd_nb(Xs[tr], yc[tr], alphas, max_iter, tol)
+        for a in range(len(alphas)):
+            resid = yc[lo:hi] - (Xs[lo:hi] * coefs[a]).sum(axis=1)
+            mse[a] += (resid**2).mean()
+    best = int(np.argmin(mse))
+
+    coefs = lasso_path_cd_nb(Xs, yc, alphas[: best + 1], max_iter, tol)
+    model = NumbaLassoCV(mu, sd, coefs[-1], ym, alphas[best], list(X.columns))
+    print(f"Selected alpha via {cv}-fold CV (numba): {alphas[best]:.5f}")
+    return model, alphas[best]
+
+
+def seasonal_event_dummies(index, freq):
+    """Deterministic calendar dummies describing the NEXT bar of a regular
+    right-labeled grid — usable as features at time t for a t+1 target with no
+    lookahead (the calendar is known in advance). For historical rows the next
+    bar is the actual next index label; for the final (live) row it is
+    estimated as label+freq rolled past weekends.
+
+    Validated in metalib/notebooks/metahar_wf_backtest.py (2026-07): session
+    hour dummies carry Welch t-stats up to ~50 on next-4h vol changes, NFP ~6,
+    Monday/weekend-gap ~3-12.
+    """
+    freq = pd.Timedelta(freq)
+    nxt = index.to_series().shift(-1)
+    last_next = index[-1] + freq
+    while last_next.dayofweek >= 5:
+        last_next += pd.Timedelta(days=1)
+    nxt.iloc[-1] = last_next
+
+    hour = nxt.dt.hour
+    dow = nxt.dt.dayofweek
+    day = nxt.dt.day
+    month = nxt.dt.month
+    freq_hours = freq.total_seconds() / 3600
+
+    d = pd.DataFrame(index=index)
+    grid_hours = sorted(hour.unique())
+    for h in grid_hours[1:]:  # first grid hour is the base level
+        d[f"dum_next_h{h:02d}"] = (hour == h).astype(float)
+    for dw, name in [(0, "mon"), (1, "tue"), (3, "thu"), (4, "fri")]:
+        d[f"dum_next_{name}"] = (dow == dw).astype(float)
+    # bar containing the 13:30 UTC slot (8:30 ET macro prints in both DST regimes)
+    covers_1330 = (hour - freq_hours < 13.5) & (13.5 <= hour)
+    d["dum_next_nfp"] = (covers_1330 & (dow == 4) & (day <= 7)).astype(float)
+    d["dum_next_us_morning"] = covers_1330.astype(float)
+    d["dum_next_opex"] = ((dow == 4) & (day >= 15) & (day <= 21)).astype(float)
+    month_end = (nxt.dt.days_in_month - day) <= 1
+    d["dum_next_month_end"] = month_end.astype(float)
+    d["dum_next_quarter_end"] = (month_end & month.isin([3, 6, 9, 12])).astype(float)
+    d["dum_next_holidays"] = (
+        ((month == 12) & (day >= 24)) | ((month == 1) & (day <= 2))
+    ).astype(float)
+    d["dum_next_gap_open"] = ((nxt - index.to_series()) > freq).astype(float)
+    return d
 
 
 @njit(cache=True)

@@ -14,6 +14,7 @@ from metalib.metane import MetaNE
 from metalib.metaob import MetaOB
 from metalib.metamlp import MetaMLP
 from metalib.metamtou import MetaMTOU
+from metalib.metahar import MetaHAR
 
 strategy_registry = {
     "metane": {
@@ -104,6 +105,18 @@ strategy_registry = {
             "fit_lookback_days",
             "train_ratio",
             "bollinger_k",
+        ],
+    },
+    "metahar": {
+        "class": MetaHAR,
+        "init_keys": [
+            "symbols",
+            "predicted_symbol",
+            "timeframe",
+            "tag",
+            "active_hours",
+            "short_factor",
+            "long_factor",
         ],
     },
     "metamtou": {

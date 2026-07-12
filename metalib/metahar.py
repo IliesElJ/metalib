@@ -8,8 +8,36 @@ from typing import Dict, Optional, Tuple
 from metalib.indicators import *
 from metalib.metastrategy import MetaStrategy
 
+TIMEFRAME_MINUTES = {
+    mt5.TIMEFRAME_M1: 1,
+    mt5.TIMEFRAME_M5: 5,
+    mt5.TIMEFRAME_M15: 15,
+    mt5.TIMEFRAME_M30: 30,
+    mt5.TIMEFRAME_H1: 60,
+    mt5.TIMEFRAME_H4: 240,
+}
+
 
 class MetaHAR(MetaStrategy):
+    """Univariate HAR-style volatility-change forecaster.
+
+    Predicts the next-model-bar change in log realized variance of
+    predicted_symbol, where one model bar = short_factor input bars
+    (M15 x 16 = 4h with the default config). Realized variance is the variance
+    of consecutive log returns over the short_factor window.
+
+    Features are built from the predicted symbol ONLY, plus deterministic
+    calendar dummies. Walk-forward validated 2026-07 (see
+    notebooks/metahar_wf_backtest.py): cross-asset basket features reduced
+    OOS accuracy on every symbol once calendar dummies were present, so the
+    old multi-symbol basket was dropped. Predictions are clamped to the
+    training target range — unclamped linear extrapolation blew up on the
+    Apr-2025 XAUUSD vol shock (predicted log-vol changes of -11 vs realized
+    +/-2).
+    """
+
+    TRAINING_PERIOD_DAYS = 66
+    UTC_TIMEZONE = "UTC"
 
     def __init__(
         self,
@@ -18,56 +46,56 @@ class MetaHAR(MetaStrategy):
         timeframe,
         tag,
         active_hours,
-        short_factor=60,
-        long_factor=8 * 60,
+        short_factor=16,
+        long_factor=256,
     ):
-        super().__init__(symbols, timeframe, tag, active_hours)
-
         if not (short_factor < long_factor):
             raise ValueError("Length parameters should be ordered.")
 
-        if not (predicted_symbol in symbols):
-            raise ValueError(
-                "Predicted symbol should be in the list of symbols to be used for training the model."
+        if timeframe not in TIMEFRAME_MINUTES:
+            raise ValueError("Unsupported timeframe for MetaHAR.")
+
+        # Univariate: only the predicted symbol is loaded, regardless of the
+        # symbols list in the config (kept for config compatibility).
+        if list(symbols) != [predicted_symbol]:
+            print(
+                f"{tag}::: MetaHAR is univariate; ignoring extra symbols "
+                f"{[s for s in symbols if s != predicted_symbol]}"
             )
+        super().__init__([predicted_symbol], timeframe, tag, 0.0, active_hours)
 
         self.indicators = None
         self.model = None
+        self.clip_bounds = None
         self.short_factor = short_factor
         self.long_factor = long_factor
         self.predicted_symbol = predicted_symbol
+        bar_minutes = TIMEFRAME_MINUTES[timeframe]
+        self.resample_freq = f"{short_factor * bar_minutes}min"
         self.telegram = True
         self.logger = logging.getLogger(__name__)
 
-    TRAINING_PERIOD_DAYS = 66
-    UTC_TIMEZONE = "UTC"
-    RESAMPLE_FREQUENCY = "1t"
-
     def signals(self) -> None:
         """Process market signals and update strategy state."""
-        # Process close prices
         closes = self._get_processed_closes()
 
-        # Get and process indicators
         indicators = self.retrieve_indicators(closes)
         self.indicators = indicators
         recent_indicators = indicators.tail(3)
 
-        # Make predictions
         volatility_predictions = self.model.predict(recent_indicators)
+        if self.clip_bounds is not None:
+            volatility_predictions = np.clip(volatility_predictions, *self.clip_bounds)
 
-        # Update strategy state
         self._update_strategy_state(recent_indicators, volatility_predictions)
-
-        # Process and log predictions
         self._process_predictions()
 
-    def _get_processed_closes(self) -> pd.DataFrame:
-        """Transform raw close prices into resampled DataFrame."""
-        closes_dict = dict(map(lambda kv: (kv[0], kv[1].close), self.data.items()))
+    def _get_processed_closes(self) -> pd.Series:
+        """Regularize the predicted symbol's closes onto the input-bar grid."""
+        bar_minutes = TIMEFRAME_MINUTES[self.timeframe]
         return (
-            pd.DataFrame(closes_dict)
-            .resample("1t", closed="right", label="right")
+            self.data[self.predicted_symbol]
+            .close.resample(f"{bar_minutes}min", closed="right", label="right")
             .last()
             .dropna()
         )
@@ -83,11 +111,11 @@ class MetaHAR(MetaStrategy):
         self.state = 0
         self.signals_data = indicators.iloc[[-1]]
         self.predicted_vol_diff = predictions
-        self.realized_previous_diff = (
+        self.realized_previous_diff = float(
             indicators[f"short_scale_std_{self.predicted_symbol}"]
             .diff()
             .dropna()
-            .iloc[:1]
+            .iloc[0]
         )
         self.timestamp = indicators.index[-1]
 
@@ -146,6 +174,22 @@ class MetaHAR(MetaStrategy):
         # Save to signalData
         self.signalData = pd.Series(prediction_data)
 
+        # Publish to the shared prediction store; never let a DB hiccup kill
+        # the strategy loop
+        try:
+            from metalib import volstore
+
+            volstore.save_prediction(
+                tag=self.tag,
+                symbol=self.predicted_symbol,
+                ts=self.timestamp,
+                horizon_min=int(pd.Timedelta(self.resample_freq).total_seconds() // 60),
+                prediction=float(self.predicted_vol_diff[-1]),
+                realized_prev_diff=self.realized_previous_diff,
+            )
+        except Exception as e:
+            print(f"{self.tag}::: volstore write failed: {e}")
+
     def _get_previous_prediction(self, file_path: str) -> Optional[float]:
         """
         Retrieve the previous prediction from the log file.
@@ -177,190 +221,94 @@ class MetaHAR(MetaStrategy):
 
         return normalized_start, normalized_end
 
-    def prepare_training_data(self, raw_data: Dict) -> Tuple[pd.DataFrame, pd.Series]:
+    def prepare_training_data(self) -> Tuple[pd.DataFrame, pd.Series]:
         """Prepare features and target variable for model training."""
-        # Extract closing prices
-        closes = pd.DataFrame({symbol: data.close for symbol, data in raw_data.items()})
+        closes = self._get_processed_closes()
+        indicators = self.retrieve_indicators(closes)
 
-        # Resample and clean data
-        resampled_closes = (
-            closes.resample(self.RESAMPLE_FREQUENCY, closed="right", label="right")
-            .last()
-            .dropna()
-        )
+        x = indicators[f"short_scale_std_{self.predicted_symbol}"]
+        target = (x.shift(-1) - x).dropna()
 
-        # Generate features and target
-        indicators = self.retrieve_indicators(resampled_closes)
-        target = (
-            indicators[f"short_scale_std_{self.predicted_symbol}"]
-            .shift(-1)
-            .diff()
-            .dropna()
-        )
-
-        # Align features with target
         features = indicators.loc[indicators.index.intersection(target.index), :]
-        target = target.loc[target.index]
+        target = target.loc[features.index]
 
         return features, target
 
     def fit(self) -> None:
         """
-        Train the LASSO model using historical data.
-        Updates self.model and self.best_alpha with trained model.
+        Train the Lasso model using historical data.
+        Updates self.model, self.best_alpha and self.clip_bounds.
         """
-        # Get training period
         start_time, end_time = self.get_training_period()
 
-        # Load and prepare data
         self.loadData(start_time, end_time)
-        features, target = self.prepare_training_data(self.data)
+        features, target = self.prepare_training_data()
 
-        # Train model
-        self.model, self.best_alpha = build_lasso_cv(features, target)
+        # BLAS-free numba Lasso: sklearn crashes on GEMM in this env
+        self.model, self.best_alpha = build_lasso_cv_nb(features, target)
+        self.clip_bounds = (float(target.min()), float(target.max()))
 
-        # Log training completion
         training_period = f"from {features.index[0]} to {features.index[-1]}"
         print(f"{self.tag}::: Lasso Model trained {training_period}.")
         self.logger.info(f"Lasso Model trained {training_period}.")
-        print(f"{self.tag}::: Lasso Model and coefficients saved.")
 
-    def retrieve_indicators(self, close_df):
-        # Constants
-        COLUMN_PREFIXES = {
-            # 'long_corr_': 'long_factor_log_corr',
-            # 'short_corr_': 'short_factor_log_corr',
-            "long_scale_std_": "long_scale_std",
-            "short_scale_std_": "short_scale_std",
-            "trend_ewm_short_factor_": "trend_ewm_short_factor",
-            "trend_ewm_long_factor_": "trend_ewm_long_factor",
-            "sq_ret_ewm_short_factor_": "sq_ret_ewm_short_factor",
-            "sq_ret_ewm_long_factor_": "sq_ret_ewm_long_factor",
-        }
+    def retrieve_indicators(self, closes: pd.Series) -> pd.DataFrame:
+        """Univariate HAR features + calendar dummies, resampled to the model
+        bar (short_factor input bars). Realized variance = variance of
+        consecutive log returns (NOT the old log_var, which measured log-price
+        dispersion within the window)."""
+        sym = self.predicted_symbol
+        ret = np.log(closes).diff().dropna()
+        sq = ret**2
+        down = ret.where(ret < 0, 0.0) ** 2
+        up = ret.where(ret > 0, 0.0) ** 2
 
-        def calculate_rolling_correlations(price_data):
-            fx_rolling_log_corr = (
-                price_data.rolling(self.short_factor, method="table")
-                .apply(corr_eigenvalues, engine="numba", raw=True)
-                .dropna()
-            )
-
-            long_factor_log_corr = fx_rolling_log_corr.rolling(self.long_factor).apply(
-                lambda x: np.median(x), engine="numba", raw=True
-            )
-
-            short_factor_log_corr = (
-                (fx_rolling_log_corr - long_factor_log_corr)
-                .rolling(self.short_factor)
-                .apply(lambda x: np.median(x), engine="numba", raw=True)
-            )
-
-            return long_factor_log_corr, short_factor_log_corr
-
-        def calculate_scale_std(price_data):
-            long_scale = price_data.rolling(self.long_factor).apply(
-                log_var, engine="numba", raw=True
-            )
-            short_scale = price_data.rolling(self.short_factor).apply(
-                log_var, engine="numba", raw=True
-            )
-            return long_scale, short_scale
-
-        def calculate_ewm_indicators(returns):
-            trend_short = returns.ewm(halflife=self.short_factor).mean()
-            trend_long = returns.ewm(halflife=self.long_factor).mean()
-
-            squared_returns = returns.apply(lambda x: x**2, engine="numba", raw=True)
-            sq_ret_short = squared_returns.ewm(halflife=self.short_factor).mean()
-            sq_ret_long = squared_returns.ewm(halflife=self.long_factor).mean()
-
-            return trend_short, trend_long, sq_ret_short, sq_ret_long
-
-        def calculate_asym_std(log_returns):
-            downside_squared_returns = log_returns.where(log_returns < 0, 0).apply(
-                lambda x: x**2, engine="numba", raw=True
-            )
-            upside_squared_returns = log_returns.where(log_returns > 0, 0).apply(
-                lambda x: x**2, engine="numba", raw=True
-            )
-
-            # EWM of realized semi-variances (HAR-RSV style)
-            downside_vol_ewm_short = downside_squared_returns.ewm(
-                halflife=self.short_factor
-            ).mean()
-            upside_vol_ewm_short = upside_squared_returns.ewm(
-                halflife=self.short_factor
-            ).mean()
-
-            downside_vol_ewm_long = downside_squared_returns.ewm(
-                halflife=self.long_factor
-            ).mean()
-            upside_vol_ewm_long = upside_squared_returns.ewm(
-                halflife=self.long_factor
-            ).mean()
-
-            return (
-                downside_vol_ewm_short,
-                downside_vol_ewm_long,
-                upside_vol_ewm_short,
-                upside_vol_ewm_long,
-            )
-
-        # Calculate base metrics
-        price_series = close_df
-        log_returns = price_series.apply(np.log).diff().dropna()
-
-        # Calculate all indicators
-        # long_corr, short_corr = calculate_rolling_correlations(price_series)
-        long_std, short_std = calculate_scale_std(price_series)
-        trend_short, trend_long, sq_ret_short, sq_ret_long = calculate_ewm_indicators(
-            log_returns
-        )
-        downside_short, downside_long, upside_short, upside_long = calculate_asym_std(
-            log_returns
-        )
-
-        # Validate unique indices
-        for name, df in [
-            # ("long_factor_log_corr", long_corr),
-            # ("short_factor_log_corr", short_corr),
-            ("long_scale_std", long_std),
-            ("short_scale_std", short_std),
-            ("long_scale_upside", upside_long),
-            ("short_scale_upside", upside_short),
-            ("long_scale_downside", downside_long),
-            ("short_scale_downside", downside_short),
-        ]:
-            if not df.index.is_unique:
-                raise IndexError(f"Duplicates found in {name}")
-
-        # Combine all indicators
         indicators = pd.concat(
-            [
-                # long_corr.add_prefix("long_corr_"),
-                # short_corr.add_prefix("short_corr_"),
-                long_std.add_prefix("long_scale_std_").apply(np.log),
-                short_std.add_prefix("short_scale_std_").apply(np.log),
-                trend_short.add_prefix("trend_ewm_short_factor_"),
-                trend_long.add_prefix("trend_ewm_long_factor_"),
-                sq_ret_short.add_prefix("sq_ret_ewm_short_factor_"),
-                sq_ret_long.add_prefix("sq_ret_ewm_long_factor_"),
-                downside_short.add_prefix("downside_ewm_short_factor_"),
-                downside_long.add_prefix("downside_ewm_long_factor_"),
-                upside_short.add_prefix("upside_ewm_short_factor_"),
-                upside_long.add_prefix("upside_ewm_long_factor_"),
-            ],
+            {
+                f"long_scale_std_{sym}": np.log(
+                    ret.rolling(self.long_factor).var(ddof=0)
+                ),
+                f"short_scale_std_{sym}": np.log(
+                    ret.rolling(self.short_factor).var(ddof=0)
+                ),
+                f"trend_ewm_short_factor_{sym}": ret.ewm(
+                    halflife=self.short_factor
+                ).mean(),
+                f"trend_ewm_long_factor_{sym}": ret.ewm(
+                    halflife=self.long_factor
+                ).mean(),
+                f"sq_ret_ewm_short_factor_{sym}": sq.ewm(
+                    halflife=self.short_factor
+                ).mean(),
+                f"sq_ret_ewm_long_factor_{sym}": sq.ewm(
+                    halflife=self.long_factor
+                ).mean(),
+                f"downside_ewm_short_factor_{sym}": down.ewm(
+                    halflife=self.short_factor
+                ).mean(),
+                f"downside_ewm_long_factor_{sym}": down.ewm(
+                    halflife=self.long_factor
+                ).mean(),
+                f"upside_ewm_short_factor_{sym}": up.ewm(
+                    halflife=self.short_factor
+                ).mean(),
+                f"upside_ewm_long_factor_{sym}": up.ewm(
+                    halflife=self.long_factor
+                ).mean(),
+            },
             axis=1,
-        ).dropna()
+        )
         indicators.loc[:, "const"] = 1
 
-        # Resample and clean data
         resampled_indicators = (
-            indicators.resample(f"{self.short_factor}t", closed="right", label="right")
+            indicators.resample(self.resample_freq, closed="right", label="right")
             .last()
             .replace([np.inf, -np.inf], np.nan)
             .dropna()
         )
+
+        dummies = seasonal_event_dummies(resampled_indicators.index, self.resample_freq)
+        resampled_indicators = pd.concat([resampled_indicators, dummies], axis=1)
 
         resampled_indicators.index = pd.to_datetime(resampled_indicators.index)
         resampled_indicators.columns = resampled_indicators.columns.astype(str)

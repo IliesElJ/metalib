@@ -8,10 +8,12 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-# Initialize the Dash app with Bootstrap theme
 app = dash.Dash(
     __name__,
-    external_stylesheets=[dbc.themes.BOOTSTRAP],
+    external_stylesheets=[
+        dbc.themes.BOOTSTRAP,
+        "https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&family=Inter:wght@400;500;600;700&display=swap",
+    ],
     suppress_callback_exceptions=True,
 )
 
@@ -29,4 +31,4 @@ app.layout = get_layout()
 register_callbacks(app)
 
 if __name__ == "__main__":
-    app.run(debug=True, port=8050)
+    app.run(debug=False, host="0.0.0.0", port=8050)

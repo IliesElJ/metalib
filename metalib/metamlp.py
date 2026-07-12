@@ -5,8 +5,8 @@ import numpy as np
 import pandas as pd
 import pytz
 from sklearn.metrics import r2_score, accuracy_score
-from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler
+from xgboost import XGBRegressor
 
 from metalib.metastrategy import MetaStrategy
 from metalib.indicators import ols_tval_nb, calculate_half_life_nb
@@ -148,18 +148,21 @@ class MetaMLP(MetaStrategy):
         X_train_scaled = X_train
         X_val_scaled = X_val
 
-        # Train one MLP per horizon
+        # Train one XGBRegressor per horizon (BLAS-free; MLPRegressor crashes on this env)
         self.mlp_models_ = {}
         for h in self.horizons:
             y_train = targets[h].iloc[:split_idx].values
             y_val = targets[h].iloc[split_idx:].values
 
-            mlp = MLPRegressor(
-                hidden_layer_sizes=self.hidden_layers,
-                max_iter=self.max_iter,
+            mlp = XGBRegressor(
+                n_estimators=200,
+                max_depth=4,
+                learning_rate=0.05,
+                subsample=0.8,
+                colsample_bytree=0.8,
                 random_state=42,
-                early_stopping=True,
-                validation_fraction=0.15,
+                n_jobs=1,
+                verbosity=0,
             )
             mlp.fit(X_train_scaled, y_train)
             self.mlp_models_[h] = mlp
@@ -175,7 +178,7 @@ class MetaMLP(MetaStrategy):
 
         print(
             f"[{self.tag}] fit() complete: "
-            f"{len(self.mlp_models_)} models trained on {split_idx} rows, "
+            f"{len(self.mlp_models_)} XGB models trained on {split_idx} rows, "
             f"{len(self.feature_cols_)} features"
         )
 
@@ -289,6 +292,7 @@ class MetaMLP(MetaStrategy):
             {
                 "timestamp": ohlc.index[-1],
                 "symbol": self.symbols[0],
+                "tag": self.tag,
                 "price": current_price,
                 "sma_target": sma_target,
                 "half_life": half_life,

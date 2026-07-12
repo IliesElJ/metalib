@@ -76,7 +76,8 @@ class MetaStrategy(ABC):
 
     def save_signal_data_to_db(self):
         """
-        Saves the signal data to a single HDF5 file ("signals.hdf5"), organized by tag.
+        Appends one signal row to signals.hdf5 under a per-tag key.
+        Uses table format so each write is O(1) — no read-modify-write.
         """
         signal_line = self.signalData
         if not isinstance(signal_line, pd.Series):
@@ -86,20 +87,38 @@ class MetaStrategy(ABC):
 
         row_df = signal_line.to_frame().T
         row_df["timestamp"] = pd.to_datetime(row_df["timestamp"])
+        if "tag" not in row_df.columns:
+            row_df["tag"] = self.tag
 
         file_name = SIGNALS_FILE
-        # Sanitize tag for HDF5 key (replace hyphens, dots)
         key = "/" + self.tag.replace("-", "_").replace(".", "_")
-
         ensure_directories()
 
-        with pd.HDFStore(file_name, mode="a") as store:
-            if key in store:
-                existing = store[key]
-                updated = pd.concat([existing, row_df], ignore_index=True)
-                store.put(key, updated)
-            else:
-                store.put(key, row_df)
+        # Pad all string/object columns to 100 chars so the schema is stable across runs.
+        min_itemsize = {col: 100 for col in row_df.select_dtypes(include="object").columns}
+
+        try:
+            with pd.HDFStore(file_name, mode="a") as store:
+                store.append(key, row_df, format="table", data_columns=True,
+                             min_itemsize=min_itemsize or None)
+        except Exception as e:
+            print(f"Error saving signal data: {str(e)}")
+
+    def get_vol_prediction(self, symbol=None, max_age_minutes=300):
+        """
+        Latest MetaHAR vol prediction for a symbol from the shared store
+        (metalib/volstore.py), or None if absent/stale. Prediction is the
+        expected change in log realized variance over the next model bar
+        ((ts, ts + horizon_min] — see volstore docstring).
+        """
+        from metalib.volstore import get_latest
+
+        target = symbol if symbol is not None else self.symbols[0]
+        try:
+            return get_latest(target, max_age_minutes=max_age_minutes)
+        except Exception as e:
+            print(f"{self.tag}::: volstore read failed: {e}")
+            return None
 
     @abstractmethod
     def signals(self):
