@@ -22,6 +22,7 @@ from components.pm_views import (
     loading_placeholder,
     trade_modal_overlay,
 )
+from components.vol_views import render_vol_forecast, compute_is_r2
 
 DEFAULT_START_DATE = date(2025, 1, 1)
 ACCENT = '#BF6A3D'
@@ -37,7 +38,7 @@ _cache = {
     "account_info": None,
 }
 
-NAV_IDS = ['overview', 'trades', 'system']
+NAV_IDS = ['overview', 'trades', 'vol-forecast', 'system']
 
 
 def _fetch_trade_for_chart(trade_key):
@@ -157,15 +158,21 @@ def register_callbacks(app):
         Output('nav-store', 'data'),
         Input('nav-overview', 'n_clicks'),
         Input('nav-trades', 'n_clicks'),
+        Input('nav-vol-forecast', 'n_clicks'),
         Input('nav-system', 'n_clicks'),
         prevent_initial_call=True,
     )
-    def update_nav(ov, tr, sy):
+    def update_nav(ov, tr, vf, sy):
         ctx = callback_context
         if not ctx.triggered:
             return no_update
         triggered = ctx.triggered[0]['prop_id'].split('.')[0]
-        mapping = {'nav-overview': 'overview', 'nav-trades': 'trades', 'nav-system': 'system'}
+        mapping = {
+            'nav-overview': 'overview',
+            'nav-trades': 'trades',
+            'nav-vol-forecast': 'vol-forecast',
+            'nav-system': 'system',
+        }
         return mapping.get(triggered, 'overview')
 
     # ── 3. Sidebar nav item styling ────────────────────────────────────────────
@@ -210,6 +217,7 @@ def register_callbacks(app):
         Input({'type': 'strategy-row', 'index': ALL}, 'n_clicks'),
         Input('nav-overview', 'n_clicks'),
         Input('nav-trades', 'n_clicks'),
+        Input('nav-vol-forecast', 'n_clicks'),
         Input('nav-system', 'n_clicks'),
         prevent_initial_call=True,
     )
@@ -219,8 +227,7 @@ def register_callbacks(app):
             return no_update
         prop = ctx.triggered[0]['prop_id']
 
-        # Any nav click clears selection (Overview returns to list, others switch view)
-        if any(x in prop for x in ('nav-overview', 'nav-trades', 'nav-system')):
+        if any(x in prop for x in ('nav-overview', 'nav-trades', 'nav-vol-forecast', 'nav-system')):
             return None
 
         # Strategy row click → drill into detail
@@ -281,6 +288,7 @@ def register_callbacks(app):
         Input({'type': 'modal-close', 'index': ALL}, 'n_clicks'),
         Input('nav-overview', 'n_clicks'),
         Input('nav-trades', 'n_clicks'),
+        Input('nav-vol-forecast', 'n_clicks'),
         Input('nav-system', 'n_clicks'),
     )
     def handle_trade_click(row_clicks, close_clicks, *_nav):
@@ -288,11 +296,9 @@ def register_callbacks(app):
         if not ctx.triggered:
             return no_update
         prop = ctx.triggered[0]['prop_id']
-        # Startup fire with no actual trigger
         if not prop or prop == '.':
             return no_update
-        # Nav → close modal
-        if any(x in prop for x in ('nav-overview', 'nav-trades', 'nav-system')):
+        if any(x in prop for x in ('nav-overview', 'nav-trades', 'nav-vol-forecast', 'nav-system')):
             return None
         if 'modal-close' in prop:
             return None
@@ -323,7 +329,53 @@ def register_callbacks(app):
             return []
         return trade_modal_overlay(trade_data, candles_df)
 
-    # ── 9. Main content render ─────────────────────────────────────────────────
+    # ── 9. Vol forecast: symbol selector ──────────────────────────────────────
+
+    @app.callback(
+        Output('vol-symbol-store', 'data'),
+        Input('vol-symbol-dropdown', 'value'),
+        prevent_initial_call=True,
+    )
+    def update_vol_symbol(value):
+        return value or 'EURUSD'
+
+    # ── 10. Vol forecast: period selector ─────────────────────────────────────
+
+    @app.callback(
+        Output('vol-period-store', 'data'),
+        Input({'type': 'vol-period-btn', 'index': ALL}, 'n_clicks'),
+        prevent_initial_call=True,
+    )
+    def update_vol_period(clicks):
+        ctx = callback_context
+        if not ctx.triggered:
+            return no_update
+        prop = ctx.triggered[0]['prop_id']
+        triggered_val = ctx.triggered[0].get('value', 0)
+        if not triggered_val:
+            return no_update
+        try:
+            return json.loads(prop.split('.')[0])['index']
+        except Exception:
+            return no_update
+
+    # ── 11. Vol IS R² (computed once per symbol, cached) ─────────────────────
+
+    @app.callback(
+        Output('vol-is-r2-store', 'data'),
+        Input('vol-symbol-store', 'data'),
+    )
+    def compute_vol_is_r2(symbol):
+        sym = symbol or 'EURUSD'
+        cached = _cache.get('vol_is_r2') or {}
+        if sym in cached:
+            return cached
+        r2 = compute_is_r2(sym)
+        cached[sym] = r2
+        _cache['vol_is_r2'] = cached
+        return cached
+
+    # ── 12. Main content render ────────────────────────────────────────────────
 
     @app.callback(
         Output('main-content', 'children'),
@@ -333,10 +385,21 @@ def register_callbacks(app):
         Input('selected-strategy-store', 'data'),
         Input('timerange-store', 'data'),
         Input('day-offset-store', 'data'),
+        Input('vol-symbol-store', 'data'),
+        Input('vol-period-store', 'data'),
+        Input('vol-is-r2-store', 'data'),
     )
-    def render_content(nav, data_store, account_info, selected_strategy, timerange, day_offset):
+    def render_content(nav, data_store, account_info, selected_strategy, timerange,
+                       day_offset, vol_symbol, vol_period, vol_is_r2):
         merged = _cache.get('merged_deals')
         acc = _cache.get('account_info') or account_info or {}
+
+        if nav == 'vol-forecast':
+            return render_vol_forecast(
+                symbol=vol_symbol or 'EURUSD',
+                period=vol_period or '3M',
+                is_r2_cache=vol_is_r2,
+            )
 
         # Show loading state until data arrives
         if data_store is None and nav not in ('system',):

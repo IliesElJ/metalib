@@ -1,0 +1,47 @@
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg: #F7F5F2;
+  --sidebar-bg: #EFECE6;
+  --border: rgba(38,34,29,0.10);
+  --text-primary: #26221D;
+  --text-secondary: #7A756C;
+  --accent: #BF6A3D;
+  --accent-soft: #F3E4D8;
+  --green: #3D7A54;
+  --green-soft: #E7F0EA;
+  --red: #B5473A;
+  --red-soft: #F5E4E1;
+  --amber: #B98A2E;
+  --amber-soft: #F5EBD8;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: var(--bg);
+  color: var(--text-primary);
+}
+
+::selection { background: #E8D9CB; }
+a { color: inherit; text-decoration: none; }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: rgba(38,34,29,0.15); border-radius: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* Reset Bootstrap bleed */
+.container-fluid, .container { padding: 0 !important; margin: 0 !important; max-width: none !important; }
+
+/* Strategy row hover */
+.strategy-row:hover { background: rgba(38,34,29,0.03) !important; }
+
+/* Details/Summary reset */
+details > summary { list-style: none; }
+details > summary::-webkit-details-marker { display: none; }
+
+/* Plotly graph container */
+.js-plotly-plot .plotly, .js-plotly-plot .plotly svg { overflow: visible !important; }
