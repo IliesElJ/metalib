@@ -125,14 +125,37 @@ def ema(data, period, smoothing=2.0):
     :type period: int
     :type smoothing: float
     :rtype: np.ndarray
+
+    Seeds from the first non-NaN value rather than data[0] unconditionally --
+    an input with any leading NaN (e.g. another indicator's own warmup period,
+    such as atr()'s first period-1 values) would otherwise seed out[0] as NaN
+    and, because each step depends on the previous one, poison every value for
+    the rest of the array forever. Downstream callers with NaN warmup (adx())
+    depend on this.
+
+    Also holds the previous EMA value steady across any NaN appearing *after*
+    the seed (e.g. a resampled-to-HTF series with real gaps, such as weekend
+    buckets when resampling to a sub-daily timeframe on a non-24/7 market) --
+    without this, one gap bar mid-series would poison every value after it
+    forever, the same failure mode as an unhandled leading NaN.
     """
     size = len(data)
     weight = smoothing / (period + 1)
     out = np.full(size, np.nan)
-    out[0] = data[0]
-    for i in range(1, size):
-        out[i] = (data[i] * weight) + (out[i - 1] * (1 - weight))
-    out[:period - 1] = np.nan
+
+    start = 0
+    while start < size and np.isnan(data[start]):
+        start += 1
+    if start >= size:
+        return out
+
+    out[start] = data[start]
+    for i in range(start + 1, size):
+        if np.isnan(data[i]):
+            out[i] = out[i - 1]
+        else:
+            out[i] = (data[i] * weight) + (out[i - 1] * (1 - weight))
+    out[start:start + period - 1] = np.nan
     return out
 
 
@@ -522,11 +545,14 @@ def adx(c_open, c_high, c_low, period_adx, period_dm, smoothing=2.0):
     """
     up = np.concatenate((np.array([np.nan]), c_high[1:] - c_high[:-1]))
     down = np.concatenate((np.array([np.nan]), c_low[:-1] - c_low[1:]))
-    dm_up = np.array([0] * len(up))
+    # np.array([0] * len(up)) makes an int64 array; assigning the (usually
+    # sub-1.0, e.g. FX pip-sized) float diffs into it truncated every value to
+    # 0, which zeroed dm_up/dm_down entirely and produced a 0/0 division below.
+    dm_up = np.zeros(len(up))
     up_ids = up > down
     dm_up[up_ids] = up[up_ids]
     dm_up[dm_up < 0] = 0
-    dm_down = np.array([0] * len(down))
+    dm_down = np.zeros(len(down))
     down_ids = down > up
     dm_down[down_ids] = down[down_ids]
     dm_down[dm_down < 0] = 0
