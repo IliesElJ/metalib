@@ -87,6 +87,8 @@ strategy_registry = {
             "atr_period",
             "sl_atr_mult",
             "tp_atr_mult",
+            "trend_window",
+            "trend_t_threshold",
         ],
     },
     "metamlp": {

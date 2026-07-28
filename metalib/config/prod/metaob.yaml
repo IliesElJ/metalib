@@ -1,48 +1,75 @@
-AUDUSD_M15_OB:
-  active_hours: None
-  atr_period: 14
-  breakout_lookback: 4
-  pivot_window: 65
-  size_position: 0.15
-  sl_atr_mult: 5.5
-  sma_long_hours: 200
-  sma_short_hours: 55
-  strategy_type: metaob
-  symbols:
-  - AUDUSD
-  tag: metaob_audusd
-  timeframe: mt5.TIMEFRAME_M15
-  tp_atr_mult: 11
-EURUSD_M15_OB:
-  active_hours: None
-  atr_period: 14
-  breakout_lookback: 3
-  pivot_window: 60
-  size_position: 0.24
-  sl_atr_mult: 5
-  sma_long_hours: 200
-  sma_short_hours: 50
-  strategy_type: metaob
-  symbols:
-  - EURUSD
-  tag: metaob_eurusd
-  timeframe: mt5.TIMEFRAME_M15
-  tp_atr_mult: 10
-GBPUSD_M15_OB:
-  active_hours: None
-  atr_period: 14
-  breakout_lookback: 2
-  pivot_window: 55
-  size_position: 0.07
-  sl_atr_mult: 4
-  sma_long_hours: 210
-  sma_short_hours: 48
-  strategy_type: metaob
-  symbols:
-  - GBPUSD
-  tag: metaob_gbpusd
-  timeframe: mt5.TIMEFRAME_M15
-  tp_atr_mult: 9
+# --- Paused 2026-07-23: negative/flat Sharpe under the New Trend Filter in the
+# --- 2yr universe backtest (metaob_ab_review.pdf). GBPUSD was the worst
+# --- performer of the entire 46-symbol universe (-2.01 Sharpe). Params kept
+# --- for reference / easy re-enable - just uncomment to resume.
+# AUDUSD_M15_OB:
+#   active_hours: None
+#   atr_period: 14
+#   breakout_lookback: 4
+#   pivot_window: 65
+#   size_position: 0.15
+#   sl_atr_mult: 5.5
+#   sma_long_hours: 200
+#   sma_short_hours: 55
+#   strategy_type: metaob
+#   symbols:
+#   - AUDUSD
+#   tag: metaob_audusd
+#   timeframe: mt5.TIMEFRAME_M15
+#   tp_atr_mult: 11
+#   trend_t_threshold: 2.0
+#   trend_window: 200
+# EURUSD_M15_OB:
+#   active_hours: None
+#   atr_period: 14
+#   breakout_lookback: 3
+#   pivot_window: 60
+#   size_position: 0.24
+#   sl_atr_mult: 5
+#   sma_long_hours: 200
+#   sma_short_hours: 50
+#   strategy_type: metaob
+#   symbols:
+#   - EURUSD
+#   tag: metaob_eurusd
+#   timeframe: mt5.TIMEFRAME_M15
+#   tp_atr_mult: 10
+#   trend_t_threshold: 2.0
+#   trend_window: 200
+# GBPUSD_M15_OB:
+#   active_hours: None
+#   atr_period: 14
+#   breakout_lookback: 2
+#   pivot_window: 55
+#   size_position: 0.07
+#   sl_atr_mult: 4
+#   sma_long_hours: 210
+#   sma_short_hours: 48
+#   strategy_type: metaob
+#   symbols:
+#   - GBPUSD
+#   tag: metaob_gbpusd
+#   timeframe: mt5.TIMEFRAME_M15
+#   tp_atr_mult: 9
+#   trend_t_threshold: 2.0
+#   trend_window: 200
+# USDCAD_M15_OB:
+#   active_hours: None
+#   atr_period: 14
+#   breakout_lookback: 4
+#   pivot_window: 58
+#   size_position: 0.43
+#   sl_atr_mult: 5
+#   sma_long_hours: 190
+#   sma_short_hours: 50
+#   strategy_type: metaob
+#   symbols:
+#   - USDCAD
+#   tag: metaob_usdcad
+#   timeframe: mt5.TIMEFRAME_M15
+#   tp_atr_mult: 10
+#   trend_t_threshold: 2.0
+#   trend_window: 200
 NASDAQ_M15_OB:
   active_hours: None
   atr_period: 14
@@ -58,6 +85,8 @@ NASDAQ_M15_OB:
   tag: metaob_nas
   timeframe: mt5.TIMEFRAME_M15
   tp_atr_mult: 15
+  trend_t_threshold: 2.0
+  trend_window: 200
 DAX_M15_OB:
   active_hours: None
   atr_period: 14
@@ -73,21 +102,8 @@ DAX_M15_OB:
   tag: metaob_dax
   timeframe: mt5.TIMEFRAME_M15
   tp_atr_mult: 15
-USDCAD_M15_OB:
-  active_hours: None
-  atr_period: 14
-  breakout_lookback: 4
-  pivot_window: 58
-  size_position: 0.43
-  sl_atr_mult: 5
-  sma_long_hours: 190
-  sma_short_hours: 50
-  strategy_type: metaob
-  symbols:
-  - USDCAD
-  tag: metaob_usdcad
-  timeframe: mt5.TIMEFRAME_M15
-  tp_atr_mult: 10
+  trend_t_threshold: 2.0
+  trend_window: 200
 USDJPY_M15_OB:
   active_hours: None
   atr_period: 14
@@ -103,3 +119,263 @@ USDJPY_M15_OB:
   tag: metaob_usdjpy
   timeframe: mt5.TIMEFRAME_M15
   tp_atr_mult: 8.5
+  trend_t_threshold: 2.0
+  trend_window: 200
+
+# --- New 2026-07-23: added from the 46-symbol universe backtest
+# --- (metaob_ab_review.pdf), all Sharpe > 0.8 under the New Trend Filter over
+# --- 2yr of M15 history. Params match exactly what was backtested (uniform
+# --- pivot_window=60, breakout_lookback=3, atr_period=14, sl_atr_mult=5,
+# --- tp_atr_mult=10, sma_long_hours=200 across the whole sweep, not
+# --- per-symbol-tuned like the pre-existing blocks above) - the connection
+# --- between the backtested numbers and what's actually live only holds if
+# --- these stay unchanged; re-tune only after re-validating.
+# ---
+# --- size_position is risk-matched to GER40's current live $ risk/trade
+# --- (ATR(14) x sl_atr_mult x contract tick value, ~$25/trade at time of
+# --- sizing), using each symbol's own recent ATR and MT5 contract specs -
+# --- not a per-symbol backtested-optimal size. COCOA was dropped: its 1.0-lot
+# --- minimum volume step forces ~8x that target risk (and it only had 98
+# --- backtested trades, the thinnest sample in this batch). ADAUSD's
+# --- contract is unusually small (volume_min=1.0, ~$0.55 risk/lot) - true
+# --- risk-parity would need ~46 lots, which looked large enough to warrant a
+# --- second look, so it's sized at the 1.0-lot floor here instead (under-risked
+# --- relative to the others until reviewed).
+NZDCHF_M15_OB:
+  active_hours: None
+  atr_period: 14
+  breakout_lookback: 3
+  pivot_window: 60
+  size_position: 0.14
+  sl_atr_mult: 5
+  sma_long_hours: 200
+  sma_short_hours: 50
+  strategy_type: metaob
+  symbols:
+  - NZDCHF
+  tag: metaob_nzdchf
+  timeframe: mt5.TIMEFRAME_M15
+  tp_atr_mult: 10
+  trend_t_threshold: 2.0
+  trend_window: 200
+HK50_M15_OB:
+  active_hours: None
+  atr_period: 14
+  breakout_lookback: 3
+  pivot_window: 60
+  size_position: 1.0
+  sl_atr_mult: 5
+  sma_long_hours: 200
+  sma_short_hours: 50
+  strategy_type: metaob
+  symbols:
+  - HK50
+  tag: metaob_hk50
+  timeframe: mt5.TIMEFRAME_M15
+  tp_atr_mult: 10
+  trend_t_threshold: 2.0
+  trend_window: 200
+UK100_M15_OB:
+  active_hours: None
+  atr_period: 14
+  breakout_lookback: 3
+  pivot_window: 60
+  size_position: 0.19
+  sl_atr_mult: 5
+  sma_long_hours: 200
+  sma_short_hours: 50
+  strategy_type: metaob
+  symbols:
+  - UK100
+  tag: metaob_uk100
+  timeframe: mt5.TIMEFRAME_M15
+  tp_atr_mult: 10
+  trend_t_threshold: 2.0
+  trend_window: 200
+XCUUSD_M15_OB:
+  active_hours: None
+  atr_period: 14
+  breakout_lookback: 3
+  pivot_window: 60
+  size_position: 0.01
+  sl_atr_mult: 5
+  sma_long_hours: 200
+  sma_short_hours: 50
+  strategy_type: metaob
+  symbols:
+  - XCUUSD
+  tag: metaob_xcuusd
+  timeframe: mt5.TIMEFRAME_M15
+  tp_atr_mult: 10
+  trend_t_threshold: 2.0
+  trend_window: 200
+CADCHF_M15_OB:
+  active_hours: None
+  atr_period: 14
+  breakout_lookback: 3
+  pivot_window: 60
+  size_position: 0.12
+  sl_atr_mult: 5
+  sma_long_hours: 200
+  sma_short_hours: 50
+  strategy_type: metaob
+  symbols:
+  - CADCHF
+  tag: metaob_cadchf
+  timeframe: mt5.TIMEFRAME_M15
+  tp_atr_mult: 10
+  trend_t_threshold: 2.0
+  trend_window: 200
+GBPJPY_M15_OB:
+  active_hours: None
+  atr_period: 14
+  breakout_lookback: 3
+  pivot_window: 60
+  size_position: 0.06
+  sl_atr_mult: 5
+  sma_long_hours: 200
+  sma_short_hours: 50
+  strategy_type: metaob
+  symbols:
+  - GBPJPY
+  tag: metaob_gbpjpy
+  timeframe: mt5.TIMEFRAME_M15
+  tp_atr_mult: 10
+  trend_t_threshold: 2.0
+  trend_window: 200
+EURJPY_M15_OB:
+  active_hours: None
+  atr_period: 14
+  breakout_lookback: 3
+  pivot_window: 60
+  size_position: 0.1
+  sl_atr_mult: 5
+  sma_long_hours: 200
+  sma_short_hours: 50
+  strategy_type: metaob
+  symbols:
+  - EURJPY
+  tag: metaob_eurjpy
+  timeframe: mt5.TIMEFRAME_M15
+  tp_atr_mult: 10
+  trend_t_threshold: 2.0
+  trend_window: 200
+JP225_M15_OB:
+  active_hours: None
+  atr_period: 14
+  breakout_lookback: 3
+  pivot_window: 60
+  size_position: 0.3
+  sl_atr_mult: 5
+  sma_long_hours: 200
+  sma_short_hours: 50
+  strategy_type: metaob
+  symbols:
+  - JP225
+  tag: metaob_jp225
+  timeframe: mt5.TIMEFRAME_M15
+  tp_atr_mult: 10
+  trend_t_threshold: 2.0
+  trend_window: 200
+XAUUSD_M15_OB:
+  active_hours: None
+  atr_period: 14
+  breakout_lookback: 3
+  pivot_window: 60
+  size_position: 0.01
+  sl_atr_mult: 5
+  sma_long_hours: 200
+  sma_short_hours: 50
+  strategy_type: metaob
+  symbols:
+  - XAUUSD
+  tag: metaob_xauusd
+  timeframe: mt5.TIMEFRAME_M15
+  tp_atr_mult: 10
+  trend_t_threshold: 2.0
+  trend_window: 200
+SUGAR_M15_OB:
+  active_hours: None
+  atr_period: 14
+  breakout_lookback: 3
+  pivot_window: 60
+  size_position: 0.93
+  sl_atr_mult: 5
+  sma_long_hours: 200
+  sma_short_hours: 50
+  strategy_type: metaob
+  symbols:
+  - SUGAR
+  tag: metaob_sugar
+  timeframe: mt5.TIMEFRAME_M15
+  tp_atr_mult: 10
+  trend_t_threshold: 2.0
+  trend_window: 200
+US500_M15_OB:
+  active_hours: None
+  atr_period: 14
+  breakout_lookback: 3
+  pivot_window: 60
+  size_position: 0.27
+  sl_atr_mult: 5
+  sma_long_hours: 200
+  sma_short_hours: 50
+  strategy_type: metaob
+  symbols:
+  - US500
+  tag: metaob_us500
+  timeframe: mt5.TIMEFRAME_M15
+  tp_atr_mult: 10
+  trend_t_threshold: 2.0
+  trend_window: 200
+GBPCHF_M15_OB:
+  active_hours: None
+  atr_period: 14
+  breakout_lookback: 3
+  pivot_window: 60
+  size_position: 0.07
+  sl_atr_mult: 5
+  sma_long_hours: 200
+  sma_short_hours: 50
+  strategy_type: metaob
+  symbols:
+  - GBPCHF
+  tag: metaob_gbpchf
+  timeframe: mt5.TIMEFRAME_M15
+  tp_atr_mult: 10
+  trend_t_threshold: 2.0
+  trend_window: 200
+ADAUSD_M15_OB:
+  active_hours: None
+  atr_period: 14
+  breakout_lookback: 3
+  pivot_window: 60
+  size_position: 1.0
+  sl_atr_mult: 5
+  sma_long_hours: 200
+  sma_short_hours: 50
+  strategy_type: metaob
+  symbols:
+  - ADAUSD
+  tag: metaob_adausd
+  timeframe: mt5.TIMEFRAME_M15
+  tp_atr_mult: 10
+  trend_t_threshold: 2.0
+  trend_window: 200
+XAGUSD_M15_OB:
+  active_hours: None
+  atr_period: 14
+  breakout_lookback: 3
+  pivot_window: 60
+  size_position: 0.01
+  sl_atr_mult: 5
+  sma_long_hours: 200
+  sma_short_hours: 50
+  strategy_type: metaob
+  symbols:
+  - XAGUSD
+  tag: metaob_xagusd
+  timeframe: mt5.TIMEFRAME_M15
+  tp_atr_mult: 10
+  trend_t_threshold: 2.0
+  trend_window: 200

@@ -9,7 +9,12 @@ BORDER = 'rgba(38,34,29,0.10)'
 TEXT_PRIMARY = '#26221D'
 TEXT_SECONDARY = '#7A756C'
 
-NAV = [('overview', 'Overview'), ('trades', 'Trades'), ('system', 'System')]
+NAV = [
+    ('overview', 'Overview'),
+    ('trades', 'Trades'),
+    ('vol-forecast', 'Vol Forecast'),
+    ('system', 'System'),
+]
 
 
 def _nav_btn(nav_id, label):
@@ -78,6 +83,9 @@ def get_layout():
         dcc.Store(id='data-store'),
         dcc.Store(id='account-info-store'),
         dcc.Store(id='trade-modal-store', data=None),
+        dcc.Store(id='vol-symbol-store', data='EURUSD'),
+        dcc.Store(id='vol-period-store', data='3M'),
+        dcc.Store(id='vol-is-r2-store', data=None),
         dcc.Interval(id='startup-trigger', interval=500, n_intervals=0, max_intervals=1),
         html.Div(id='trade-modal-container'),
 

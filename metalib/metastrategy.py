@@ -54,12 +54,16 @@ class MetaStrategy(ABC):
             print("Initialize() failed, error code =", mt5.last_error())
             mt5.shutdown()
 
-    def loadData(self, start_date=None, end_date=None):
+    def loadData(self, start_date=None, end_date=None, timeframe=None):
         """
         Loads historical data for the specified symbols and timeframe.
         """
+
+        if timeframe is None:
+            timeframe = self.timeframe
+
         for symbol in self.symbols:
-            rates = mt5.copy_rates_range(symbol, self.timeframe, start_date, end_date)
+            rates = mt5.copy_rates_range(symbol, timeframe, start_date, end_date)
 
             if rates is None:
                 print(
@@ -95,12 +99,19 @@ class MetaStrategy(ABC):
         ensure_directories()
 
         # Pad all string/object columns to 100 chars so the schema is stable across runs.
-        min_itemsize = {col: 100 for col in row_df.select_dtypes(include="object").columns}
+        min_itemsize = {
+            col: 100 for col in row_df.select_dtypes(include="object").columns
+        }
 
         try:
             with pd.HDFStore(file_name, mode="a") as store:
-                store.append(key, row_df, format="table", data_columns=True,
-                             min_itemsize=min_itemsize or None)
+                store.append(
+                    key,
+                    row_df,
+                    format="table",
+                    data_columns=True,
+                    min_itemsize=min_itemsize or None,
+                )
         except Exception as e:
             print(f"Error saving signal data: {str(e)}")
 

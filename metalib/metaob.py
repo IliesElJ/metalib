@@ -1,14 +1,12 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 import logging
 import MetaTrader5 as mt5
 import pandas as pd
-import pytz
 import numpy as np
 from metalib.metastrategy import MetaStrategy
 from metalib.indicators import (
     rolling_mean_nb,
-    pct_change_nb,
-    rolling_sharpe_nb,
+    ols_tval_nb,
     rolling_min_shift1_nb,
     rolling_max_shift1_nb,
     true_range_nb,
@@ -24,7 +22,7 @@ class MetaOB(MetaStrategy):
     This strategy combines technical analysis concepts including:
     - Order blocks (bullish/bearish patterns)
     - Pivot point breakouts
-    - Trend filtering using rolling Sharpe ratio
+    - Trend filtering using a rolling OLS regression t-stat
     - ATR-based stop loss and take profit levels
     """
 
@@ -42,6 +40,9 @@ class MetaOB(MetaStrategy):
         atr_period=14,
         sl_atr_mult=2.0,
         tp_atr_mult=6.0,
+        trend_window=200,  # bars on trend_timeframe (D1 => ~200 trading days), long-term trend regression window
+        trend_t_threshold=2.0,  # min |t-stat| for the trend slope to count as significant
+        trend_timeframe=mt5.TIMEFRAME_D1,
     ):
         super().__init__(
             symbols, timeframe, tag, size_position, active_hours
@@ -55,14 +56,15 @@ class MetaOB(MetaStrategy):
         self.atr_period = atr_period
         self.sl_atr_mult = sl_atr_mult
         self.tp_atr_mult = tp_atr_mult
+        self.trend_window = trend_window
+        self.trend_t_threshold = trend_t_threshold
+        self.trend_timeframe = trend_timeframe
 
         # State variables
         self.state = 0
         self.sl = None
         self.tp = None
         self.signalData = None
-        self.sharpe_threshold_long = None
-        self.sharpe_threshold_short = None
         self.telegram = True
         self.logger = logging.getLogger(__name__)
 
@@ -114,7 +116,7 @@ class MetaOB(MetaStrategy):
             ohlc: DataFrame with OHLC price data
 
         Returns:
-            DataFrame with calculated indicators including SMAs, Sharpe ratio, pivots, ATR, and order blocks
+            DataFrame with calculated indicators including SMAs, trend t-stat, pivots, ATR, and order blocks
         """
         indicators = pd.DataFrame(index=ohlc.index)
 
@@ -125,17 +127,17 @@ class MetaOB(MetaStrategy):
 
         indicators["close"] = c
 
-        # SMAs (sequential rolling sum)
+        # SMAs (sequential rolling sum) - informational only, not used to gate direction
         indicators["sma_short"] = rolling_mean_nb(c, int(self.sma_short_hours))
         indicators["sma_long"] = rolling_mean_nb(c, int(self.sma_long_hours))
 
-        # Rolling Sharpe (sequential, but returns computed in parallel)
-        rets = pct_change_nb(c)
-        rolling_sh = rolling_sharpe_nb(rets, int(self.sma_long_hours))
-        indicators["rolling_sharpe"] = rolling_sh
+        # Long-term trend: OLS t-stat of close over trend_window bars on trend_timeframe
+        # (e.g. D1). Sign gives direction, |t| gauges statistical significance of the slope.
+        trend_t = self.compute_trend_t()
+        indicators["trend_t"] = trend_t
 
-        indicators["uptrend"] = rolling_sh > float(self.sharpe_threshold_long)
-        indicators["downtrend"] = rolling_sh < float(self.sharpe_threshold_short)
+        indicators["uptrend"] = trend_t > float(self.trend_t_threshold)
+        indicators["downtrend"] = trend_t < -float(self.trend_t_threshold)
 
         # Pivot points (parallel, good candidate)
         w = int(self.pivot_window)
@@ -159,6 +161,39 @@ class MetaOB(MetaStrategy):
         indicators["cross_above_pivot"] = cross_above
 
         return indicators
+
+    def compute_trend_t(self):
+        """OLS t-stat of the last trend_window closes on trend_timeframe (e.g. D1).
+
+        self.loadData() writes into self.data[symbol], the same slot the M15 entry
+        data lives in - snapshot/restore around the call so the caller's M15 ohlc
+        (and run()'s post-signals() active_hours check) aren't clobbered.
+        """
+        symbol = self.symbols[0]
+        m15_snapshot = self.data[symbol]
+
+        end_date = m15_snapshot.index[-1]
+        start_date = end_date - timedelta(days=int(self.trend_window * 1.7) + 20)
+        self.loadData(start_date, end_date, timeframe=self.trend_timeframe)
+
+        if self.data[symbol] is m15_snapshot:
+            print(f"{self.tag}:: Trend data load failed, defaulting trend_t to 0")
+            return 0.0
+
+        trend_closes = (
+            self.data[symbol]["close"].tail(int(self.trend_window)).to_numpy(dtype=np.float64)
+        )
+        self.data[symbol] = m15_snapshot
+
+        if trend_closes.size < self.trend_window:
+            print(
+                f"{self.tag}:: Warning - only {trend_closes.size}/{self.trend_window} "
+                f"trend_timeframe bars available"
+            )
+        if trend_closes.size < 3:
+            return 0.0
+
+        return float(ols_tval_nb(trend_closes))
 
     def detect_long_signal(self, ohlc, indicators):
         """Detect long entry signal"""
@@ -251,9 +286,10 @@ class MetaOB(MetaStrategy):
         print(f"SMA Short: {indicators['sma_short'].iloc[-1]:.5f}")
         print(f"SMA Long: {indicators['sma_long'].iloc[-1]:.5f}")
         print(
-            f"Sharpe Ratio: {indicators['rolling_sharpe'].iloc[-1]:.5f} vs Threshold: {self.sharpe_threshold_long:.5f}/{self.sharpe_threshold_short:.5f}"
+            f"Trend t-stat: {indicators['trend_t'].iloc[-1]:.3f} vs threshold: +/-{self.trend_t_threshold:.2f}"
         )
         print(f"Uptrend: {indicators['uptrend'].iloc[-1]}")
+        print(f"Downtrend: {indicators['downtrend'].iloc[-1]}")
         print(f"Bull OB: {indicators['bull_ob'].iloc[-1]}")
         print(f"Bear OB: {indicators['bear_ob'].iloc[-1]}")
         print(f"ATR: {indicators['atr'].iloc[-1]:.5f}")
@@ -264,35 +300,7 @@ class MetaOB(MetaStrategy):
         print(f"--- End Analysis ---\n")
 
     def fit(self, data=None):
-        """No fitting required for this strategy"""
-        # Define the UTC timezone
-        utc = pytz.timezone("UTC")
-        # Get the current time in UTC
-        end_time = datetime.now(utc)
-        start_time = end_time - timedelta(days=66)
-        # Set the time components to 0 (midnight) and maintain the timezone
-        end_time = end_time.replace(
-            hour=0, minute=0, second=0, microsecond=0
-        ).astimezone(utc)
-        start_time = start_time.astimezone(utc)
-
-        # Pulling last days of data
-        self.loadData(start_time, end_time)
-        data = self.data[self.symbols[0]]
-        close = data["close"]
-        rolling_sharpe = (
-            close.pct_change()
-            .rolling(self.sma_long_hours)
-            .apply(lambda x: np.mean(x) / np.std(x))
-        )
-        self.sharpe_threshold_long = rolling_sharpe.quantile(0.75)
-        self.sharpe_threshold_short = rolling_sharpe.quantile(0.25)
-        print(
-            f"{self.tag}:: Sharpe Uptrend quantile is: {round(self.sharpe_threshold_long, 4)}"
-        )
-        print(
-            f"{self.tag}:: Sharpe Downtrend quantile is: {round(self.sharpe_threshold_short, 4)}"
-        )
+        """No fitting required: trend filter is recomputed fresh each signal cycle."""
         return
 
     def get_positions_info(self):
