@@ -27,6 +27,10 @@ STRATEGY_NAME_MAP = {
     'metane_': 'Seasonality Decision Tree',
     'metafvg_': 'Fair Value Gaps',
     'metamlp_': 'Multi-Horizon MLP',
+    # v2 tags are 'fvg2_<symbol>' (not 'metafvg_v2_...') -- MT5 position
+    # comment matching (are_positions_with_tag_open) truncates to 16 chars,
+    # so v2's tags were kept short deliberately; this prefix must match that.
+    'fvg2_': 'FVG Mean-Reversion (v2)',
 }
 
 # Sort by prefix length (longest first) for correct matching

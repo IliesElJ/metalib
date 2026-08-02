@@ -1,0 +1,253 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=2.2cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+
+\newcommand{\meaningpar}[1]{\par\noindent\textit{Meaning of the regressors.} #1}
+
+\title{\vspace{-1.5em}MetaFVG Trend-Filter Family: Regression \& Lasso Formulations}
+\author{Research notes --- \texttt{metalib/research/}}
+\date{Reference setup: HTF=4h, LTF=M15, post lookahead-bias fix}
+
+\begin{document}
+\maketitle
+\vspace{-2em}
+
+\section*{Notation}
+Let $c_1,\dots,c_n$ denote the HTF (4h) close series and, at bar $i$, let $y = (c_{i-w+1},\dots,c_i)$
+be the trailing window of width $w$ (default $w=20$), regressed against the bar-index
+regressor $x = (0,1,\dots,w-1)$. All quantities below are computed causally: the value
+attributed to bar $i$ uses only $c_{\le i}$.
+\meaningpar{$x$ is \emph{not} calendar time --- it is a purely local index that resets to
+$0$ at the start of every window and counts up to $w-1$. Every rolling fit is therefore
+``how has price moved over the last $w$ bars,'' never an absolute-time trend. $d\in\{+1,-1\}$
+throughout denotes the candidate trade direction already implied by the HTF FVG zone the
+current price sits in (from the signal pipeline, not from the regression itself) --- every
+gate below only asks whether the regression \emph{agrees} with that direction.}
+
+\section{Regression Gate}
+A rolling univariate OLS of price on bar index within each trailing window:
+\[
+c_t = \beta_0 + \beta_1 x_t + \varepsilon_t, \qquad
+\hat\beta_1 = \frac{\sum_t (x_t-\bar x)(y_t-\bar y)}{\sum_t (x_t-\bar x)^2}, \qquad
+\hat\beta_0 = \bar y - \hat\beta_1 \bar x
+\]
+\[
+R^2 = 1 - \frac{\mathrm{SS}_{\mathrm{res}}}{\mathrm{SS}_{\mathrm{tot}}}, \qquad
+\mathrm{SS}_{\mathrm{res}} = \sum_t (y_t - \hat y_t)^2, \qquad
+\mathrm{SS}_{\mathrm{tot}} = \sum_t (y_t - \bar y)^2
+\]
+\textbf{Gate condition} (a signal in direction $d\in\{+1,-1\}$ is accepted iff):
+\[
+\operatorname{sign}(\hat\beta_1) = d \quad \text{and} \quad R^2 \ge \tau_{R^2}, \qquad \tau_{R^2}=0.5 \text{ (default)}
+\]
+\meaningpar{$c_t=y_t$ is simply the price at bar $t$ within the window --- the thing being explained.
+$x_t$ is that bar's position in the window (see Notation): the regression asks ``as $x$ counts
+up from $0$ to $w-1$, does price move consistently in one direction?'' $\hat\beta_1$ (the slope) is
+the fitted \emph{price change per bar} --- its sign is the trend direction, its magnitude is
+irrelevant to the gate (only used to determine sign). $R^2\in[0,1]$ is the fraction of the window's
+price variance explained by that straight line --- a ``cleanliness'' score: $R^2$ near $1$ means
+price moved almost monotonically, near $0$ means it was choppy/range-bound even if the fitted
+slope happens to point the right way. $\tau_{R^2}=0.5$ is the minimum cleanliness required before
+the gate trusts the direction call at all. This is the config that survived the HTF lookahead-bias
+fix with a real, if modest, edge (avg.\ individual Sharpe $+0.010$, equal-weighted 7-pair FX
+Majors portfolio Sharpe $+0.143$).}
+
+\section{Theil-Sen Gate}
+Identical $R^2$ gate to \S1, but the direction call uses the Theil--Sen (median-of-pairwise-slopes)
+estimator instead of the OLS slope --- robust to a single outlier bar dominating the fit:
+\[
+\hat\beta_1^{\mathrm{TS}} = \operatorname{median}\left\{ \frac{y_j - y_i}{j - i} \;:\; 0\le i<j< w \right\}
+\]
+\[
+\text{Gate: } \operatorname{sign}(\hat\beta_1^{\mathrm{TS}}) = d \quad \text{and} \quad R^2 \ge \tau_{R^2}
+\]
+\meaningpar{For every pair of bars $i<j$ in the window, $(y_j-y_i)/(j-i)$ is the average
+price-change-per-bar \emph{measured only between those two bars} --- i.e.\ ``if price only
+moved between these two points, what would the slope be.'' Taking the median over all
+$\binom{w}{2}$ such pairs means one freak bar (a single large spike) can shift the result by
+at most one rank, unlike OLS where it can dominate the whole fit through the squared-error
+term. $R^2$ here is still the \emph{OLS} goodness-of-fit from \S1 --- only the direction call
+changes, the cleanliness gate does not. Empirically tied Regression Gate almost exactly (avg.\
+Sharpe $+0.072$ vs.\ $+0.073$ pre-refinement scale), i.e.\ outlier bars were not materially
+flipping the OLS direction call on this asset set.}
+
+\section{Spearman Gate}
+Replaces both the OLS slope \emph{and} $R^2$ with a single rank-correlation statistic, testing
+monotonicity rather than linearity (a nonlinear but consistently directional move is not penalized
+for curvature the way $R^2$ penalizes it):
+\[
+\rho = 1 - \frac{6\sum_t d_t^2}{w(w^2-1)}, \qquad d_t = \operatorname{rank}(y_t) - t
+\]
+\[
+\text{Gate: } \operatorname{sign}(\rho) = d \quad \text{and} \quad |\rho| \ge \tau_\rho
+\]
+\meaningpar{$\operatorname{rank}(y_t)$ is $y_t$'s rank (1st-smallest, 2nd-smallest, \dots) among
+the $w$ prices in the window; $t$ itself is already the bar's rank in time (since $x=0,\dots,w-1$
+is already sorted). $d_t$ is therefore the gap between ``where does this bar rank by price'' and
+``where does this bar rank by time'' --- if price rose monotonically, the two rankings are
+identical and every $d_t=0$. $\rho\in[-1,1]$ (Spearman's rank correlation) summarizes that
+agreement in one number: $+1$ means price and time are perfectly rank-ordered together
+(monotonic uptrend, any shape), $-1$ means perfectly monotonic down, $0$ means no consistent
+ordering. Unlike $R^2$, $\rho$ does not care whether the monotonic move was a straight line or a
+curve --- only that it never reversed rank. Tested at $\tau_\rho \in \{0.5,\ 0.82,\ 0.85\}$; none
+beat Regression Gate on FX Majors post-fix (avg.\ Sharpe $-0.011$ to $-0.254$ depending on
+threshold and whether risk-sizing is layered on top).}
+
+\section{Lasso Trend Gate (walk-forward)}
+A genuinely predictive, out-of-sample model: fit on a trailing window of \texttt{train\_bars}
+(450) bars, refit every \texttt{test\_bars} (190) bars, predicting the forward $k$-bar
+($k=5$) log return:
+\[
+Y_t = \ln c_{t+k} - \ln c_t
+\]
+Regressor vector at bar $t$ (base feature set, before EMA augmentation):
+\[
+X_t = \big[\,\mathrm{slope}_t,\ R^2_t,\ \sigma^{\mathrm{short}}_t,\ \sigma^{\mathrm{long}}_t,\
+\rho^{\mathrm{vol}}_t,\ \mathrm{slope}_t\rho^{\mathrm{vol}}_t,\ R^2_t\rho^{\mathrm{vol}}_t,\
+\mathrm{slope}_t\sigma^{\mathrm{short}}_t,\ 1 \,\big]
+\]
+where $\sigma^{\mathrm{short}}_t,\sigma^{\mathrm{long}}_t$ are realized volatility of log returns
+over 10- and 60-bar trailing windows, and $\rho^{\mathrm{vol}}_t = \sigma^{\mathrm{short}}_t/\sigma^{\mathrm{long}}_t$.
+Fit by $L_1$-penalized least squares (numba coordinate descent --- this environment's BLAS crashes
+on any matrix-matrix multiply, so no \texttt{sklearn}/\texttt{statsmodels} closed-form solve):
+\[
+\hat\beta = \operatorname*{arg\,min}_\beta \ \frac{1}{2n}\lVert Y - X\beta \rVert_2^2 + \alpha \lVert \beta \rVert_1,
+\qquad \alpha \text{ chosen by 5-fold CV over 60 candidate values}
+\]
+\textbf{Gate condition}, with $\hat Y_t = X_t^\top\hat\beta$ (clipped to the training target range)
+and $\tau_t$ a \emph{causal} rolling quantile of $|\hat Y|$ shifted one bar (never uses a
+prediction generated at or after $t$):
+\[
+\operatorname{sign}(\hat Y_t) = d \quad \text{and} \quad |\hat Y_t| \ge \tau_t
+\]
+\meaningpar{$Y_t$, the \emph{target} being predicted, is ``the log return you would realize if you
+held from now ($t$) to $k=5$ HTF bars later'' --- this is the one genuinely forward-looking
+quantity in the whole document, and it is only ever used as a training label, computed from
+\emph{fully elapsed} history at fit time (never a live, in-progress bar).
+Reading $X_t$ component by component: $\mathrm{slope}_t,R^2_t$ are exactly \S1's OLS
+outputs, but here they are \emph{inputs} to a model rather than a hard pass/fail gate --- the
+Lasso decides how much weight (if any) they deserve. $\sigma^{\mathrm{short}}_t$ (10-bar) and
+$\sigma^{\mathrm{long}}_t$ (60-bar) are realized volatility of log returns --- ``how much has
+price been jumping around lately,'' measured over a quick and a slower window respectively.
+$\rho^{\mathrm{vol}}_t=\sigma^{\mathrm{short}}_t/\sigma^{\mathrm{long}}_t$ is a vol-\emph{regime}
+signal: $>1$ means volatility is currently expanding relative to its own recent baseline, $<1$
+means it is contracting. The three products
+($\mathrm{slope}_t\rho^{\mathrm{vol}}_t$, $R^2_t\rho^{\mathrm{vol}}_t$,
+$\mathrm{slope}_t\sigma^{\mathrm{short}}_t$) are curated interaction terms, e.g.\ ``does a strong
+trend behave differently when volatility is expanding vs.\ contracting'' --- a small, hand-picked
+set rather than a full polynomial expansion, so the model stays interpretable by inspection of
+which coefficients the Lasso keeps nonzero. The trailing constant $1$ is the intercept regressor.
+$\hat\beta$ is the fitted coefficient vector: the $L_1$ penalty shrinks the coefficient on any
+feature that doesn't earn its keep exactly to zero, so $\hat\beta$ itself is a readable statement
+of ``which of these nine things actually mattered this refit cycle.'' $\alpha$ controls how harshly
+that shrinkage is applied (larger $\alpha$ $\to$ fewer, smaller coefficients, chosen by
+cross-validation rather than fixed by hand). $\hat Y_t=X_t^\top\hat\beta$ is the model's forecast
+of $Y_t$ using only information available at $t$; $\tau_t$ is a magnitude bar on that forecast ---
+only trust predictions that are unusually large relative to the model's own recent prediction
+history, not just any nonzero sign.}
+
+\section{EMA-Augmented Lasso --- Price-Based (superseded)}
+First attempt at adding EMAs as regressors: normalized price-vs-EMA distance and crossover,
+appended to $X_t$ above, with $\mathrm{EMA}_9,\mathrm{EMA}_{21}$ computed on \emph{price}:
+\[
+\mathrm{ema\_fast\_dist}_t = \frac{c_t - \mathrm{EMA}_9(c)_t}{c_t}, \qquad
+\mathrm{ema\_slow\_dist}_t = \frac{c_t - \mathrm{EMA}_{21}(c)_t}{c_t}
+\]
+\[
+\mathrm{ema\_cross}_t = \frac{\mathrm{EMA}_9(c)_t - \mathrm{EMA}_{21}(c)_t}{c_t}, \qquad
+\text{plus interaction } \mathrm{ema\_cross}_t \cdot \rho^{\mathrm{vol}}_t
+\]
+\meaningpar{$\mathrm{EMA}_9(c)$ and $\mathrm{EMA}_{21}(c)$ are exponentially-smoothed price ---
+a ``fast'' running average that reacts within about 9 bars and a ``slow'' one that reacts over
+about 21 (the classic short/long CTA pairing; see \S6 for the exact recursion). Dividing by
+$c_t$ turns each raw price-minus-average into a \emph{normalized} distance so it is comparable
+across instruments/price scales: $\mathrm{ema\_fast\_dist}_t>0$ means price sits above its own
+short-run average (recently strong), and similarly for the slow one against the longer-run
+average. $\mathrm{ema\_cross}_t$ is the gap between the fast and slow average itself, again
+normalized by price --- positive when the fast average has pulled above the slow one, the
+textbook ``golden cross'' direction signal. Underperformed Regression Gate at both tested
+thresholds (avg.\ Sharpe $-0.308$ loose, $-0.257$ tight; portfolio blend \emph{worse} than the
+individual average in both cases, unlike Regression Gate where blending helps).}
+
+\section{EMA-Augmented Lasso --- Vol-Adjusted Returns (current)}
+Per your request: the EMA is taken of \emph{vol-adjusted returns}, not price, so the smoothed
+series is comparable across volatility regimes:
+\[
+r_t = \ln c_t - \ln c_{t-1}, \qquad
+r^{\mathrm{vadj}}_t = \frac{r_t}{\sigma^{\mathrm{short}}_t}
+\]
+\[
+\mathrm{ema\_fast}_t = \mathrm{EMA}_9(r^{\mathrm{vadj}})_t, \qquad
+\mathrm{ema\_slow}_t = \mathrm{EMA}_{21}(r^{\mathrm{vadj}})_t
+\]
+\[
+\mathrm{ema\_cross}^{\mathrm{vadj}}_t = \mathrm{ema\_fast}_t - \mathrm{ema\_slow}_t, \qquad
+\text{plus interaction } \mathrm{ema\_cross}^{\mathrm{vadj}}_t \cdot \rho^{\mathrm{vol}}_t
+\]
+where, for a series $z$, $\mathrm{EMA}_p(z)_t = w z_t + (1-w)\mathrm{EMA}_p(z)_{t-1}$,
+$w = 2/(p+1)$, seeded from the first non-NaN value and held steady across any NaN gap.
+\meaningpar{$r_t$ is the plain bar-to-bar log return --- ``how much did price move this bar,''
+with no normalization. $r^{\mathrm{vadj}}_t$ divides that by $\sigma^{\mathrm{short}}_t$ (the same
+10-bar realized vol from \S4), turning it into ``how many typical-recent-moves was this bar's
+return,'' roughly a rolling z-score of the return: a $0.5\%$ move counts as large during a calm
+stretch and as unremarkable during a volatile one, whereas a raw-price EMA cannot distinguish the
+two. $\mathrm{ema\_fast}_t,\mathrm{ema\_slow}_t$ are no longer distances from anything --- since
+the base series is already a (vol-adjusted) return, not a price level, the smoothed value itself
+\emph{is} the signal: a running estimate of recent vol-adjusted momentum, fast (9-bar) and slow
+(21-bar). $\mathrm{ema\_cross}^{\mathrm{vadj}}_t$ is their difference, i.e.\ momentum
+\emph{acceleration} --- positive when recent momentum is running hotter than its own longer-run
+average. In the smoothing recursion, $w=2/(p+1)$ is the EMA weight (not to be confused with the
+regression window width $w$ used in \S1--\S3 --- unfortunately the same letter, distinguished by
+context in the source). Recovers some ground versus the price-based version but still loses to
+Regression Gate (avg.\ Sharpe $-0.239$ loose, $-0.230$ tight; blend still worse than the individual
+average).}
+
+\section{Shelved: LTF Significance-Gated OLS Bias}
+From the (rejected) ``back to basics'' redesign: same closed-form OLS as \S1, but applied to the
+\emph{LTF} (M15) close series, and gated on statistical significance of the slope rather than
+goodness-of-fit:
+\[
+\mathrm{SE}(\hat\beta_1) = \sqrt{\frac{\hat\sigma^2}{\sum_t(x_t-\bar x)^2}}, \qquad
+\hat\sigma^2 = \frac{\mathrm{SS}_{\mathrm{res}}}{w-2}, \qquad
+t = \frac{\hat\beta_1}{\mathrm{SE}(\hat\beta_1)}
+\]
+\[
+\text{Gate: } \operatorname{sign}(\hat\beta_1) = d \quad \text{and} \quad |t| \ge \tau_t
+\]
+\meaningpar{$\hat\sigma^2$ is the fit's residual variance --- how noisy the window is around its
+own best-fit line, degrees-of-freedom-corrected. $\mathrm{SE}(\hat\beta_1)$ turns that into an
+uncertainty estimate specifically for the slope: how much would $\hat\beta_1$ plausibly wobble if
+re-fit on similar noise. The $t$-statistic is the slope measured in units of its own uncertainty
+--- ``is this slope big compared to how unsure we are about it,'' as opposed to $R^2$ in \S1 which
+only asks ``does a line fit well'' without any notion of estimation uncertainty. $\tau_t$ is the
+minimum $|t|$ required to trust the direction call, analogous to $\tau_{R^2}$ in \S1 but on a
+statistical-significance scale instead of a goodness-of-fit scale. Tested $\tau_t \in [0.5, 4.0]$
+across all 7 FX Majors: average Sharpe was negative throughout and \emph{worsened} as $\tau_t$
+tightened ($-0.286$ at $\tau_t{=}1.5$ down to $-0.370$ at $\tau_t{=}3.5$) --- the opposite of the
+single-symbol (EURUSD) read that motivated testing it, and GBPUSD flipped from this campaign's
+best individual result (Sharpe $1.10$ under \S1) to one of this variant's worst ($-1.03$). Shelved;
+code retained in \texttt{metafvg\_basics\_variant.py} for reference.}
+
+\section*{Summary}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+Config & Avg.\ individual Sharpe & Blended portfolio Sharpe \\
+\midrule
+Regression Gate & $+0.010$ & $+0.143$ \\
+Theil-Sen Gate & $+0.072$\textsuperscript{*} & --- \\
+Spearman Gate (q=0.5) & $-0.011$\textsuperscript{*} & --- \\
+Lasso Trend Gate (base features) & $-0.16$ to $-0.42$\textsuperscript{*} & --- \\
+EMA-Augmented Lasso (price) & $-0.308$ / $-0.257$ & $-0.688$ / $-0.712$ \\
+EMA-Augmented Lasso (vol-adj.) & $-0.239$ / $-0.230$ & $-0.488$ / $-0.640$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+{\small\textsuperscript{*}Full-universe (47-symbol) scale, not the FX-Majors-only re-verification
+used for the rows below it; included for context, not a like-for-like comparison.}
+
+\end{document}

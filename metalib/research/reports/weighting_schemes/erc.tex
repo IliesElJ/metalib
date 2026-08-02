@@ -1,0 +1,174 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{siunitx}
+\usepackage{caption}
+\usepackage{hyperref}
+
+\title{Weighting Scheme: Equal Risk Contribution (ERC)}
+\author{MetaFVG Mean-Reversion Portfolio -- 14-Instrument Diversified Universe}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Scheme Description}
+
+The portfolio blends 14 instruments trading a Spearman-gated MetaFVG mean-reversion
+strategy, deliberately assembled across different central banks and currency blocs
+(AUDUSD, EURUSD, GBPUSD, NZDUSD, USDCAD, USDCHF, USDJPY, US500, GER40, JP225, HK50,
+USDSGD, EURNOK, USDZAR). The current production blend uses equal weights
+($w_i = 1/14$ for all $i$). This report tests whether replacing equal weighting with
+\emph{Equal Risk Contribution} (ERC), also known as true risk parity, further reduces
+realized correlation and improves diversification.
+
+Unlike inverse-volatility weighting, ERC uses the full covariance matrix
+$\Sigma = \mathrm{Cov}(r)$ of daily returns, so it accounts for cross-instrument
+correlation rather than standalone volatility alone. The goal is to find a weight
+vector $w$, with $w_i > 0$ and $\sum_i w_i = 1$, such that every instrument
+contributes equally to total portfolio variance.
+
+\subsection{ERC Formulation}
+
+Total portfolio variance is $\sigma_p^2(w) = w^\top \Sigma w$. The marginal
+contribution to risk of asset $i$ is
+\[
+  \mathrm{MRC}_i = \frac{\partial \sigma_p^2}{\partial w_i} = (\Sigma w)_i,
+\]
+and its risk contribution is
+\[
+  \mathrm{RC}_i = w_i \cdot \mathrm{MRC}_i = w_i (\Sigma w)_i, \qquad
+  \sum_i \mathrm{RC}_i = \sigma_p^2(w).
+\]
+ERC seeks $w$ such that $\mathrm{RC}_i = \sigma_p^2(w) / n$ for all $i$, i.e.\ every
+instrument contributes the same fraction of total variance.
+
+\subsection{Solve Algorithm}
+
+The weights were found with a cyclical multiplicative-update algorithm (no
+\texttt{scipy.optimize} dependency, and no BLAS matrix-matrix multiply -- the
+$\Sigma w$ product is computed via elementwise broadcast-and-sum rather than \texttt{@}
+to avoid a known BLAS/LAPACK crash in this environment):
+
+\begin{align*}
+  w^{(0)}_i &= 1/n \\
+  \mathrm{MRC}^{(k)} &= \Sigma w^{(k)} \quad \text{(elementwise broadcast + row sum)} \\
+  \mathrm{RC}^{(k)}_i &= w^{(k)}_i \cdot \mathrm{MRC}^{(k)}_i \\
+  \mathrm{target}^{(k)} &= \frac{1}{n}\sum_i \mathrm{RC}^{(k)}_i \\
+  \tilde{w}^{(k+1)}_i &= w^{(k)}_i \sqrt{\mathrm{target}^{(k)} / \mathrm{RC}^{(k)}_i} \\
+  w^{(k+1)} &= \tilde{w}^{(k+1)} / \sum_i \tilde{w}^{(k+1)}_i
+\end{align*}
+
+iterated up to 2000 times, stopping when $\max_i \mathrm{RC}_i - \min_i \mathrm{RC}_i <
+10^{-8} \cdot \sigma_p^2(w)$.
+
+\textbf{Convergence:} the solve converged in \textbf{11 iterations}, well within the
+2000-iteration budget. At convergence the spread of risk contributions relative to
+target, $(\max_i \mathrm{RC}_i - \min_i \mathrm{RC}_i) / \mathrm{target}$, was
+$4.97 \times 10^{-8}$ -- effectively exact equalization of per-instrument risk
+contribution.
+
+\section{ERC Weights}
+
+\begin{table}[h]
+\centering
+\caption{ERC weights, sorted descending. Ratio column is $w_i / (1/14)$.}
+\begin{tabular}{lS[table-format=1.5]S[table-format=1.3]}
+\toprule
+Symbol & {Weight} & {Weight / (1/14)} \\
+\midrule
+USDSGD & 0.13622 & 1.907 \\
+USDCAD & 0.10944 & 1.532 \\
+EURUSD & 0.10283 & 1.440 \\
+EURNOK & 0.09940 & 1.392 \\
+USDCHF & 0.09032 & 1.265 \\
+GBPUSD & 0.07949 & 1.113 \\
+USDJPY & 0.07403 & 1.036 \\
+AUDUSD & 0.05938 & 0.831 \\
+NZDUSD & 0.05415 & 0.758 \\
+USDZAR & 0.05109 & 0.715 \\
+GER40  & 0.04096 & 0.573 \\
+US500  & 0.04008 & 0.561 \\
+HK50   & 0.03372 & 0.472 \\
+JP225  & 0.02888 & 0.404 \\
+\midrule
+Sum & 1.00000 & 14.000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+ERC concentrates weight in the lowest-variance G10 FX pairs (USDSGD, USDCAD, EURUSD,
+EURNOK, USDCHF) at roughly 1.1--1.9$\times$ the equal-weight allocation, and pulls
+weight away from the highest-variance instruments -- the equity indices (JP225, HK50,
+US500, GER40) and the more volatile crosses (NZDUSD, USDZAR, AUDUSD) -- down to
+roughly 0.4--0.8$\times$ equal weight.
+
+\section{Correlation Impact}
+
+\begin{table}[h]
+\centering
+\caption{Realized correlation and diversification impact, equal-weight vs.\ ERC.}
+\begin{tabular}{lS[table-format=1.6]S[table-format=1.6]}
+\toprule
+Metric & {Equal Weight} & {ERC} \\
+\midrule
+Weighted avg.\ pairwise correlation & 0.015615 & 0.014191 \\
+Diversification ratio (DR) & 2.080922 & 1.830624 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+ERC lowers the weighted average pairwise correlation slightly (0.0156 $\to$ 0.0142,
+a $\sim$9\% relative reduction) by tilting away from instruments that co-move more
+with the rest of the book. However, the diversification ratio \emph{falls}
+(2.081 $\to$ 1.831): DR rewards spreading weight across instruments with high
+\emph{standalone} volatility relative to the blended portfolio's volatility, and ERC
+does the opposite by design -- it deliberately down-weights the highest-standalone-vol
+instruments (equity indices, JP225/HK50/US500/GER40) to equalize their risk
+\emph{contribution}. The two diversification metrics move in opposite directions here.
+
+\section{Results}
+
+\begin{table}[h]
+\centering
+\caption{Quantstats metrics, equal-weight vs.\ ERC blend.}
+\begin{tabular}{lS[table-format=1.6]S[table-format=1.6]}
+\toprule
+Metric & {Equal Weight} & {ERC} \\
+\midrule
+Sharpe & 0.517941 & 0.311482 \\
+Sortino & 0.816977 & 0.487811 \\
+Calmar & 0.343017 & 0.191157 \\
+CAGR & 0.000183 & 0.000102 \\
+Max Drawdown (\%) & -5.325228 & -5.325228 \\
+Volatility (\%) & 3.527622 & 3.269655 \\
+Tail Ratio & 1.238689 & 1.114092 \\
+Ulcer Index & 0.000192 & 0.000183 \\
+Kelly Criterion & 0.066763 & 0.045890 \\
+VaR (\%) & -0.358268 & -0.334747 \\
+CVaR (\%) & -0.715011 & -0.733195 \\
+Skew & 1.544839 & 1.948282 \\
+Recovery Factor & 2.260123 & 1.259807 \\
+\midrule
+Win rate & 0.308850 & 0.304636 \\
+Best day & 0.000291 & 0.000291 \\
+Worst day & -0.000239 & -0.000239 \\
+Total return & 0.001204 & 0.000671 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Takeaway}
+
+ERC modestly reduces weighted average pairwise correlation (-9\% relative) but this
+does not translate into a better risk-adjusted portfolio: Sharpe falls from 0.518 to
+0.311, Sortino from 0.817 to 0.488, and total return drops by more than 40\%, while
+maximum drawdown is unchanged. The diversification ratio actually \emph{worsens}
+(2.081 $\to$ 1.831), because ERC's risk-contribution-equalizing objective directly
+conflicts with DR's standalone-volatility-weighted definition of diversification in
+this universe. On this data, equal weighting is the better blend -- ERC trades away
+return concentrated in the equity-index legs (which it underweights) for a small,
+not-obviously-worthwhile correlation reduction.
+
+\end{document}

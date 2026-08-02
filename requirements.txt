@@ -14,3 +14,4 @@ scikit-learn
 setuptools
 cot_reports
 ecbdata
+openpyxl

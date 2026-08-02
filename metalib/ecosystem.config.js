@@ -53,6 +53,20 @@ module.exports = {
     },
 
     // ============================================
+    // MetaFVG v2 Strategy (Spearman mean-reversion gate)
+    // Registered but not auto-started -- run
+    // `pm2 start ecosystem.config.js --only metafvg_v2` explicitly when ready.
+    // ============================================
+    {
+      name: "metafvg_v2",
+      script: "main_metafvg_v2.py",
+      cwd: "./mains",
+      ...commonConfig,
+      output: "./logs/metafvg_v2-out.log",
+      error: "./logs/metafvg_v2-error.log",
+    },
+
+    // ============================================
     // MetaGO Strategy
     // ============================================
     {

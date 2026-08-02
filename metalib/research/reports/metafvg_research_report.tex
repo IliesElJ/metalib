@@ -1,0 +1,610 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=2.2cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit}
+\usepackage{fancyhdr}
+\usepackage{longtable}
+\usepackage{float}
+
+\newcommand{\meaningpar}[1]{\par\noindent\textit{Meaning.} #1}
+\newcommand{\good}[1]{\textcolor{green!45!black}{#1}}
+\newcommand{\bad}[1]{\textcolor{red!55!black}{#1}}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small MetaFVG Spearman Mean-Reversion Gate --- Research Report}
+\fancyhead[R]{\small\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+
+\title{\vspace{-1.5em}MetaFVG: A Fair Value Gap Mean-Reversion Strategy\\[4pt]
+\large Signal Construction, Risk Management, and Portfolio-Level Backtest Results}
+\author{Research notes --- \texttt{metalib/research/}}
+\date{Reference setup: HTF = 4h, LTF = M15, equal-weight 14-instrument portfolio, fixed 2\% notional sizing\\
+5-year backtest window ending July 2026}
+
+\begin{document}
+\maketitle
+\vspace{-1em}
+
+\begin{abstract}
+\noindent MetaFVG is a Fair Value Gap (FVG) strategy that trades higher-timeframe (HTF) liquidity
+imbalances confirmed by lower-timeframe (LTF) momentum. This report documents the
+\emph{mean-reversion} variant: a rolling Spearman rank-correlation gate on HTF closes that, when its
+sign \emph{disagrees} with a detected FVG zone's own directional bias, redirects the trade (both the
+LTF confirmation and the trade parameters) to follow the disagreeing signal instead of the zone. The
+strategy is backtested across a 14-instrument universe assembled to be diversified by fundamental
+macro driver (7 FX Majors, 4 equity indices from different central banks, 3 additional FX minors),
+blended with equal weights. Over a 5-year window the equal-weight portfolio achieves a Sharpe ratio
+of $0.518$ (Sortino $0.817$, Calmar $0.343$) with realized average pairwise correlation between
+instruments' \emph{traded P\&L} of only $0.0156$ --- an order of magnitude below the underlying
+instruments' raw price-return correlation. A companion study testing four correlation-aware,
+non-equal-weight allocation schemes (inverse-volatility, equal risk contribution, hierarchical risk
+parity, inverse average-correlation) found none improved on equal weighting's Sharpe; the results are
+summarized in \S\ref{sec:weighting} and detailed in full in \texttt{weighting\_schemes/comparison\_summary.pdf}.
+\end{abstract}
+
+\tableofcontents
+
+\section{Introduction}
+Fair Value Gaps are three-candle price imbalances left behind by impulsive moves: a gap between the
+high (or low) of one candle and the low (or high) of a candle two bars later that the middle candle's
+range never covers. The working hypothesis behind MetaFVG is that price revisiting such a gap on a
+higher timeframe is a meaningful liquidity/inefficiency event worth conditioning a trade on, provided
+a lower-timeframe momentum pattern confirms the move is actually underway at entry time.
+
+The variant documented here layers a second, independent signal on top of the raw FVG zone: a rolling
+Spearman rank-correlation statistic computed on HTF closes. Rather than using this purely as an
+agree/reject filter on the zone's own direction, the \emph{mean-reversion} configuration takes the
+gate's sign as authoritative whenever it disagrees with the zone: the trade, its LTF confirmation, and
+its risk parameters all pivot to follow the gate, not the zone. This report documents the full signal
+pipeline (\S\ref{sec:methodology}--\ref{sec:diagram}), the instrument universe and the rationale for
+its construction (\S\ref{sec:universe}), the backtest methodology (\S\ref{sec:data}), and portfolio-
+and instrument-level results (\S\ref{sec:results}--\ref{sec:persymbol}), before a parameter sensitivity
+sweep (\S\ref{sec:sensitivity}), a follow-up test of the outperforming configurations it surfaced
+(\S\ref{sec:outperforming}), a correlation-aware position-sizing study (\S\ref{sec:weighting}), and
+closing with limitations (\S\ref{sec:limitations}).
+
+\section{Strategy Methodology}
+\label{sec:methodology}
+
+\subsection{HTF Fair Value Gap Detection}
+On the HTF (4h) series, a bullish FVG is registered at bar $i$ when
+$\mathrm{low}_{i+1} > \mathrm{high}_{i-1}$, with zone bounds $[\mathrm{high}_{i-1},\,\mathrm{low}_{i+1}]$;
+a bearish FVG is the mirror condition, $\mathrm{high}_{i+1} < \mathrm{low}_{i-1}$, zone
+$[\mathrm{high}_{i+1},\,\mathrm{low}_{i-1}]$. The HTF series itself is produced by a \emph{causal}
+resample of the underlying LTF data (\texttt{label=`right'}, \texttt{closed=`left'}): a 4h bucket's
+close is only attributed to a bar once the full 4 hours have elapsed, which rules out a bucket's own
+future close leaking into zone detection before that bar has actually finished forming.
+
+\subsection{Zone Filtering}
+Raw FVG zones are filtered on two criteria before becoming tradeable:
+\begin{itemize}[nosep]
+  \item \textbf{Fill-\% threshold}: price must retrace into the zone by at least a configured
+  fraction of its height (\texttt{htf\_fill\_pct}) before the zone is considered ``live.''
+  \item \textbf{Max crossing count}: a zone that has been crossed by price more than
+  \texttt{max\_htf\_number\_crossings} times is treated as exhausted and dropped.
+\end{itemize}
+The current price is then checked against the surviving zone set on both sides (bullish and bearish);
+if it sits inside a filtered zone, that zone's polarity implies a candidate direction
+$d\in\{+1,-1\}$ ($+1$ bullish, $-1$ bearish).
+
+\subsection{Spearman Mean-Reversion Gate}
+A rolling Spearman rank correlation is computed on the trailing $w$-bar (default $w=20$) window of
+HTF closes:
+\[
+\rho_t = 1 - \frac{6\sum_t d_t^2}{w(w^2-1)}, \qquad d_t = \operatorname{rank}(c_t) - t
+\]
+\meaningpar{$\operatorname{rank}(c_t)$ is the close price's rank (1st-smallest, \dots, $w$-th-smallest)
+within the window; $t$ is already the bar's rank in time. $d_t$ is the gap between ``where this bar
+ranks by price'' and ``where it ranks by time.'' $\rho_t \in [-1,1]$ summarizes that agreement:
+$+1$ means price rank and time rank move together perfectly (a monotonic uptrend, any shape), $-1$
+means perfectly monotonic down, $0$ means no consistent ordering.}
+
+Let $d$ be the candidate direction implied by the HTF zone (as above). Define the \textbf{target
+direction} under the mean-reversion configuration as
+\[
+d_{\text{target}} = \begin{cases} d & \text{trend-following configuration} \\ -d &
+\text{mean-reversion configuration (\texttt{invert\_direction=True})} \end{cases}
+\]
+The gate accepts a signal iff
+\[
+\operatorname{sign}(\rho_t) = d_{\text{target}} \quad \text{and} \quad |\rho_t| \ge \tau_\rho
+\]
+\textbf{This report's setup uses the mean-reversion configuration exclusively.} The critical
+implementation detail --- and the point on which an earlier iteration of this backtest was
+incorrect --- is that $d_{\text{target}}$, not the original zone direction $d$, propagates
+downstream: both the LTF momentum confirmation (\S\ref{sec:ltf}) and the trade parameterization
+(\S\ref{sec:params}) are computed in the direction of $d_{\text{target}}$. The trade is a genuine bet
+on the rank-correlation signal overriding the zone, not merely a zone-direction trade that happens to
+require gate agreement.
+
+\subsection{LTF Momentum Confirmation}
+\label{sec:ltf}
+Once a gate-accepted $d_{\text{target}}$ exists, the last three M15 bars are scanned for a
+``momentum FVG'' pattern (\texttt{detect\_fvg\_momentum\_tres\_strong}) in that same direction --- a
+stricter, more immediate three-candle imbalance pattern than the HTF zone detector, used purely as
+an entry-timing trigger. Absent confirmation, the signal is rejected and the pipeline waits for the
+next bar.
+
+\subsection{Trade Parameterization}
+\label{sec:params}
+On confirmation, trade parameters are set as:
+\[
+\text{Entry} = \text{momentum-FVG gap boundary}, \qquad
+\text{SL} = \text{last confirmed LTF swing pivot (structural)},
+\]
+\[
+\text{TP} = \text{Entry} \pm \mathrm{ATR}_{14}\times\text{sensitivity}\times\text{risk\_reward}
+\]
+SL is therefore a structural level (the most recent confirmed pivot on the LTF series), not a fixed
+distance; TP is an ATR-scaled multiple of the risk implied by that structural stop. An order is placed
+as a pending limit at Entry and expires if unfilled by end of day.
+
+\subsection{Position Sizing}
+\label{sec:sizing}
+Two sizing conventions were implemented and tested: \textbf{fixed notional} (a constant 2\% of account
+equity per trade, used exclusively in this report) and \textbf{risk-normalized} (position size derived
+from \texttt{risk\_fraction / stop\_distance\_pct}, capped). Risk-normalized sizing was tested on the
+same 14-instrument universe and found to \emph{reduce} blended Sharpe relative to fixed notional
+(0.260 vs.\ 0.518); this report therefore documents the fixed-notional configuration throughout.
+
+\clearpage
+\section{Signal and Execution Pipeline}
+\label{sec:diagram}
+Figure~\ref{fig:pipeline} traces the full decision path from data ingestion through trade closure.
+
+\begin{figure}[p]
+\centering
+\resizebox{!}{0.93\textheight}{%
+\begin{tikzpicture}[
+    font=\footnotesize,
+    node distance=0.45cm and 1.6cm,
+    proc/.style={rectangle, rounded corners=2pt, draw=blue!55!black, fill=blue!5, thick, text width=9.8cm, align=center, minimum height=1.0cm, inner sep=4pt},
+    fix/.style={rectangle, rounded corners=2pt, draw=green!45!black, fill=green!5, thick, text width=9.8cm, align=center, minimum height=1.0cm, inner sep=4pt},
+    risk/.style={rectangle, rounded corners=2pt, draw=violet!55!black, fill=violet!6, thick, text width=9.8cm, align=center, minimum height=1.1cm, inner sep=4pt},
+    dec/.style={diamond, draw=orange!80!black, fill=orange!12, thick, text width=5.6cm, align=center, inner sep=2pt, aspect=2.6},
+    side/.style={rectangle, rounded corners=2pt, draw=gray!70, fill=gray!5, text width=2.5cm, align=center, minimum height=0.8cm, inner sep=3pt, font=\scriptsize},
+    term_l/.style={rectangle, rounded corners=2pt, draw=red!60!black, fill=red!10, thick, text width=4.3cm, align=center, minimum height=1.0cm, inner sep=3pt},
+    term_w/.style={rectangle, rounded corners=2pt, draw=green!55!black, fill=green!8, thick, text width=4.3cm, align=center, minimum height=1.0cm, inner sep=3pt},
+    arr/.style={-{Latex[length=2mm, width=1.6mm]}, thick},
+    noarr/.style={-{Latex[length=1.8mm, width=1.4mm]}, thick, red!70!black},
+]
+
+\node[proc] (fetch) {Fetch HTF (4h) + LTF (M15) OHLC from MT5};
+\node[fix, below=of fetch] (resample) {Resample HTF: \texttt{label='right'}, \texttt{closed='left'} (causal)};
+\node[proc, below=of resample] (detect) {Detect HTF Fair Value Gap zones (3-candle imbalance)};
+\node[proc, below=of detect] (filter) {Filter zones: fill-\% threshold + max crossing count};
+\node[dec, below=0.55cm of filter] (inzone) {Price inside a filtered HTF zone? $\rightarrow$ zone direction $d \in \{+1,-1\}$};
+\node[side, right=of inzone] (wait) {Wait for next HTF bar};
+\node[dec, below=0.7cm of inzone] (gate) {Spearman Gate: $\rho_t$ (window 20) on HTF close. $\mathrm{sign}(\rho_t) = d_{\text{target}}$ AND $|\rho_t|\ge\tau_\rho$?};
+\node[side, right=of gate] (reject1) {Reject signal};
+\node[dec, below=0.7cm of gate] (ltf) {LTF momentum confirms $d_{\text{target}}$? (3 M15 bars)};
+\node[side, right=of ltf] (reject2) {Reject signal};
+\node[proc, below=0.55cm of ltf] (params) {Set trade parameters: Entry / SL / TP};
+\node[proc, below=of params] (order) {Place pending limit order at Entry};
+\node[dec, below=0.55cm of order] (fill) {Price reaches Entry before end-of-day?};
+\node[side, right=of fill] (expire) {Order expires};
+\node[risk, below=0.55cm of fill] (size) {Position sized: fixed notional (this report) or risk-normalized};
+\node[dec, below=0.55cm of size] (exit) {Price hits SL or TP first?};
+\node[term_l, below left=0.7cm and 0.6cm of exit] (loss) {Closed: Loss (SL hit) --- structural pivot stop};
+\node[term_w, below right=0.7cm and 0.6cm of exit] (win) {Closed: Win (TP hit) --- ATR-scaled target};
+
+\draw[arr] (fetch) -- (resample);
+\draw[arr] (resample) -- (detect);
+\draw[arr] (detect) -- (filter);
+\draw[arr] (filter) -- (inzone);
+\draw[noarr] (inzone) -- node[above,font=\scriptsize]{no} (wait);
+\draw[arr] (inzone) -- (gate);
+\draw[noarr] (gate) -- node[above,font=\scriptsize]{no} (reject1);
+\draw[arr] (gate) -- (ltf);
+\draw[noarr] (ltf) -- node[above,font=\scriptsize]{no} (reject2);
+\draw[arr] (ltf) -- (params);
+\draw[arr] (params) -- (order);
+\draw[arr] (order) -- (fill);
+\draw[noarr] (fill) -- node[above,font=\scriptsize]{no} (expire);
+\draw[arr] (fill) -- (size);
+\draw[arr] (size) -- (exit);
+\draw[noarr] (exit) -| (loss);
+\draw[arr] (exit) -| (win);
+
+\end{tikzpicture}%
+}
+\caption{MetaFVG signal generation and risk management pipeline, mean-reversion configuration
+($d_{\text{target}}=-d$). Orange diamonds are gate/decision points; red edges are rejection paths.}
+\label{fig:pipeline}
+\end{figure}
+
+\section{Instrument Universe and Fundamental Diversification}
+\label{sec:universe}
+The backtest universe comprises 14 instruments, selected to be diversified by \emph{fundamental
+macro driver} rather than by statistical decorrelation alone:
+\begin{itemize}[nosep]
+  \item \textbf{7 FX Majors}: AUDUSD, EURUSD, GBPUSD, NZDUSD, USDCAD, USDCHF, USDJPY.
+  \item \textbf{4 equity indices, each under a different central bank}: US500 (Federal Reserve),
+  GER40 (ECB), JP225 (Bank of Japan), HK50 (Hong Kong Monetary Authority / PBoC linkage).
+  \item \textbf{3 additional FX minors}: USDSGD, EURNOK, USDZAR --- chosen as genuinely new
+  currency exposures (Singapore, Norway, South Africa) rather than recombinations of the 7 majors.
+\end{itemize}
+The rationale is explicit: the 7 FX Majors alone share a single dominant common factor (broad USD
+strength / risk sentiment) --- their \emph{raw price-return} correlations run $0.3$--$0.9$ in absolute
+value once sign convention is accounted for (majors quoting USD as the counter currency move together;
+majors quoting it as the base currency move opposite). Adding equity indices under different central
+banks and FX minors with no shared currency leg among the existing set is intended to break that single-
+factor exposure at the instrument-selection stage, before any portfolio weighting is applied.
+
+\section{Data and Backtest Methodology}
+\label{sec:data}
+Historical OHLC data is sourced from MetaTrader 5 for all 14 instruments, at M15 (LTF) resolution,
+with the HTF (4h) series derived by causal resampling as described in \S\ref{sec:methodology}. The
+backtest window spans a 5-year lookback ending July 2026; the blended portfolio's first valid daily
+observation is 2022-01-13, once sufficient indicator lookback has accumulated across all 14
+instruments. Trades are simulated bar-by-bar: pending limit orders are checked for fill against each
+subsequent bar's range, and open positions are checked for SL/TP resolution on every bar thereafter,
+with SL evaluated before TP on any bar where both levels are contained in the same bar's range (a
+conservative assumption). All results in this report use \textbf{fixed 2\% notional} sizing per trade
+(\S\ref{sec:sizing}). Portfolio-level daily returns are computed as the equal-weighted average, across
+whichever instruments have a closed trade on a given day, of each instrument's daily P\&L as a fraction
+of account equity; days with no closed trades across the entire universe are excluded.
+
+\section{Portfolio Results}
+\label{sec:results}
+Table~\ref{tab:metrics} reports the standard performance summary for the equal-weight blended
+portfolio. Figure~\ref{fig:equity} shows cumulative equity; Figure~\ref{fig:drawdown} shows the
+underwater (drawdown) plot.
+
+\begin{table}[H]
+\centering
+\caption{Equal-weight portfolio performance summary, 5-year backtest, fixed 2\% notional sizing.}
+\label{tab:metrics}
+\begin{tabular}{lr}
+\toprule
+Metric & Value \\
+\midrule
+Total Return & $+0.120\%$ \\
+CAGR & $+0.0183\%$ \\
+Sharpe (daily, annualized) & $0.518$ \\
+Sortino & $0.817$ \\
+Calmar & $0.343$ \\
+Max Drawdown & $-0.0533\%$ \\
+Annualized Volatility & $0.0353\%$ \\
+Win Rate (days) & $30.89\%$ \\
+Best Day & $+0.0291\%$ \\
+Worst Day & $-0.0239\%$ \\
+Skew & $1.545$ \\
+Tail Ratio & $1.239$ \\
+Kelly Criterion & $0.0668$ \\
+VaR (95\%) & $-0.0036\%$ \\
+CVaR (95\%) & $-0.0072\%$ \\
+Recovery Factor & $2.260$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{equal_weight_full/equity_curve.png}
+\caption{Equal-weight portfolio cumulative equity (starting value $=1.0$).}
+\label{fig:equity}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{equal_weight_full/drawdown.png}
+\caption{Equal-weight portfolio underwater plot.}
+\label{fig:drawdown}
+\end{figure}
+
+The return series is markedly positively skewed ($1.545$) with a favorable tail ratio ($1.239$),
+consistent with a strategy structured around asymmetric ATR-scaled targets against structural stops
+rather than a fixed reward-to-risk ratio. The low day-level win rate ($30.89\%$) alongside a positive
+Sharpe indicates the edge is concentrated in the size of winning days, not their frequency ---
+expected given the sparse, non-overlapping nature of trade timing across the 14-instrument book (see
+\S\ref{sec:correlation}).
+
+\section{Correlation and Diversification Analysis}
+\label{sec:correlation}
+Figure~\ref{fig:rollcorr} shows the rolling 180-calendar-day average pairwise Pearson correlation
+across the 14 instruments' \emph{daily strategy P\&L} (not raw price returns), stepped every 14 days
+with a minimum of 15 overlapping observations per pair. Figure~\ref{fig:heatmap} shows the full-sample
+static correlation matrix.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{equal_weight_full/rolling_correlation.png}
+\caption{Rolling 180-day average pairwise correlation of traded daily P\&L across the 14-instrument
+universe. Dotted line is the full-sample average ($0.0156$).}
+\label{fig:rollcorr}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.78\textwidth]{equal_weight_full/correlation_heatmap.png}
+\caption{Full-sample pairwise correlation matrix of the 14 instruments' traded daily P\&L.}
+\label{fig:heatmap}
+\end{figure}
+
+Two findings are worth separating. First, the \emph{level}: realized correlation between traded P\&L
+streams ($0.0156$ average) is roughly an order of magnitude below the underlying instruments' raw
+price-return correlation (\S\ref{sec:universe}, $0.3$--$0.9$ in absolute value for the FX Majors
+alone). This gap is driven less by the fundamental-driver diversification of \S\ref{sec:universe} than
+by the strategy's own sparse, largely non-overlapping trade timing across instruments --- each
+instrument only contributes a return on days it has a closed trade, and those days rarely coincide
+across the book. Second, the \emph{trend}: rolling correlation is not stationary. It falls to
+near-zero (and briefly negative) through 2023--2025 before rising to roughly $0.03$--$0.04$ by
+mid-2026 --- still low in absolute terms, but a genuine regime shift worth monitoring rather than a
+fixed structural property of the book (\S\ref{sec:limitations}).
+
+\section{Per-Symbol Performance}
+\label{sec:persymbol}
+Table~\ref{tab:persymbol} reports standalone performance for each instrument's own trade stream.
+Equal weighting means every instrument contributes $1/14$ of portfolio capital regardless of its
+standalone Sharpe; six of the fourteen have a negative standalone Sharpe.
+
+\begin{table}[H]
+\centering
+\caption{Per-symbol standalone performance, fixed 2\% notional sizing, sorted by Sharpe.}
+\label{tab:persymbol}
+\begin{tabular}{lrrrrr}
+\toprule
+Symbol & Closed Trades & Win Rate & Sharpe & Max DD & Total Return \\
+\midrule
+NZDUSD & 352 & 28.7\% & \good{$1.141$} & 9.86\% & $+0.333\%$ \\
+GBPUSD & 331 & 31.7\% & \good{$1.092$} & 19.42\% & $+0.213\%$ \\
+HK50   & 347 & 28.2\% & \good{$0.958$} & 20.31\% & $+0.588\%$ \\
+US500  & 399 & 28.6\% & \good{$0.806$} & 15.94\% & $+0.350\%$ \\
+AUDUSD & 345 & 24.9\% & \good{$0.799$} & 12.84\% & $+0.250\%$ \\
+JP225  & 362 & 29.3\% & \good{$0.541$} & 29.92\% & $+0.369\%$ \\
+USDCHF & 339 & 25.7\% & \good{$0.476$} & 11.22\% & $+0.099\%$ \\
+USDJPY & 340 & 25.6\% & \bad{$-0.130$} & 16.43\% & $-0.031\%$ \\
+EURNOK & 241 & 22.0\% & \bad{$-0.305$} & 17.07\% & $-0.077\%$ \\
+GER40  & 384 & 24.2\% & \bad{$-0.476$} & 31.66\% & $-0.195\%$ \\
+USDCAD & 347 & 22.8\% & \bad{$-0.477$} & 15.03\% & $-0.084\%$ \\
+USDZAR & 359 & 20.6\% & \bad{$-0.609$} & 38.70\% & $-0.221\%$ \\
+EURUSD & 374 & 20.9\% & \bad{$-0.634$} & 17.04\% & $-0.111\%$ \\
+USDSGD & 319 & 18.5\% & \bad{$-0.691$} & 16.89\% & $-0.102\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The negative-Sharpe leg is dominated by USD-quote-as-base pairs (USDJPY, USDCAD, USDZAR, USDSGD) and
+GER40; the positive-Sharpe leg spans both FX (NZDUSD, GBPUSD, AUDUSD, USDCHF) and equity indices
+(HK50, US500, JP225). This is not obviously attributable to a single macro grouping, which is itself
+weak evidence against the mean-reversion edge being a single latent factor trade in disguise.
+
+\section{Parameter Sensitivity Analysis}
+\label{sec:sensitivity}
+To assess how robust the headline result (\S\ref{sec:results}) is to the exact choice of gate and
+risk parameters, the equal-weight 14-instrument portfolio Sharpe was recomputed across a grid of
+alternate configurations, holding everything else at the report's baseline values
+($w=20$, $\tau_\rho=0.5$, ATR sensitivity $=4.0$).
+
+\subsection{Spearman Gate: Window and Threshold}
+Figure~\ref{fig:heatmap-gate} sweeps the rolling window $w\in\{10,15,20,25,30\}$ against the gate
+threshold $\tau_\rho\in\{0.3,\ldots,0.7\}$, a $5\times5$ grid of full portfolio backtests. The
+baseline cell ($w=20$, $\tau_\rho=0.5$) is outlined.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{equal_weight_full/sensitivity_window_threshold_heatmap.png}
+\caption{Equal-weight portfolio Sharpe across the Spearman gate's window/threshold grid.}
+\label{fig:heatmap-gate}
+\end{figure}
+
+The surface is positive across most of the grid ($18$ of $25$ cells $>0$), which is the main
+robustness claim: the mean-reversion edge is not a knife-edge artifact of the specific $(20, 0.5)$
+choice. That said, two patterns are worth flagging rather than smoothing over. First, short windows
+are fragile: $w=10$ is the only row that goes decisively negative, and does so across three of five
+thresholds ($\tau_\rho\ge0.5$) --- a 10-bar rank-correlation window is evidently too noisy to gate
+reliably at stricter thresholds. Second, and more strikingly, the baseline is \emph{not} the grid
+optimum: $w=25,\ \tau_\rho=0.4$ reaches Sharpe $0.777$, well above the baseline's $0.536$
+(recomputed on this sweep's slightly different data snapshot; \S\ref{sec:sensitivity-note}), and the
+entire $w=25$ row outperforms $w=20$ at every threshold except $0.5$. This was not re-optimized into
+a new baseline for this report --- doing so on the same sample that produced the sweep would be
+in-sample parameter selection, exactly the failure mode flagged for the current $(20,0.5)$ choice in
+\S\ref{sec:limitations}. It is presented here as evidence for a follow-up out-of-sample recalibration,
+not as a superior configuration to adopt directly.
+
+\subsection{ATR Sensitivity}
+Figure~\ref{fig:atr-line} sweeps ATR sensitivity (the multiplier on ATR$_{14}$ in the TP formula,
+\S\ref{sec:params}) from $2.0$ to $6.0$, holding risk\_reward fixed at its default ($2.0$). The two
+parameters are not swept independently: TP depends only on their product
+($\mathrm{TP}=\text{Entry}\pm\mathrm{ATR}_{14}\times\text{atr\_sensitivity}\times\text{risk\_reward}$,
+\texttt{metafvg.py::\_calculate\_trade\_parameters}), so a 2D grid over both would repeat identical
+trades along every constant-product diagonal; sweeping one with the other fixed is the non-redundant
+version of the same test.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{equal_weight_full/sensitivity_atr_line.png}
+\caption{Equal-weight portfolio Sharpe vs.\ ATR sensitivity, risk\_reward fixed at $2.0$.}
+\label{fig:atr-line}
+\end{figure}
+
+This relationship is monotonic and considerably steeper than the gate parameters: Sharpe falls from
+$0.801$ at atr\_sensitivity $=2.0$ to $0.112$ at $=6.0$, roughly a $7\times$ range against the gate
+grid's mixed-sign but comparatively narrower spread. Tighter, ATR-scaled targets outperform wider ones
+throughout the tested range, with no evidence of an interior optimum above the baseline -- the best
+value tested is the smallest one. This is the single largest lever tested in this report and the
+strongest candidate for follow-up work: the current default ($4.0$) is not obviously optimal, and the
+monotonic trend suggests values below $2.0$ merit testing before concluding where it flattens out.
+
+\subsection{A Note on This Sweep's Data Snapshot}
+\label{sec:sensitivity-note}
+The OHLC cache underlying this section was fetched on a different day than the cache behind
+\S\ref{sec:results}--\ref{sec:persymbol} (a few days' difference in the trailing 5-year window
+boundary). Recomputing the exact baseline cell on this sweep's snapshot gives Sharpe $0.536$ against
+the $0.518$ reported in Table~\ref{tab:metrics} --- a $3.5\%$ relative difference, consistent with
+ordinary sampling noise from the shifted window rather than a discrepancy in methodology.
+
+\section{Exploring Outperforming Parameter Sets}
+\label{sec:outperforming}
+Both axes of \S\ref{sec:sensitivity} turned up configurations that outperformed the baseline on the
+sweep's own Sharpe metric: $w=25,\ \tau_\rho=0.4$ on the gate side, and atr\_sensitivity $=2.0$ on the
+risk side. This section takes those two findings further than the sweep did: it backtests each
+standout in isolation, and also backtests the two \emph{combined} into a single configuration, to see
+whether their effects stack, cancel, or overlap. All four configurations below (baseline plus three
+variants) were backtested on the identical OHLC snapshot, so differences are attributable purely to
+the parameter changes, not to the snapshot-day noise discussed in \S\ref{sec:sensitivity-note}.
+
+\begin{table}[H]
+\centering
+\caption{Baseline vs.\ outperforming variants, equal-weight 14-instrument portfolio, identical data
+snapshot.}
+\label{tab:variants}
+\begin{tabular}{lccccccc}
+\toprule
+Configuration & $w$ & $\tau_\rho$ & ATR sens. & Sharpe & Sortino & Calmar & Max DD \\
+\midrule
+Baseline & 20 & 0.5 & 4.0 & 0.536 & 0.851 & 0.353 & $-0.0533\%$ \\
+Best Gate & 25 & 0.4 & 4.0 & 0.777 & 1.324 & 0.433 & $-0.0796\%$ \\
+Best ATR & 20 & 0.5 & 2.0 & 0.801 & 1.407 & 0.563 & $-0.0380\%$ \\
+\textbf{Combined Mix} & 25 & 0.4 & 2.0 & \textbf{0.910} & \textbf{1.647} & \textbf{0.787} & $-0.0318\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{equal_weight_full/variant_equity_comparison.png}
+\caption{Equal-weight portfolio equity: baseline vs.\ the three outperforming variants.}
+\label{fig:variant-equity}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{equal_weight_full/variant_drawdown_comparison.png}
+\caption{Equal-weight portfolio drawdown: baseline vs.\ the three outperforming variants.}
+\label{fig:variant-drawdown}
+\end{figure}
+
+The two levers stack rather than overlap: Combined Mix's Sharpe ($0.910$) exceeds both single-lever
+variants (Best Gate $0.777$, Best ATR $0.801$), and its Calmar ($0.787$) is comfortably the best of the
+four, with the shallowest max drawdown ($-0.0318\%$). This is evidence the gate parameters and the ATR
+sensitivity are addressing genuinely different sources of variance in the strategy, not both proxying
+for the same underlying effect.
+
+A less obvious result is visible in Figure~\ref{fig:variant-equity}: \textbf{Best Gate has the highest
+raw total return of the four} ($+0.227\%$ vs.\ Combined Mix's $+0.165\%$) but the \emph{lowest}
+risk-adjusted ranking among the three variants, because it also carries the highest volatility
+($0.0443\%$ annualized vs.\ Combined Mix's $0.0275\%$) and the deepest drawdown of any configuration
+tested in this section. Total return and Sharpe do not agree on a winner here --- which one matters
+depends on whether the objective is raw return or risk-adjusted return, and this report optimizes for
+the latter throughout (matching the convention used for every other comparison in this document, e.g.\
+\S\ref{sec:weighting}).
+
+\textbf{This is not a new recommended baseline.} Combined Mix was found by taking the best cell from a
+sweep and the best point from a line, both evaluated on the same sample now used to declare a winner
+--- exactly the in-sample selection risk already flagged in \S\ref{sec:limitations} for the current
+$(20, 0.5, 4.0)$ baseline, now compounded across two dimensions instead of one. The honest reading is
+that this section demonstrates the strategy has \emph{more} headroom than the baseline captures, not
+that Combined Mix is the configuration to trade live. An out-of-sample or walk-forward validation of
+$(25, 0.4, 2.0)$ specifically is the natural next step before treating it as anything more than a
+promising candidate.
+
+\section{Alternative Weighting Schemes}
+\label{sec:weighting}
+A companion study tested whether replacing equal weighting with a correlation-aware allocation could
+reduce realized portfolio correlation further without giving up risk-adjusted return. Four schemes
+were tested: \textbf{Inverse-Volatility} (naive risk parity, $w_i \propto 1/\sigma_i$), \textbf{Equal
+Risk Contribution} (true risk parity via the full covariance matrix), \textbf{Hierarchical Risk
+Parity} (correlation-distance clustering with recursive bisection), and \textbf{Inverse
+Average-Correlation} ($w_i \propto 1/\bar\rho_i$, the most literal targeting of low correlation).
+Table~\ref{tab:weighting} summarizes the outcome; full detail, including per-scheme weight tables and
+convergence diagnostics, is in \texttt{weighting\_schemes/comparison\_summary.pdf}.
+
+\begin{table}[H]
+\centering
+\caption{Weighting scheme comparison, ranked by Sharpe. Wtd.\ Avg.\ Corr.\ and Diversification Ratio
+(DR) are computed under each scheme's own weight vector.}
+\label{tab:weighting}
+\begin{tabular}{lccccc}
+\toprule
+Scheme & Wtd.\ Avg.\ Corr. & DR & Sharpe & Sortino & Calmar \\
+\midrule
+\textbf{Equal Weight (baseline)} & 0.0156 & 2.081 & \good{$\mathbf{0.518}$} & 0.817 & 0.343 \\
+Inverse Avg-Correlation & \textbf{0.0118} & \textbf{2.110} & \good{$0.483$} & 0.760 & 0.315 \\
+Inverse-Volatility & 0.0159 & 1.809 & \good{$0.321$} & 0.504 & 0.200 \\
+Equal Risk Contribution & 0.0142 & 1.831 & \good{$0.311$} & 0.488 & 0.191 \\
+Hierarchical Risk Parity & 0.0170 & 1.538 & \good{$0.170$} & 0.265 & 0.106 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+None of the four schemes improved on equal weighting's Sharpe. Three (Inverse-Volatility, ERC, HRP)
+allocate on standalone or covariance-implied variance and end up systematically defunding the equity
+indices --- precisely the instruments providing the book's real cross-asset diversification, since
+they are the ones least correlated with the FX legs --- which worsens both correlation and Sharpe
+simultaneously. Only \textbf{Inverse Average-Correlation}, which targets correlation directly rather
+than variance, improved both the weighted correlation and the diversification ratio, at a comparatively
+small Sharpe cost ($0.518\to0.483$, $-7\%$). The practical conclusion is that this portfolio's low
+realized correlation was earned upstream, by fundamental-driver instrument selection
+(\S\ref{sec:universe}) and by the strategy's own sparse trade timing (\S\ref{sec:correlation}), not by
+weighting --- equal weighting remains the recommended configuration for live use.
+
+\section{Limitations and Future Work}
+\label{sec:limitations}
+\begin{itemize}[nosep]
+  \item \textbf{Not live-traded.} All results are simulated against historical MT5 data; no live
+  slippage, requoting, or partial-fill behavior is modeled beyond the conservative SL-before-TP
+  same-bar assumption of \S\ref{sec:data}.
+  \item \textbf{Single data source.} All OHLC data comes from one MT5 broker feed; results have not
+  been cross-validated against an independent data vendor.
+  \item \textbf{Gate threshold calibrated in-sample.} $\tau_\rho$ and the rolling window $w=20$ were
+  calibrated on the FX Majors subset and carried over to the full 14-instrument universe without a
+  separate out-of-sample recalibration step; the sensitivity sweep of \S\ref{sec:sensitivity} finds a
+  higher-Sharpe cell elsewhere in the grid ($w=25,\ \tau_\rho=0.4$), which is evidence this concern is
+  live rather than theoretical.
+  \item \textbf{ATR sensitivity may not be optimally tuned.} \S\ref{sec:sensitivity} finds a
+  monotonic Sharpe improvement all the way down to the smallest value tested ($2.0$), with no interior
+  optimum found -- the current default ($4.0$) has not been shown to be a good choice, only a
+  historically-used one.
+  \item \textbf{Sparse per-instrument trade counts.} $241$--$399$ closed trades per instrument over 5
+  years ($\sim\!50$--$80$/year) is a modest sample for per-symbol Sharpe estimates in
+  Table~\ref{tab:persymbol}; the portfolio-level result in Table~\ref{tab:metrics} is more robust by
+  pooling across instruments.
+  \item \textbf{Non-stationary correlation.} The rolling correlation trend of \S\ref{sec:correlation}
+  rising toward $0.03$--$0.04$ into 2026 warrants monitoring --- a continued rise would erode the
+  diversification benefit the equal-weight conclusion of \S\ref{sec:weighting} currently rests on.
+  \item \textbf{Risk-normalized sizing underperforms fixed notional here} (\S\ref{sec:sizing}), which
+  is counterintuitive relative to typical portfolio theory and not fully explained; worth further
+  investigation before ruling it out for other configurations.
+\end{itemize}
+
+\section{Conclusion}
+The Spearman mean-reversion configuration of MetaFVG, blended equally across a 14-instrument,
+fundamentally-diversified universe, produces a Sharpe of $0.518$ with realized cross-instrument
+correlation an order of magnitude below the underlying instruments' structural correlation. That
+diversification benefit is attributable primarily to instrument selection and the strategy's own
+sparse trade timing rather than to portfolio weighting: four correlation-aware weighting schemes were
+tested and none improved on simple equal weighting. The strongest caveats are a rising rolling-
+correlation trend into 2026 and the fact that gate thresholds were calibrated on a subset of the full
+universe --- both flagged as priorities for follow-up work rather than settled findings.
+
+\appendix
+\section{Full Trade List}
+\label{sec:appendix-trades}
+Every closed trade from the baseline configuration ($w=20$, $\tau_\rho=0.5$, ATR sensitivity $=4.0$,
+fixed 2\% notional sizing, \S\ref{sec:results}), listed chronologically by entry time across all 14
+instruments. Entry, SL, TP, and Exit are raw price levels in each instrument's native quote units
+(not normalized across instruments); PnL is the raw price-difference return per unit
+($(\text{exit}-\text{entry})\times\text{direction}$, matching the definition in
+\texttt{metafvg\_backtest.py::Trade.pnl}), not a dollar or percent-of-equity figure. \textbf{No lot
+size / position size column is included}: this backtest engine has no concept of real MT5 lot or
+contract sizing at the individual-trade level anywhere in the codebase --- portfolio-level statistics
+throughout this report (Table~\ref{tab:metrics} onward) are computed from vectorbt's abstract
+\texttt{size\_type=`percent'} sizing (a fixed 2\% of current equity per trade, chosen for
+cross-instrument comparability of percentage-based statistics, not as a claim about real position
+sizing), and live trading (\texttt{metafvg.py}) uses a static, externally-configured lot size rather
+than a per-trade computed one. Direction (long/short) is recoverable from the price levels: SL $<$
+Entry $<$ TP indicates a long trade, SL $>$ Entry $>$ TP a short.
+
+\input{trades_appendix_table.tex}
+
+\end{document}

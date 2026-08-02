@@ -1,0 +1,140 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{siunitx}
+\usepackage{caption}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true, linkcolor=blue, urlcolor=blue}
+
+\title{Weighting Scheme: Inverse Volatility (Naive Risk Parity)}
+\author{MetaFVG Mean-Reversion Portfolio -- 14 Instruments}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Scheme Description}
+
+The portfolio blends 14 fundamentally diversified instruments (7 FX majors/crosses,
+4 equity indices, and 3 additional FX pairs spanning different central banks) trading
+a Spearman-gated MetaFVG mean-reversion strategy. The current production blend uses
+equal notional weights (\(1/14\) each). This report tests whether an
+\textbf{inverse-volatility} (naive risk-parity) weighting scheme improves realized
+diversification relative to equal weighting.
+
+Each instrument's own standalone daily-return volatility \(\sigma_i\) is computed over
+its own non-NaN trading days (days with no closed trade for that instrument are
+excluded from that instrument's own vol estimate). Weights are set inversely
+proportional to \(\sigma_i\), so instruments with lower standalone volatility receive
+higher weight -- equalizing each instrument's naive volatility contribution while
+completely ignoring the correlation structure between instruments:
+
+\begin{equation}
+w_i = \frac{1/\sigma_i}{\sum_{j=1}^{14} 1/\sigma_j}, \qquad
+\sigma_i = \operatorname{std}\big(\{r_{i,t} : r_{i,t} \neq \text{NaN}\}\big)
+\end{equation}
+
+On any given day, only instruments with a non-NaN return that day contribute; the
+scheme's weights are renormalized to sum to 1 over the subset of instruments trading
+that day before the weighted sum is taken. Days on which \emph{all} 14 instruments are
+NaN (no trade closed anywhere) are dropped from the blended series.
+
+\section{Weights}
+
+\begin{table}[h]
+\centering
+\caption{Inverse-volatility weights, sorted descending. Ratio column is
+\(w_i / (1/14)\), i.e.\ the multiple of the equal-weight allocation.}
+\begin{tabular}{lS[table-format=1.4]S[table-format=1.4]S[table-format=1.6]}
+\toprule
+Symbol & {Weight} & {Ratio to $1/14$} & {$\sigma_i$ (daily)} \\
+\midrule
+USDSGD & 0.1351 & 1.8917 & 0.000020 \\
+USDCAD & 0.1120 & 1.5679 & 0.000024 \\
+EURUSD & 0.1050 & 1.4705 & 0.000026 \\
+GBPUSD & 0.0890 & 1.2467 & 0.000030 \\
+EURNOK & 0.0839 & 1.1750 & 0.000032 \\
+USDCHF & 0.0834 & 1.1670 & 0.000032 \\
+USDJPY & 0.0709 & 0.9930 & 0.000038 \\
+AUDUSD & 0.0654 & 0.9157 & 0.000041 \\
+NZDUSD & 0.0571 & 0.7996 & 0.000047 \\
+USDZAR & 0.0495 & 0.6937 & 0.000054 \\
+GER40  & 0.0450 & 0.6304 & 0.000060 \\
+US500  & 0.0431 & 0.6037 & 0.000063 \\
+HK50   & 0.0311 & 0.4357 & 0.000087 \\
+JP225  & 0.0293 & 0.4095 & 0.000092 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Low-volatility FX pairs (USDSGD, USDCAD, EURUSD, GBPUSD) receive up to 1.9x the
+equal-weight allocation, while the higher-volatility equity indices (JP225, HK50)
+and equity/EM instruments are cut to roughly 0.4-0.6x equal weight.
+
+\section{Correlation Impact}
+
+\begin{table}[h]
+\centering
+\caption{Weighted average pairwise correlation and diversification ratio,
+equal-weight baseline vs.\ inverse-volatility scheme.}
+\begin{tabular}{lS[table-format=1.6]S[table-format=1.6]}
+\toprule
+Metric & {Equal Weight} & {Inverse Vol} \\
+\midrule
+Weighted avg.\ pairwise correlation & 0.015615 & 0.015947 \\
+Diversification ratio (DR)          & 2.080922 & 1.808789 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The diversification ratio is defined as \(\mathrm{DR} = \dfrac{\sum_i w_i \sigma_i}{\sigma_{\text{portfolio}}}\),
+where \(\sigma_{\text{portfolio}}\) is the standard deviation of the final blended
+daily-return series. Higher DR indicates more realized diversification benefit from
+combining the instruments.
+
+\section{Results}
+
+\begin{table}[h]
+\centering
+\caption{Quantstats risk/return metrics, equal-weight baseline vs.\ inverse-volatility scheme.}
+\begin{tabular}{lS[table-format=-1.4]S[table-format=-1.4]}
+\toprule
+Metric & {Equal Weight} & {Inverse Vol} \\
+\midrule
+Sharpe                  & 0.5179  & 0.3214 \\
+Sortino                 & 0.8170  & 0.5037 \\
+Calmar                  & 0.3430  & 0.2001 \\
+CAGR                    & 0.0002  & 0.0001 \\
+Max drawdown (\%)       & -5.3252 & -5.3252 \\
+Volatility (\%, ann.)   & 3.5276  & 3.3172 \\
+Tail ratio              & 1.2387  & 1.1027 \\
+Ulcer index             & 0.0002  & 0.0002 \\
+Kelly criterion         & 0.0668  & 0.0471 \\
+VaR (\%)                & -0.0036 & -0.0034 \\
+CVaR (\%)                & -0.0072 & -0.0076 \\
+Skew                    & 1.5448  & 1.9403 \\
+Recovery factor         & 2.2601  & 1.3186 \\
+\midrule
+Win rate                & 0.3089  & 0.3016 \\
+Best day                & 0.000291 & 0.000291 \\
+Worst day               & -0.000239 & -0.000239 \\
+Total return            & 0.001204 & 0.000702 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Takeaway}
+
+The inverse-volatility scheme did not improve realized diversification: the weighted
+average pairwise correlation was essentially unchanged (0.01595 vs.\ 0.01561, marginally
+\emph{worse}), and the diversification ratio actually fell from 2.08 to 1.81. This makes
+sense in hindsight -- inverse-vol weighting ignores the correlation matrix entirely and
+simply concentrates capital in the lowest-volatility instruments (USDSGD, USDCAD, EURUSD),
+which does nothing to reduce co-movement and instead reduces the effective breadth of the
+book. Sharpe dropped substantially, from 0.518 to 0.321 (-38\%), along with Sortino,
+Calmar, and recovery factor all deteriorating in tandem. Equal weighting remains the
+better scheme of the two tested here; naive risk parity is not a good fit for a portfolio
+that was already assembled for fundamental (not volatility-based) diversification.
+
+\end{document}

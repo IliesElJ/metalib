@@ -1,0 +1,23 @@
+\contentsline {section}{\numberline {1}Introduction}{2}{section.1}%
+\contentsline {section}{\numberline {2}Strategy Methodology}{2}{section.2}%
+\contentsline {subsection}{\numberline {2.1}HTF Fair Value Gap Detection}{2}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Zone Filtering}{2}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}Spearman Mean-Reversion Gate}{3}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.4}LTF Momentum Confirmation}{3}{subsection.2.4}%
+\contentsline {subsection}{\numberline {2.5}Trade Parameterization}{3}{subsection.2.5}%
+\contentsline {subsection}{\numberline {2.6}Position Sizing}{3}{subsection.2.6}%
+\contentsline {section}{\numberline {3}Signal and Execution Pipeline}{4}{section.3}%
+\contentsline {section}{\numberline {4}Instrument Universe and Fundamental Diversification}{4}{section.4}%
+\contentsline {section}{\numberline {5}Data and Backtest Methodology}{4}{section.5}%
+\contentsline {section}{\numberline {6}Portfolio Results}{4}{section.6}%
+\contentsline {section}{\numberline {7}Correlation and Diversification Analysis}{7}{section.7}%
+\contentsline {section}{\numberline {8}Per-Symbol Performance}{8}{section.8}%
+\contentsline {section}{\numberline {9}Parameter Sensitivity Analysis}{9}{section.9}%
+\contentsline {subsection}{\numberline {9.1}Spearman Gate: Window and Threshold}{9}{subsection.9.1}%
+\contentsline {subsection}{\numberline {9.2}ATR Sensitivity}{10}{subsection.9.2}%
+\contentsline {subsection}{\numberline {9.3}A Note on This Sweep's Data Snapshot}{11}{subsection.9.3}%
+\contentsline {section}{\numberline {10}Exploring Outperforming Parameter Sets}{11}{section.10}%
+\contentsline {section}{\numberline {11}Alternative Weighting Schemes}{13}{section.11}%
+\contentsline {section}{\numberline {12}Limitations and Future Work}{14}{section.12}%
+\contentsline {section}{\numberline {13}Conclusion}{14}{section.13}%
+\contentsline {section}{\numberline {A}Full Trade List}{14}{appendix.A}%

@@ -1,0 +1,82 @@
+\documentclass[11pt]{article}
+\usepackage[margin=2.2cm]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{caption}
+\title{\bfseries Non-Equal-Weight Risk Allocation \\ Cross-Scheme Comparison}
+\author{MetaFVG -- Spearman Mean-Reversion -- 14-Instrument Diversified Portfolio}
+\date{Fixed 2\% Notional Sizing, 5-Year Sample}
+\begin{document}
+\maketitle
+
+\section*{Motivation}
+The 14-instrument book (7 FX Majors + US500/GER40/JP225/HK50 + USDSGD/EURNOK/USDZAR) was assembled to be fundamentally diversified and is currently blended with equal weights (1/14 each), realizing an average pairwise correlation of \textbf{0.0156} and a Sharpe of \textbf{0.518}. This report tests whether replacing equal weighting with a correlation-aware allocation scheme can push realized correlation down further without giving up risk-adjusted return. Four schemes were tested, each with its own detailed report in this directory: \texttt{inverse\_vol.pdf}, \texttt{erc.pdf}, \texttt{hrp.pdf}, \texttt{inverse\_avg\_corr.pdf}.
+
+\section*{Headline Result}
+\textbf{None of the four schemes beat equal weighting on Sharpe.} Only one (Inverse Average-Correlation) reduced realized correlation \emph{and} improved the diversification ratio, and even it gave up some Sharpe. The other three schemes made both correlation \emph{and} risk-adjusted return worse.
+
+\begin{table}[h]
+\centering
+\caption*{Ranked by Sharpe (descending). Weighted avg.\ correlation and diversification ratio (DR) are computed under each scheme's own weight vector.}
+\begin{tabular}{lccccccc}
+\toprule
+Scheme & Wtd.\ Avg.\ Corr. & DR & Sharpe & Sortino & Calmar & CAGR & Max DD \\
+\midrule
+\textbf{Equal Weight (baseline)} & 0.0156 & 2.081 & \textbf{0.518} & 0.817 & 0.343 & 0.0183\% & -0.0533\% \\
+Inverse Avg-Correlation & \textbf{0.0118} & \textbf{2.110} & 0.483 & 0.760 & 0.315 & 0.0168\% & -0.0533\% \\
+Inverse-Volatility & 0.0159 & 1.809 & 0.321 & 0.504 & 0.200 & 0.0107\% & -0.0533\% \\
+Equal Risk Contribution & 0.0142 & 1.831 & 0.311 & 0.488 & 0.191 & 0.0102\% & -0.0533\% \\
+Hierarchical Risk Parity & 0.0170 & 1.538 & 0.170 & 0.265 & 0.106 & 0.0057\% & -0.0533\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Why every Max Drawdown row is identical.} This was checked and confirmed, not a bug: on any day where only one instrument in the book has a closed trade, the per-day weight-renormalized blend formula $\big(\sum_i w_i r_{i,t}\big) / \big(\sum_i w_i\big)$ collapses to exactly that instrument's raw return, independent of the weight vector. This 14-instrument book has sparse, largely non-overlapping trade timing, and the single worst day driving the -0.0533\% max drawdown happens to be one of these single-instrument days -- so it is identical across every weighting scheme by construction. Differences between schemes only show up on multi-instrument-active days, which is exactly where Sharpe/Sortino/Calmar diverge.
+
+\section*{Weight Allocation by Scheme (\%)}
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lrrrrr}
+\toprule
+Symbol & Equal & Inv-Vol & ERC & HRP & Inv-Avg-Corr \\
+\midrule
+AUDUSD & 7.14 & 6.54 & 5.94 & 4.82 & 5.28 \\
+EURUSD & 7.14 & 10.50 & 10.28 & 12.43 & 8.11 \\
+GBPUSD & 7.14 & 8.90 & 7.95 & 8.70 & 4.50 \\
+NZDUSD & 7.14 & 5.71 & 5.41 & 4.48 & 6.13 \\
+USDCAD & 7.14 & 11.20 & 10.94 & 14.48 & 8.11 \\
+USDCHF & 7.14 & 8.34 & 9.03 & 7.84 & 8.11 \\
+USDJPY & 7.14 & 7.09 & 7.40 & 7.24 & 8.11 \\
+US500 & 7.14 & 4.31 & 4.01 & 2.25 & 5.88 \\
+GER40 & 7.14 & 4.50 & 4.10 & 2.22 & 5.19 \\
+JP225 & 7.14 & 2.92 & 2.89 & 1.03 & 8.11 \\
+HK50 & 7.14 & 3.11 & 3.37 & 1.39 & 8.11 \\
+USDSGD & 7.14 & 13.51 & 13.62 & 20.60 & 8.11 \\
+EURNOK & 7.14 & 8.39 & 9.94 & 9.69 & 8.11 \\
+USDZAR & 7.14 & 4.95 & 5.11 & 2.83 & 8.11 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section*{Per-Scheme Findings}
+
+\subsection*{Inverse-Volatility (naive risk parity)}
+Concentrates capital into the lowest-standalone-vol FX legs (USDSGD 13.5\%, USDCAD 11.2\%, EURUSD 10.5\%) at the expense of the equity indices (JP225 2.9\%, HK50 3.1\%). Weighted correlation barely moves (0.0156 $\to$ 0.0159, marginally \emph{worse}) because the scheme ignores cross-instrument correlation entirely -- it only equalizes standalone volatility, which is a different axis from diversification. Sharpe falls 38\% (0.518 $\to$ 0.321).
+
+\subsection*{Equal Risk Contribution (true risk parity)}
+Uses the full covariance matrix and converges cleanly (11 iterations, risk-contribution spread $\sim 5\times10^{-8}$ relative to target). Weighted correlation does fall (0.0156 $\to$ 0.0142, $\sim$9\% relative reduction) but the diversification ratio gets worse (2.081 $\to$ 1.831): ERC deliberately defunds the highest-standalone-variance legs (equity indices) to equalize risk contribution, and those are exactly the legs providing this book's real diversification benefit. Sharpe falls 40\% (0.518 $\to$ 0.311).
+
+\subsection*{Hierarchical Risk Parity}
+The cluster structure is fundamentally sensible -- the dendrogram groups JP225/US500/GER40 (equity indices) and AUDUSD/NZDUSD (commodity bloc) as expected. But the recursive bisection then allocates \emph{within} each cluster by inverse standalone variance, which again defunds the equity-index legs (JP225 down to 1.0\%, HK50 to 1.4\%, versus 7.14\% equal) -- the instruments providing the most real cross-asset diversification end up most starved of capital. This is the worst scheme tested on every metric: correlation gets \emph{worse} (0.0156 $\to$ 0.0170), diversification ratio drops most (2.081 $\to$ 1.538), and Sharpe collapses by two-thirds (0.518 $\to$ 0.170).
+
+\subsection*{Inverse Average-Correlation}
+The only scheme that improved both target metrics: weighted correlation fell to 0.0118 (the lowest of all four) and the diversification ratio rose to 2.110 (the only scheme to beat the equal-weight baseline on this axis). The correlation floor (clipped at 0.02 before inverting) bound for 9 of 14 instruments, collapsing them to a common weight -- this pulled capital away from the book's best individual performers (GBPUSD, AUDUSD, NZDUSD, standalone Sharpe $\sim$0.66--0.76) toward several historically negative-Sharpe legs that happened to have low average correlation. Net effect: Sharpe fell only 7\% (0.518 $\to$ 0.483), by far the smallest degradation of the four schemes, for a real reduction in realized correlation.
+
+\section*{Conclusion}
+Equal weighting remains the best choice for live use -- it has the highest Sharpe of anything tested, and the portfolio's low correlation (0.0156) was already earned upstream, by the fundamental-driver instrument selection, not by clever weighting. Correlation-aware weighting schemes here consistently trade away return for a diversification statistic that was already good. If a lower-correlation allocation is wanted for other reasons (e.g.\ tail-risk budgeting across strategies, not just this one), \textbf{Inverse Average-Correlation} is the only scheme that earns its keep: real correlation and diversification-ratio improvement for the smallest Sharpe cost, and it is the most promising candidate for further tuning (e.g.\ a softer floor than 0.02, or blending its weights with equal weight rather than using them outright).
+
+\end{document}

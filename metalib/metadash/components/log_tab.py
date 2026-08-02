@@ -19,6 +19,9 @@ STRATEGY_TYPES = [
     {"value": "metafvg", "label": "MetaFVG"},
     {"value": "metane", "label": "MetaNE"},
     {"value": "metaga", "label": "MetaGA"},
+    # v2 tags/log filenames are 'fvg2_<symbol>...' not 'metafvg_v2_...'
+    # (MT5's 16-char position-comment matching forced a short tag prefix)
+    {"value": "fvg2", "label": "MetaFVG v2 (Mean-Reversion)"},
 ]
 
 

@@ -1,0 +1,126 @@
+# MetaFVG v2: Spearman mean-reversion gate, combined-mix parameters
+# (window=25, threshold=0.4, atr_sensitivity=2.0 -- hardcoded class defaults
+# in MetaFVGv2, not YAML-configurable, matching the existing convention for
+# risk_reward/atr_sensitivity on v1).
+#
+# Universe: top 10 of the 14-instrument research universe by Sharpe, ranked
+# under THESE parameters specifically (not the baseline params used
+# elsewhere in the research report) -- see
+# metalib/research/scripts/rank_symbols_combined_mix.py and
+# metalib/research/data/combined_mix_per_symbol.pkl. Excluded: AUDUSD, HK50,
+# USDCAD, EURUSD (bottom 4 by Sharpe under this config).
+#
+# timeframe is M15 (not M1 like v1's existing instances): the backtest this
+# config is based on used LTF=M15 throughout (HTF=4h resample on top) --
+# running v2 on M1 would not match the tested edge.
+#
+# size_position below is a FALLBACK ONLY. MetaFVGv2 overrides
+# _resolve_position_size to compute real position size dynamically from
+# live MT5 account equity (2% of equity per trade) and each symbol's
+# contract specs, matching the backtest's sizing convention -- see
+# metalib/metafvg_v2.py. The value here is only used if that computation
+# fails for some reason (e.g. MT5 symbol_info unavailable).
+#
+# See metalib/research/reports/metafvg_research_report.pdf for full
+# derivation, backtest results, and caveats (in-sample parameter selection
+# across two dimensions, not yet out-of-sample validated -- Sec. 10).
+
+JP225_M15_V2:
+  active_hours: None
+  limit_number_position: 2
+  size_position: 0.01
+  strategy_type: metafvg_v2
+  symbols:
+  - JP225
+  tag: fvg2_jp225
+  timeframe: mt5.TIMEFRAME_M15
+
+NZDUSD_M15_V2:
+  active_hours: None
+  limit_number_position: 2
+  size_position: 0.01
+  strategy_type: metafvg_v2
+  symbols:
+  - NZDUSD
+  tag: fvg2_nzdusd
+  timeframe: mt5.TIMEFRAME_M15
+
+GER40_M15_V2:
+  active_hours: None
+  limit_number_position: 2
+  size_position: 0.01
+  strategy_type: metafvg_v2
+  symbols:
+  - GER40
+  tag: fvg2_ger40
+  timeframe: mt5.TIMEFRAME_M15
+
+GBPUSD_M15_V2:
+  active_hours: None
+  limit_number_position: 2
+  size_position: 0.01
+  strategy_type: metafvg_v2
+  symbols:
+  - GBPUSD
+  tag: fvg2_gbpusd
+  timeframe: mt5.TIMEFRAME_M15
+
+USDJPY_M15_V2:
+  active_hours: None
+  limit_number_position: 2
+  size_position: 0.01
+  strategy_type: metafvg_v2
+  symbols:
+  - USDJPY
+  tag: fvg2_usdjpy
+  timeframe: mt5.TIMEFRAME_M15
+
+USDCHF_M15_V2:
+  active_hours: None
+  limit_number_position: 2
+  size_position: 0.01
+  strategy_type: metafvg_v2
+  symbols:
+  - USDCHF
+  tag: fvg2_usdchf
+  timeframe: mt5.TIMEFRAME_M15
+
+USDSGD_M15_V2:
+  active_hours: None
+  limit_number_position: 2
+  size_position: 0.01
+  strategy_type: metafvg_v2
+  symbols:
+  - USDSGD
+  tag: fvg2_usdsgd
+  timeframe: mt5.TIMEFRAME_M15
+
+EURNOK_M15_V2:
+  active_hours: None
+  limit_number_position: 2
+  size_position: 0.01
+  strategy_type: metafvg_v2
+  symbols:
+  - EURNOK
+  tag: fvg2_eurnok
+  timeframe: mt5.TIMEFRAME_M15
+
+USDZAR_M15_V2:
+  active_hours: None
+  limit_number_position: 2
+  size_position: 0.01
+  strategy_type: metafvg_v2
+  symbols:
+  - USDZAR
+  tag: fvg2_usdzar
+  timeframe: mt5.TIMEFRAME_M15
+
+US500_M15_V2:
+  active_hours: None
+  limit_number_position: 2
+  size_position: 0.01
+  strategy_type: metafvg_v2
+  symbols:
+  - US500
+  tag: fvg2_us500
+  timeframe: mt5.TIMEFRAME_M15

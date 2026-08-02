@@ -27,13 +27,15 @@ STRATEGY_NAMES = {
     'metaga': 'MetaGA', 'metamlp': 'Multi-Horizon MLP', 'metaob': 'Order Blocks',
     'metafvg': 'Fair Value Gaps', 'mtou': 'Mean-Reversion OU',
     'metago': 'MetaGO', 'metane': 'MetaNE', 'metamtou': 'Mean-Reversion OU',
+    'metafvg_v2': 'FVG Mean-Reversion (v2)',
 }
-STRATEGY_ENGINE_KEYS = {'metaga', 'metamlp', 'metaob', 'metafvg', 'metamtou', 'metago', 'metane', 'metane'}
+STRATEGY_ENGINE_KEYS = {'metaga', 'metamlp', 'metaob', 'metafvg', 'metamtou', 'metago', 'metane', 'metane', 'metafvg_v2'}
 TIME_RANGE_DAYS = {'1W': 7, '1M': 30, '3M': 90, 'YTD': None, 'All': None}
 
 STRATEGY_COLORS = {
     'metafvg': '#BF6A3D', 'metane': '#3D7A54', 'metaga': '#5B7FBA',
     'metamlp': '#7A5BA8', 'metago': '#B98A2E', 'metamtou': '#3D7A8A', 'metaob': '#B5473A',
+    'metafvg_v2': '#1F7A6B',
 }
 
 

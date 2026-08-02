@@ -1,0 +1,177 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{siunitx}
+\usepackage{hyperref}
+\usepackage{caption}
+
+\title{Weighting Scheme: Inverse Average-Correlation}
+\author{MetaFVG Diversified Mean-Reversion Portfolio}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Scheme Description}
+
+The 14-instrument MetaFVG mean-reversion portfolio (Spearman-gated, \texttt{fixed} sizing
+variant) is deliberately assembled to be fundamentally diversified across central
+banks and currencies: AUDUSD, EURUSD, GBPUSD, NZDUSD, USDCAD, USDCHF, USDJPY,
+US500, GER40, JP225, HK50, USDSGD, EURNOK, USDZAR. It is currently blended with
+equal weights ($1/14$ each). This report tests \textbf{Inverse Average-Correlation}
+weighting (\texttt{inverse\_avg\_corr}): the most literal reading of ``target
+uncorrelated results'' --- weight each instrument inversely proportional to how
+correlated it is, on average, with the rest of the book.
+
+For each instrument $s$, let $\rho_{s,x}$ denote the pairwise Pearson correlation
+of daily P\&L returns between $s$ and instrument $x$ (computed pairwise-complete
+over the full return history). The average correlation of $s$ with the rest of
+the book is
+
+\[
+\overline{\rho}_s = \frac{1}{n-1} \sum_{x \neq s} \rho_{s,x}, \qquad n = 14.
+\]
+
+Because the portfolio was already fundamentally diversified by design, these
+average correlations are small and can be near zero or slightly negative ---
+naively inverting such a value blows up. A floor is applied before inversion:
+
+\[
+d_s = \max(\overline{\rho}_s,\ 0.02).
+\]
+
+Raw weights are then
+
+\[
+\tilde{w}_s \propto \frac{1}{d_s}, \qquad
+w_s^{(0)} = \frac{\tilde{w}_s}{\sum_x \tilde{w}_x}.
+\]
+
+Finally, a concentration cap is applied at $3\times$ the equal weight
+($3/14 \approx 0.2143$): any weight exceeding the cap is clipped to it, and the
+remaining (uncapped) weights are renormalized proportionally so that all weights
+still sum to 1.
+
+\textbf{Safeguards triggered:} the floor bound for \textbf{9 of 14} instruments ---
+EURNOK, EURUSD, HK50, JP225, USDCAD, USDCHF, USDJPY, USDSGD, USDZAR --- all of
+which had raw average correlation below 0.02 (three of them, EURNOK, USDCHF and
+HK50, were in fact very close to zero or negative). These instruments were all
+floored to the same denominator (0.02) and therefore received an identical final
+weight ($\approx 0.0811$, or $1.136\times$ equal weight). The 3x concentration
+cap ($0.2143$) did \textbf{not} bind for any instrument -- the highest resulting
+weight was only $\approx 1.14\times$ equal weight, well under the cap.
+
+\section{Weights}
+
+\begin{table}[h]
+\centering
+\caption{Per-instrument average correlation, resulting weight, and weight relative
+to equal weight ($1/14 \approx 0.0714$), sorted descending by weight. F = floor
+bound, C = cap bound.}
+\begin{tabular}{lrrrc}
+\toprule
+Symbol & Avg.\ Corr.\ ($\overline{\rho}_s$) & Weight & Weight / (1/14) & Safeguard \\
+\midrule
+EURUSD & 0.0196 & 0.0811 & 1.14$\times$ & F \\
+USDCAD & 0.0168 & 0.0811 & 1.14$\times$ & F \\
+USDCHF & 0.0004 & 0.0811 & 1.14$\times$ & F \\
+USDJPY & 0.0056 & 0.0811 & 1.14$\times$ & F \\
+JP225  & 0.0188 & 0.0811 & 1.14$\times$ & F \\
+HK50   & 0.0016 & 0.0811 & 1.14$\times$ & F \\
+USDSGD & 0.0120 & 0.0811 & 1.14$\times$ & F \\
+EURNOK & $-$0.0153 & 0.0811 & 1.14$\times$ & F \\
+USDZAR & 0.0070 & 0.0811 & 1.14$\times$ & F \\
+NZDUSD & 0.0265 & 0.0613 & 0.86$\times$ & -- \\
+US500  & 0.0276 & 0.0588 & 0.82$\times$ & -- \\
+AUDUSD & 0.0307 & 0.0528 & 0.74$\times$ & -- \\
+GER40  & 0.0313 & 0.0519 & 0.73$\times$ & -- \\
+GBPUSD & 0.0360 & 0.0450 & 0.63$\times$ & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Correlation Impact}
+
+Weighted average pairwise correlation is
+$\left(\sum_{i \neq j} w_i w_j \rho_{ij}\right) / \left(\sum_{i \neq j} w_i w_j\right)$;
+for equal weights this reduces to the simple average of the off-diagonal
+correlation matrix ($\approx 0.0156$). Diversification ratio is
+$\mathrm{DR} = \left(\sum_i w_i \sigma_i\right) / \sigma_{\text{portfolio}}$,
+using each instrument's own-sample standard deviation of daily returns and the
+standard deviation of the final blended daily-return series.
+
+\begin{table}[h]
+\centering
+\caption{Correlation impact: equal weight vs.\ inverse-average-correlation weight.}
+\begin{tabular}{lrr}
+\toprule
+Metric & Equal Weight & Inverse Avg.\ Corr. \\
+\midrule
+Weighted avg.\ pairwise correlation & 0.0156 & 0.0118 \\
+Diversification ratio (DR) & 2.081 & 2.110 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Results}
+
+Both blends use per-day NaN-aware renormalization: on days where some instruments
+have no closed trade (NaN return), the scheme's weights are renormalized to sum to
+1 over only the instruments with a non-NaN return that day. Days with all-NaN
+returns are dropped. Both series contain 1{,}661 daily observations after this
+filtering. Quantstats metrics are computed on the resulting equity curve (daily
+resampled).
+
+\begin{table}[h]
+\centering
+\caption{Performance metrics: equal weight vs.\ inverse-average-correlation weight.}
+\begin{tabular}{lrr}
+\toprule
+Metric & Equal Weight & Inverse Avg.\ Corr. \\
+\midrule
+Sharpe & 0.518 & 0.483 \\
+Sortino & 0.817 & 0.760 \\
+Calmar & 0.343 & 0.315 \\
+CAGR & 0.0183\% & 0.0168\% \\
+Max Drawdown & $-5.33\%$ & $-5.33\%$ \\
+Volatility (ann., \%) & 3.528\% & 3.473\% \\
+Tail Ratio & 1.239 & 1.288 \\
+Ulcer Index & 0.000192 & 0.000173 \\
+Kelly & 0.0668 & 0.0610 \\
+VaR (\%) & $-0.358\%$ & $-0.353\%$ \\
+CVaR (\%) & $-0.715\%$ & $-0.692\%$ \\
+Skew & 1.545 & 1.544 \\
+Recovery Factor & 2.260 & 2.075 \\
+\midrule
+Win Rate & 30.89\% & 30.52\% \\
+Best Day & 0.0291\% & 0.0291\% \\
+Worst Day & $-0.0239\%$ & $-0.0239\%$ \\
+Total Return & 0.1204\% & 0.1105\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Takeaway}
+
+Inverse average-correlation weighting achieved the intended correlation effect:
+weighted average pairwise correlation fell from 0.0156 (equal weight) to 0.0118,
+and the diversification ratio improved modestly from 2.081 to 2.110. Neither
+safeguard was actually a problem in practice --- the floor caught 9 of 14
+instruments (clustering them at an identical weight), while the 3x cap never
+bound, meaning the floor did all the real work of shaping this allocation.
+However, the reduction in realized correlation did \emph{not} translate into
+better risk-adjusted returns: Sharpe fell from 0.518 to 0.483 and Sortino,
+Calmar, Kelly, and Recovery Factor all declined in tandem. The reason is visible
+in the individual-instrument statistics: the scheme's three lowest final weights
+went to GBPUSD, AUDUSD and NZDUSD (annualized single-instrument Sharpe 0.76,
+0.66 and 0.76 respectively --- three of the book's best performers), while the
+floor-driven cluster of nine equally-weighted instruments includes EURUSD,
+USDCAD, USDSGD, EURNOK and USDZAR, all of which have \emph{negative}
+single-instrument Sharpe on their own. Low average correlation with the rest of
+the book and being a strong individual performer are simply different
+properties, and this scheme optimizes only for the former. On this dataset it
+trades away Sharpe for a small diversification-ratio gain --- a bad trade for a
+book that was already reasonably diversified by construction.
+
+\end{document}

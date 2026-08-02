@@ -10,6 +10,7 @@ import MetaTrader5 as mt5
 from metalib.metaga import MetaGA
 from metalib.metagomano import MetaGO
 from metalib.metafvg import MetaFVG
+from metalib.metafvg_v2 import MetaFVGv2
 from metalib.metane import MetaNE
 from metalib.metaob import MetaOB
 from metalib.metamlp import MetaMLP
@@ -63,6 +64,17 @@ strategy_registry = {
     },
     "metafvg": {
         "class": MetaFVG,
+        "init_keys": [
+            "symbols",
+            "timeframe",
+            "tag",
+            "size_position",
+            "limit_number_position",
+            "active_hours",
+        ],
+    },
+    "metafvg_v2": {
+        "class": MetaFVGv2,
         "init_keys": [
             "symbols",
             "timeframe",

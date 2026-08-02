@@ -1,0 +1,201 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{siunitx}
+\usepackage{caption}
+\usepackage{hyperref}
+
+\title{Weighting Scheme: Hierarchical Risk Parity (HRP)}
+\author{MetaFVG Mean-Reversion Portfolio -- 14-Instrument Diversified Universe}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Scheme Description}
+
+The portfolio blends 14 instruments trading a Spearman-gated MetaFVG mean-reversion
+strategy, deliberately assembled across different central banks and currency blocs
+(AUDUSD, EURUSD, GBPUSD, NZDUSD, USDCAD, USDCHF, USDJPY, US500, GER40, JP225, HK50,
+USDSGD, EURNOK, USDZAR). The current production blend uses equal weights
+($w_i = 1/14$ for all $i$). This report tests \emph{Hierarchical Risk Parity} (HRP,
+L\'{o}pez de Prado 2016, ``Building Diversified Portfolios that Outperform
+Out-of-Sample''), which replaces the quadratic-optimization step of mean-variance and
+risk-parity methods with a tree-structured allocation derived from the correlation
+matrix's hierarchical clustering. HRP was designed to be robust to estimation error
+in the covariance matrix (no matrix inversion) by allocating weight through a
+dendrogram rather than solving a global optimization.
+
+\subsection{Algorithm}
+
+\textbf{1. Distance matrix.} Convert the correlation matrix $\rho$ into a proper
+metric distance,
+\[
+  d_{ij} = \sqrt{\tfrac{1}{2}\left(1 - \rho_{ij}\right)}.
+\]
+
+\textbf{2. Hierarchical clustering.} Condense $d$ into its upper-triangular form and
+apply single-linkage agglomerative clustering to build a dendrogram over the 14
+instruments.
+
+\textbf{3. Quasi-diagonalization.} Read the leaf order off the dendrogram and reorder
+the instruments by it, so that instruments merged early in the tree (more correlated)
+sit adjacent to one another in the resulting sequence.
+
+\textbf{4. Recursive bisection.} Walk down the tree top-down. At each split of a
+cluster $c$ into $c_0$ (first half of the quasi-diagonal order) and $c_1$ (second
+half), each sub-cluster's variance is computed using \emph{inverse-variance
+allocation within the sub-cluster} (diagonal of the covariance matrix only, HRP's
+standard simplification -- no sub-cluster covariance terms):
+\[
+  \mathrm{IVP}_i = \frac{1/\Sigma_{ii}}{\sum_{k \in c} 1/\Sigma_{kk}}, \qquad
+  V(c) = \mathrm{IVP}^\top \Sigma_c\, \mathrm{IVP}.
+\]
+The split factor allocates \emph{more} weight to the lower-variance side:
+\[
+  \alpha = 1 - \frac{V(c_0)}{V(c_0) + V(c_1)}, \qquad
+  w_{c_0} \mathrel{*}= \alpha, \qquad w_{c_1} \mathrel{*}= (1-\alpha).
+\]
+This repeats recursively until every cluster is a singleton, giving the final weight
+vector $w$ (renormalized to sum to 1).
+
+\textit{Implementation note: all covariance/variance products above were computed via
+elementwise (Hadamard) broadcast-and-sum, e.g.\ \texttt{(np.outer(ivp, ivp) *
+sub).sum()}, rather than matrix multiplication, and the covariance matrix itself was
+built from a hand-rolled pairwise-complete estimator rather than
+\texttt{DataFrame.cov()} -- both \texttt{DataFrame.cov()} and \texttt{Series.cov()}
+were found to crash this environment's BLAS/LAPACK backend (exit 127, no traceback),
+in addition to the previously known \texttt{np.corrcoef} / matrix-matmul crash mode.
+\texttt{DataFrame.corr()} itself is unaffected and was used directly for $\rho$.}
+
+\section{Quasi-Diagonalized Cluster Order}
+
+The dendrogram leaf order groups instruments by realized correlation structure:
+
+\begin{center}
+\texttt{EURNOK -- JP225 -- US500 -- GER40 -- GBPUSD -- EURUSD -- AUDUSD -- NZDUSD -- USDJPY -- HK50 -- USDCAD -- USDZAR -- USDCHF -- USDSGD}
+\end{center}
+
+Several groupings match fundamental intuition: the three equity indices \textbf{JP225,
+US500, GER40} land adjacent despite trading different central-bank regimes and
+sessions -- consistent with a shared global risk-on/risk-off factor dominating their
+correlation. \textbf{AUDUSD} and \textbf{NZDUSD}, the classic commodity-bloc pair, are
+adjacent as expected. \textbf{GBPUSD} and \textbf{EURUSD}, the two large European
+majors, are adjacent as well. \textbf{EURNOK} anchors one end of the order (Norway's
+oil-linked currency, least like the rest of the book) and \textbf{USDSGD} anchors the
+other. \textbf{HK50} sits with \textbf{USDJPY} rather than with the other equity
+indices -- a less intuitive pairing, likely an artifact of single-linkage clustering
+``chaining'' through a weak intermediate correlation rather than a strong direct
+relationship.
+
+\section{HRP Weights}
+
+\begin{table}[h]
+\centering
+\caption{HRP weights, sorted descending. Ratio column is $w_i / (1/14)$.}
+\begin{tabular}{lS[table-format=1.5]S[table-format=1.3]}
+\toprule
+Symbol & {Weight} & {Weight / (1/14)} \\
+\midrule
+USDSGD & 0.20604 & 2.885 \\
+USDCAD & 0.14479 & 2.027 \\
+EURUSD & 0.12427 & 1.740 \\
+EURNOK & 0.09692 & 1.357 \\
+GBPUSD & 0.08697 & 1.218 \\
+USDCHF & 0.07841 & 1.098 \\
+USDJPY & 0.07236 & 1.013 \\
+AUDUSD & 0.04818 & 0.675 \\
+NZDUSD & 0.04477 & 0.627 \\
+USDZAR & 0.02834 & 0.397 \\
+US500  & 0.02246 & 0.314 \\
+GER40  & 0.02223 & 0.311 \\
+HK50   & 0.01393 & 0.195 \\
+JP225  & 0.01033 & 0.145 \\
+\midrule
+Sum & 1.00000 & 14.000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+HRP's recursive bisection pushes weight heavily toward the lower-variance FX legs --
+USDSGD, USDCAD, EURUSD, and EURNOK all land at 1.4--2.9$\times$ equal weight -- and
+away from the four equity indices, which are squeezed down to roughly 0.15--0.31$\times$
+equal weight (JP225 and HK50 the most, at $\sim$0.15--0.20$\times$). This mirrors the
+direction seen with ERC (equity indices underweighted), but is considerably more
+extreme here because HRP's top-level bisection groups three of the four equity indices
+together early in the quasi-diagonal order, and inverse-variance allocation then
+compounds against that whole cluster relative to the large low-variance FX block on
+the other side of the split.
+
+\section{Correlation Impact}
+
+\begin{table}[h]
+\centering
+\caption{Realized correlation and diversification impact, equal-weight vs.\ HRP.}
+\begin{tabular}{lS[table-format=1.6]S[table-format=1.6]}
+\toprule
+Metric & {Equal Weight} & {HRP} \\
+\midrule
+Weighted avg.\ pairwise correlation & 0.015615 & 0.017022 \\
+Diversification ratio (DR) & 2.080922 & 1.538298 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+HRP does not reduce realized correlation here -- the weighted average pairwise
+correlation \emph{rises} from 0.0156 to 0.0170 (a $\sim$9\% relative increase), because
+the scheme concentrates weight in a cluster of FX pairs (USD-quoted majors/crosses)
+that are, on net, slightly \emph{more} mutually correlated than the full 14-instrument
+book, while pulling weight away from the equity indices that anchor much of the
+book's diversification. The diversification ratio also falls sharply (2.081 $\to$
+1.538): DR rewards spreading weight across instruments with high standalone volatility
+relative to blended portfolio volatility, and HRP's variance-minimizing objective
+does the opposite by construction.
+
+\section{Results}
+
+\begin{table}[h]
+\centering
+\caption{Quantstats metrics, equal-weight vs.\ HRP blend.}
+\begin{tabular}{lS[table-format=1.6]S[table-format=1.6]}
+\toprule
+Metric & {Equal Weight} & {HRP} \\
+\midrule
+Sharpe & 0.517941 & 0.169721 \\
+Sortino & 0.816977 & 0.264785 \\
+Calmar & 0.343017 & 0.106463 \\
+CAGR & 0.000183 & 0.000057 \\
+Max Drawdown (\%) & -5.325228 & -5.325228 \\
+Volatility (\%) & 3.527622 & 3.343598 \\
+Tail Ratio & 1.238689 & 1.002700 \\
+Ulcer Index & 0.000192 & 0.000295 \\
+Kelly Criterion & 0.066763 & 0.027229 \\
+VaR (\%) & -0.358268 & -0.344199 \\
+CVaR (\%) & -0.715011 & -0.797777 \\
+Skew & 1.544839 & 1.976561 \\
+Recovery Factor & 2.260123 & 0.701973 \\
+\midrule
+Win rate & 0.308850 & 0.298013 \\
+Best day & 0.000291 & 0.000291 \\
+Worst day & -0.000239 & -0.000239 \\
+Total return & 0.001204 & 0.000374 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Takeaway}
+
+HRP fails on every axis this exercise cares about. The weighted average pairwise
+correlation \emph{increases} (0.0156 $\to$ 0.0170) instead of falling, the
+diversification ratio drops by nearly a quarter (2.081 $\to$ 1.538), and Sharpe
+collapses by two-thirds (0.518 $\to$ 0.170) alongside similarly large drops in
+Sortino, Calmar, and recovery factor. The mechanism is clear from the weights table:
+HRP's variance-based recursive bisection has no notion of expected return and
+systematically defunds the equity-index legs -- JP225 down to 0.15$\times$ and HK50 to
+0.20$\times$ equal weight -- purely because their standalone P\&L variance is higher,
+even though those same instruments are exactly the ones providing this book's
+fundamental (cross-asset-class) diversification. On this data, equal weighting
+remains clearly superior; HRP should not replace it for this portfolio.
+
+\end{document}

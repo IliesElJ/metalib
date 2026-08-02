@@ -152,6 +152,18 @@ class MetaStrategy(ABC):
         """
         pass
 
+    def _resolve_position_size(self, symbol, price=None):
+        """
+        Returns the order volume (MT5 lots) for `symbol` at `price`.
+
+        Default behavior, unchanged for every existing strategy: the static
+        per-instance self.size_position set at construction. Subclasses that
+        want dynamic sizing (e.g. MetaFVGv2's equity-percent sizing, matching
+        the convention used in its backtest) override this method instead of
+        touching execute() itself.
+        """
+        return self.size_position
+
     def execute(
         self,
         symbol,
@@ -198,6 +210,11 @@ class MetaStrategy(ABC):
         if not entry:
             price = mt5.symbol_info_tick(symbol).ask
 
+        # sizing_price is independent of the `price` var above (only ever set
+        # when entry is falsy) so this never touches that existing branch.
+        sizing_price = entry if entry is not None else price
+        volume = self._resolve_position_size(symbol, sizing_price)
+
         # Construct the request dictionary
         request = {
             "action": (
@@ -206,7 +223,7 @@ class MetaStrategy(ABC):
             "symbol": symbol,
             "sl": sl if sl else 0.0,
             "tp": tp if tp else 0.0,
-            "volume": float(self.size_position),
+            "volume": float(volume),
             "type": order_type,
             "price": entry if is_limit or is_stop else price,
             "comment": self.tag,
