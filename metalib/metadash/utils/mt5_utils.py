@@ -49,7 +49,7 @@ def process_deals_data(history_deals):
 
     # Opens: ENTRY_IN (0) with our bot identifier in comment
     df_deals_opens = df_deals[
-        (df_deals["entry"] == 0) & (df_deals["comment"].str.contains("meta", na=False))
+        (df_deals["entry"] == 0) & (df_deals["comment"].str.contains("meta|mtou", na=False, regex=True))
     ]
     # Closes: ENTRY_OUT (1) — all exits, regardless of comment
     df_deals_closes = df_deals[df_deals["entry"] == 1]

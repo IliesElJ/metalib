@@ -25,8 +25,8 @@ CARD = {'background': '#fff', 'border': f'1px solid {BORDER}', 'borderRadius': '
 
 STRATEGY_NAMES = {
     'metaga': 'MetaGA', 'metamlp': 'Multi-Horizon MLP', 'metaob': 'Order Blocks',
-    'metafvg': 'Fair Value Gaps', 'mtou': 'Mean-Reversion OU',
-    'metago': 'MetaGO', 'metane': 'MetaNE', 'metamtou': 'Mean-Reversion OU',
+    'metafvg': 'Fair Value Gaps', 'mtou': 'Monthly True Opens - Ornstein',
+    'metago': 'MetaGO', 'metane': 'MetaNE', 'metamtou': 'Monthly True Opens - Ornstein',
     'metafvg_v2': 'FVG Mean-Reversion (v2)',
 }
 STRATEGY_ENGINE_KEYS = {'metaga', 'metamlp', 'metaob', 'metafvg', 'metamtou', 'metago', 'metane', 'metane', 'metafvg_v2'}
@@ -624,26 +624,41 @@ def _pos_duration(open_timestamp):
         return '—', TEXT_SECONDARY
 
 
-def render_trades(merged_deals, day_offset=0):
+def render_trades(merged_deals, selected_date=None):
     today = date.today()
-    day_offset = int(day_offset or 0)
 
-    # If showing today and no closed trades, jump to the last trading day
-    if day_offset == 0 and merged_deals is not None:
-        df_tmp = prep_deals(merged_deals)
-        if not df_tmp.empty:
-            df_tmp['_date'] = df_tmp['time_close'].dt.date
-            if today not in df_tmp['_date'].values:
-                last_day = df_tmp['_date'].max()
-                day_offset = (last_day - today).days  # negative number
+    # Compute set of dates that have closed trades
+    df_all = prep_deals(merged_deals)
+    available_dates = set()
+    min_date = today
+    if not df_all.empty:
+        df_all['_date'] = df_all['time_close'].dt.date
+        available_dates = set(df_all['_date'].unique())
+        min_date = min(available_dates)
 
-    target = today + timedelta(days=day_offset)
-    if day_offset == 0:
+    # Determine target date: use selected_date if given, else default to last trading day
+    if selected_date is not None:
+        target = date.fromisoformat(selected_date)
+    else:
+        target = today if today in available_dates else (max(available_dates) if available_dates else today)
+
+    if target == today:
         date_label = "Today"
-    elif day_offset == -1:
+    elif target == today - timedelta(days=1):
         date_label = "Yesterday"
     else:
         date_label = target.strftime('%a, %b %d')
+
+    # Compute disabled days: every date in range with no closed trades
+    if available_dates:
+        d = min_date
+        disabled_days = []
+        while d <= today:
+            if d not in available_dates:
+                disabled_days.append(d.isoformat())
+            d += timedelta(days=1)
+    else:
+        disabled_days = []
 
     open_pnl = 0.0
     closed_pnl = 0.0
@@ -653,7 +668,7 @@ def render_trades(merged_deals, day_offset=0):
     worst_pos = None
 
     # Live open positions (today only)
-    if day_offset == 0:
+    if target == today:
         try:
             import MetaTrader5 as mt5
             positions = mt5.positions_get()
@@ -708,8 +723,6 @@ def render_trades(merged_deals, day_offset=0):
         worst_label = f"{worst_pos.symbol}  {fmt(worst_pos.profit, signed=True)}"
         worst_color = RED if worst_pos.profit < 0 else GREEN
 
-    can_fwd = day_offset < 0
-
     def _section(title, header_fn, rows, empty_msg):
         return html.Div([
             html.Div(title, style={
@@ -731,18 +744,16 @@ def render_trades(merged_deals, day_offset=0):
                 html.Div("Open positions and closed trades for the day",
                          style={'fontSize': '13px', 'color': TEXT_SECONDARY, 'marginTop': '2px'}),
             ]),
-            html.Div([
-                html.Button("‹", id='prev-day-btn', n_clicks=0, style=_nav_btn_style()),
-                html.Div(date_label, style={'fontSize': '13px', 'fontWeight': '500',
-                                            'minWidth': '120px', 'textAlign': 'center'}),
-                html.Button("›", id='next-day-btn', n_clicks=0, style={
-                    **_nav_btn_style(),
-                    'cursor': 'pointer' if can_fwd else 'default',
-                    'color': TEXT_PRIMARY if can_fwd else 'rgba(38,34,29,0.25)',
-                }),
-            ], style={'display': 'flex', 'alignItems': 'center', 'gap': '6px',
-                      'background': '#fff', 'border': f'1px solid {BORDER}',
-                      'borderRadius': '9px', 'padding': '4px 6px'}),
+            dcc.DatePickerSingle(
+                id='day-date-picker',
+                date=target.isoformat(),
+                min_date_allowed=min_date.isoformat(),
+                max_date_allowed=today.isoformat(),
+                disabled_days=disabled_days,
+                display_format='MMM D, YYYY',
+                first_day_of_week=1,
+                className='trades-date-picker',
+            ),
         ], style={'display': 'flex', 'alignItems': 'center', 'justifyContent': 'space-between',
                   'flexWrap': 'wrap', 'gap': '14px'}),
 

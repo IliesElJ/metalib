@@ -45,3 +45,50 @@ details > summary::-webkit-details-marker { display: none; }
 
 /* Plotly graph container */
 .js-plotly-plot .plotly, .js-plotly-plot .plotly svg { overflow: visible !important; }
+
+/* Config tab — timeframe dropdown */
+.cfg-tf-dropdown .Select-control {
+  border: 1px solid var(--border) !important;
+  border-radius: 6px !important;
+  font-size: 13px !important;
+  min-width: 130px;
+  height: 31px !important;
+  min-height: 31px !important;
+}
+.cfg-tf-dropdown .Select-value-label { font-size: 13px !important; }
+.cfg-tf-dropdown .Select-menu-outer { font-size: 13px !important; }
+
+/* Config tab — summary marker */
+details.cfg-instance > summary { cursor: pointer; }
+
+/* Trades date picker */
+.trades-date-picker .DateInput { background: transparent; }
+.trades-date-picker .DateInput_input {
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 6px 12px;
+  width: 130px;
+  cursor: pointer;
+}
+.trades-date-picker .DateInput_input:focus { outline: none; border-color: var(--accent); }
+.trades-date-picker .SingleDatePickerInput { border: none; background: transparent; }
+.trades-date-picker .SingleDatePickerInput__withBorder { border: none; }
+.trades-date-picker .CalendarDay__selected,
+.trades-date-picker .CalendarDay__selected:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.trades-date-picker .CalendarDay__blocked_out_of_range,
+.trades-date-picker .CalendarDay__blocked_out_of_range:hover {
+  color: rgba(38,34,29,0.25);
+  background: #fff;
+  border-color: var(--border);
+  cursor: default;
+}
+.trades-date-picker .DayPickerNavigation_button { border-color: var(--border); }
+.trades-date-picker .CalendarMonth_caption { font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; }

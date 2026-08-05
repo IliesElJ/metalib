@@ -14,6 +14,7 @@ NAV = [
     ('trades', 'Trades'),
     ('vol-forecast', 'Vol Forecast'),
     ('system', 'System'),
+    ('config', 'Config'),
 ]
 
 
@@ -79,13 +80,16 @@ def get_layout():
         dcc.Store(id='nav-store', data='overview'),
         dcc.Store(id='selected-strategy-store', data=None),
         dcc.Store(id='timerange-store', data='1M'),
-        dcc.Store(id='day-offset-store', data=0),
+        dcc.Store(id='selected-date-store', data=None),
         dcc.Store(id='data-store'),
         dcc.Store(id='account-info-store'),
         dcc.Store(id='trade-modal-store', data=None),
         dcc.Store(id='vol-symbol-store', data='EURUSD'),
         dcc.Store(id='vol-period-store', data='3M'),
         dcc.Store(id='vol-is-r2-store', data=None),
+        dcc.Store(id='config-strategy-store', data=None),
+        dcc.Store(id='removed-instances-store', data=[]),
+        dcc.Store(id='added-instances-store', data=[]),
         dcc.Interval(id='startup-trigger', interval=500, n_intervals=0, max_intervals=1),
         html.Div(id='trade-modal-container'),
 

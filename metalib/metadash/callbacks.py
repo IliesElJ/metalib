@@ -23,6 +23,8 @@ from components.pm_views import (
     trade_modal_overlay,
 )
 from components.vol_views import render_vol_forecast, compute_is_r2
+from components.config_views import render_config
+from utils_config import load_config, save_local_config, parse_field_value
 
 DEFAULT_START_DATE = date(2025, 1, 1)
 ACCENT = '#BF6A3D'
@@ -31,6 +33,7 @@ BORDER = 'rgba(38,34,29,0.10)'
 TEXT_PRIMARY = '#26221D'
 TEXT_SECONDARY = '#7A756C'
 GREEN = '#3D7A54'
+RED = '#B5473A'
 
 # In-process cache (shared across callbacks in same worker)
 _cache = {
@@ -38,7 +41,7 @@ _cache = {
     "account_info": None,
 }
 
-NAV_IDS = ['overview', 'trades', 'vol-forecast', 'system']
+NAV_IDS = ['overview', 'trades', 'vol-forecast', 'system', 'config']
 
 
 def _fetch_trade_for_chart(trade_key):
@@ -160,9 +163,10 @@ def register_callbacks(app):
         Input('nav-trades', 'n_clicks'),
         Input('nav-vol-forecast', 'n_clicks'),
         Input('nav-system', 'n_clicks'),
+        Input('nav-config', 'n_clicks'),
         prevent_initial_call=True,
     )
-    def update_nav(ov, tr, vf, sy):
+    def update_nav(ov, tr, vf, sy, cfg):
         ctx = callback_context
         if not ctx.triggered:
             return no_update
@@ -172,6 +176,7 @@ def register_callbacks(app):
             'nav-trades': 'trades',
             'nav-vol-forecast': 'vol-forecast',
             'nav-system': 'system',
+            'nav-config': 'config',
         }
         return mapping.get(triggered, 'overview')
 
@@ -219,6 +224,7 @@ def register_callbacks(app):
         Input('nav-trades', 'n_clicks'),
         Input('nav-vol-forecast', 'n_clicks'),
         Input('nav-system', 'n_clicks'),
+        Input('nav-config', 'n_clicks'),
         prevent_initial_call=True,
     )
     def handle_strategy_click(row_clicks, *_nav_clicks):
@@ -227,7 +233,7 @@ def register_callbacks(app):
             return no_update
         prop = ctx.triggered[0]['prop_id']
 
-        if any(x in prop for x in ('nav-overview', 'nav-trades', 'nav-vol-forecast', 'nav-system')):
+        if any(x in prop for x in ('nav-overview', 'nav-trades', 'nav-vol-forecast', 'nav-system', 'nav-config')):
             return None
 
         # Strategy row click → drill into detail
@@ -260,23 +266,12 @@ def register_callbacks(app):
     # ── 6. Day navigation ─────────────────────────────────────────────────────
 
     @app.callback(
-        Output('day-offset-store', 'data'),
-        Input('prev-day-btn', 'n_clicks'),
-        Input('next-day-btn', 'n_clicks'),
-        State('day-offset-store', 'data'),
+        Output('selected-date-store', 'data'),
+        Input('day-date-picker', 'date'),
         prevent_initial_call=True,
     )
-    def update_day_offset(prev, nxt, offset):
-        ctx = callback_context
-        if not ctx.triggered:
-            return no_update
-        prop = ctx.triggered[0]['prop_id']
-        offset = offset or 0
-        if 'prev-day-btn' in prop:
-            return offset - 1
-        if 'next-day-btn' in prop:
-            return min(0, offset + 1)
-        return offset
+    def update_selected_date(date_str):
+        return date_str
 
     # ── 7. Trade row click → modal store ──────────────────────────────────────
     # nav-overview/nav-trades as static inputs anchor the callback so Dash 4.x
@@ -290,6 +285,7 @@ def register_callbacks(app):
         Input('nav-trades', 'n_clicks'),
         Input('nav-vol-forecast', 'n_clicks'),
         Input('nav-system', 'n_clicks'),
+        Input('nav-config', 'n_clicks'),
     )
     def handle_trade_click(row_clicks, close_clicks, *_nav):
         ctx = callback_context
@@ -298,7 +294,7 @@ def register_callbacks(app):
         prop = ctx.triggered[0]['prop_id']
         if not prop or prop == '.':
             return no_update
-        if any(x in prop for x in ('nav-overview', 'nav-trades', 'nav-vol-forecast', 'nav-system')):
+        if any(x in prop for x in ('nav-overview', 'nav-trades', 'nav-vol-forecast', 'nav-system', 'nav-config')):
             return None
         if 'modal-close' in prop:
             return None
@@ -384,13 +380,17 @@ def register_callbacks(app):
         Input('account-info-store', 'data'),
         Input('selected-strategy-store', 'data'),
         Input('timerange-store', 'data'),
-        Input('day-offset-store', 'data'),
+        Input('selected-date-store', 'data'),
         Input('vol-symbol-store', 'data'),
         Input('vol-period-store', 'data'),
         Input('vol-is-r2-store', 'data'),
+        Input('config-strategy-store', 'data'),
+        Input('removed-instances-store', 'data'),
+        Input('added-instances-store', 'data'),
     )
     def render_content(nav, data_store, account_info, selected_strategy, timerange,
-                       day_offset, vol_symbol, vol_period, vol_is_r2):
+                       selected_date, vol_symbol, vol_period, vol_is_r2,
+                       config_strategy, removed_instances, added_instances):
         merged = _cache.get('merged_deals')
         acc = _cache.get('account_info') or account_info or {}
 
@@ -401,15 +401,153 @@ def register_callbacks(app):
                 is_r2_cache=vol_is_r2,
             )
 
+        if nav == 'config':
+            return render_config(config_strategy, removed_instances, added_instances)
+
         # Show loading state until data arrives
         if data_store is None and nav not in ('system',):
             return loading_placeholder()
 
         if nav == 'trades':
-            return render_trades(merged, day_offset or 0)
+            return render_trades(merged, selected_date)
 
         if nav == 'system':
             return render_system()
 
         # overview (default) + detail drill-down
         return render_overview(merged, acc, timerange or '1M', selected_strategy)
+
+    # ── Config: strategy selection ─────────────────────────────────────────────
+
+    @app.callback(
+        Output('config-strategy-store', 'data'),
+        Output('removed-instances-store', 'data'),
+        Output('added-instances-store', 'data'),
+        Input({'type': 'config-strategy-btn', 'index': ALL}, 'n_clicks'),
+        prevent_initial_call=True,
+    )
+    def select_config_strategy(clicks):
+        ctx = callback_context
+        if not ctx.triggered:
+            return no_update, no_update, no_update
+        prop = ctx.triggered[0]['prop_id']
+        try:
+            return json.loads(prop.split('.')[0])['index'], [], []
+        except Exception:
+            return no_update, no_update, no_update
+
+    # ── Config: remove instance ────────────────────────────────────────────────
+
+    @app.callback(
+        Output('removed-instances-store', 'data', allow_duplicate=True),
+        Input({'type': 'cfg-remove-btn', 'index': ALL}, 'n_clicks'),
+        State('removed-instances-store', 'data'),
+        prevent_initial_call=True,
+    )
+    def remove_instance(clicks, removed):
+        ctx = callback_context
+        if not ctx.triggered:
+            return no_update
+        prop = ctx.triggered[0]['prop_id']
+        try:
+            name = json.loads(prop.split('.')[0])['index']
+        except Exception:
+            return no_update
+        result = list(removed or [])
+        if name not in result:
+            result.append(name)
+        return result
+
+    # ── Config: add instance ───────────────────────────────────────────────────
+
+    @app.callback(
+        Output('added-instances-store', 'data', allow_duplicate=True),
+        Input('add-instance-btn', 'n_clicks'),
+        State('added-instances-store', 'data'),
+        State('config-strategy-store', 'data'),
+        prevent_initial_call=True,
+    )
+    def add_instance(n_clicks, added, strategy_name):
+        if not n_clicks or not strategy_name:
+            return no_update
+        try:
+            config = load_config(strategy_name)
+            instances = [v for v in config.values() if isinstance(v, dict)]
+            template = dict(instances[-1]) if instances else {'strategy_type': strategy_name}
+            template.pop('tag', None)
+            template['symbols'] = []
+            template['tag'] = ''
+        except Exception:
+            template = {
+                'strategy_type': strategy_name, 'symbols': [],
+                'timeframe': 'mt5.TIMEFRAME_M15', 'tag': '',
+                'active_hours': None, 'size_position': 0.01,
+            }
+        return list(added or []) + [template]
+
+    # ── Config: save (and optionally restart via PM2) ──────────────────────────
+
+    @app.callback(
+        Output('config-status-msg', 'children'),
+        Output('config-status-msg', 'style'),
+        Input('config-save-btn', 'n_clicks'),
+        Input('config-save-restart-btn', 'n_clicks'),
+        State({'type': 'cfg-field', 'instance': ALL, 'param': ALL}, 'value'),
+        State('config-strategy-store', 'data'),
+        State('removed-instances-store', 'data'),
+        prevent_initial_call=True,
+    )
+    def save_config_callback(save_clicks, restart_clicks, _field_values, strategy_name, removed_instances):
+        ctx = callback_context
+        if not ctx.triggered or not strategy_name:
+            return no_update, no_update
+
+        do_restart = 'restart' in (ctx.triggered[0].get('prop_id') or '')
+        removed = set(removed_instances or [])
+
+        # Collect field values from pattern-matched states
+        raw = {}
+        try:
+            for state_info in ctx.states_list[0]:
+                inst = state_info['id']['instance']
+                param = state_info['id']['param']
+                val = state_info['value']
+                raw.setdefault(inst, {})[param] = val
+        except Exception as e:
+            ok_style = {'fontSize': '13px', 'color': RED, 'alignSelf': 'center'}
+            return f'Error reading fields: {e}', ok_style
+
+        # Build final config: skip removed, promote __new_N__ entries
+        config = {}
+        for inst, params in raw.items():
+            if inst in removed:
+                continue
+            if inst.startswith('__new_') and inst.endswith('__'):
+                real_name = str(params.pop('__name__', '') or '').strip()
+                if not real_name:
+                    continue
+                config[real_name] = {k: parse_field_value(k, v) for k, v in params.items()}
+            else:
+                config[inst] = {k: parse_field_value(k, v) for k, v in params.items()}
+
+        try:
+            save_local_config(strategy_name, config)
+        except Exception as e:
+            ok_style = {'fontSize': '13px', 'color': RED, 'alignSelf': 'center'}
+            return f'Save failed: {e}', ok_style
+
+        if do_restart:
+            import subprocess
+            try:
+                subprocess.run(
+                    ['pm2', 'restart', strategy_name],
+                    capture_output=True, text=True, timeout=15,
+                )
+                msg = f'Saved and restarted {strategy_name} via PM2.'
+            except Exception as e:
+                msg = f'Saved — PM2 restart failed: {e}'
+        else:
+            msg = f'Saved to config/local/{strategy_name}.yaml'
+
+        ok_style = {'fontSize': '13px', 'color': GREEN, 'alignSelf': 'center'}
+        return msg, ok_style

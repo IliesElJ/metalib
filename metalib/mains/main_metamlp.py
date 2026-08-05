@@ -1,7 +1,7 @@
-import yaml
 import warnings
 from multiprocessing import Process
 from metalib.metaworker import run_strategy_loop
+from metalib.config_utils import load_strategy_config
 import MetaTrader5 as mt5
 
 warnings.filterwarnings("ignore")
@@ -9,8 +9,7 @@ warnings.filterwarnings("ignore")
 def main():
     processes = []
 
-    with open("../config/prod/metamlp.yaml", "r") as f:
-        config_data = yaml.safe_load(f)
+    config_data = load_strategy_config("metamlp")
 
     for name, entry in config_data.items():
         strategy_type = entry.pop("strategy_type")
