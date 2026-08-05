@@ -1,3 +1,12 @@
+# size_position: fixed-fraction risk. 0.01 = 1% of balance lost if SL hits.
+# MetaMTOU._resolve_position_size delegates to
+# MetaStrategy._fixed_fraction_position_size, which computes lots as
+#     lots = (size_position * balance) / (sl_distance * value_per_price_unit)
+# with a 5-pip FX minimum SL floor and a 5x-balance notional cap.
+# Falls back to size_position as raw lots on MT5 error / missing SL.
+# MetaMTOU is NOT in metascal.DEFAULT_STRATEGY_PARAMS -- MetaScale will not
+# overwrite these values.
+
 # ─── k=3 (full quorum) setups ──────────────────────────────────────────────
 # All 3 OU lag anchors must agree in direction.
 # Parameters tuned per asset from backtest sweep (sweep_results.csv).

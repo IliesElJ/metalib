@@ -65,6 +65,15 @@ class MetaMLP(MetaStrategy):
         self.tp_ = None
 
     # ------------------------------------------------------------------
+    # Position sizing
+    # ------------------------------------------------------------------
+    # size_position is interpreted as the fraction of account balance to
+    # LOSE if the stop-loss is hit. Delegates to the shared helper on
+    # MetaStrategy. Not in metascal.DEFAULT_STRATEGY_PARAMS by design.
+    def _resolve_position_size(self, symbol, price=None, sl=None):
+        return self._fixed_fraction_position_size(symbol, price=price, sl=sl)
+
+    # ------------------------------------------------------------------
     # Feature engineering
     # ------------------------------------------------------------------
 

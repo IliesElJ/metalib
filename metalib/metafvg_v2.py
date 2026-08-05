@@ -32,33 +32,27 @@ Two things this class deliberately does NOT inherit unchanged from v1:
 
 2. Position sizing -- v1 uses a static per-instance lot size
    (self.size_position) set in YAML, unrelated to account equity. v2 uses
-   the same sizing *convention* as its own backtest instead: vectorbt's
-   size_type='percent' there means "N% of current equity, converted to
-   units at the trade's price" -- _resolve_position_size below reimplements
-   that against real MT5 account equity and symbol contract specs, since
-   nothing in this codebase computed real position sizing dynamically
-   before now (see metastrategy.py's _resolve_position_size hook, added
-   alongside this class, default-preserving for every other strategy).
-   RISK_FRACTION here is 1% (0.01), deliberately more conservative than
-   the backtest's 2% (0.02, see report Sec. 5/6) for initial live rollout --
-   a smaller fraction of the exact backtested config, not a claim that 1%
-   was itself backtested.
+   fixed-fraction risk sizing: self.size_position is reinterpreted as the
+   fraction of account balance to LOSE if the stop-loss is hit. The
+   implementation lives on the base class as
+   MetaStrategy._fixed_fraction_position_size (extracted so metamtou and
+   metamlp can share it); _resolve_position_size below delegates to it.
+   Combined-mix production risk is 0.5% (0.005), a smaller fraction of the
+   backtest's 2% -- a conservative live rollout, not a claim that 0.5% was
+   itself backtested.
 
-   NOTE on metascal.py's MetaScale: that's a separate, dashboard-triggered
-   (not automated) portfolio-wide risk-budgeting tool that periodically
-   rewrites size_position for the strategies listed in its
-   DEFAULT_STRATEGY_PARAMS (metafvg, metago, metane, metaga, metaob) via a
-   correlation-aware CVXPY optimization across the whole book. It uses
-   tick_value/tick_size (P&L-per-tick sensitivity, for its covariance calc)
-   -- a different quantity from this class's contract_size*price (notional
-   value per lot, for replicating the backtest's percent-of-equity
-   convention); the two aren't interchangeable for their respective
-   purposes. metafvg_v2 is deliberately NOT in DEFAULT_STRATEGY_PARAMS: it
-   manages its own sizing independently and MetaScale's optimizer has no
-   visibility into it, by design decision (not an oversight) -- if that
-   changes, _resolve_position_size below would need to defer to
-   size_position instead of overriding it, or MetaScale would need to
-   account for v2's risk contribution some other way.
+   NOTE on metascal.py's MetaScale: dashboard-triggered risk-budgeting tool
+   that periodically rewrites size_position for the strategies listed in
+   its DEFAULT_STRATEGY_PARAMS (metafvg, metago, metane, metaga, metaob)
+   via CVXPY. It uses tick_value/tick_size (P&L-per-tick, for its covariance
+   calc) -- a different quantity from the base helper's contract_size*price
+   (notional per lot, for equity-percent sizing); the two aren't
+   interchangeable. metafvg_v2, metamtou and metamlp are all deliberately
+   NOT in DEFAULT_STRATEGY_PARAMS -- they manage their own sizing and
+   MetaScale has no visibility into them, by design. If that changes,
+   either _resolve_position_size on those classes must be dropped (falling
+   back to the base default that returns raw size_position) or MetaScale
+   needs to write fractions in the fixed-fraction convention.
 """
 import MetaTrader5 as mt5
 import numpy as np
@@ -103,10 +97,6 @@ class MetaFVGv2(MetaFVG):
 
     SPEARMAN_WINDOW = 25
     SPEARMAN_THRESHOLD = 0.4
-    RISK_FRACTION = 0.01  # equity-percent sizing, same convention as the
-                           # backtest's vectorbt size_type='percent' but at
-                           # 1% instead of the backtested 2% -- more
-                           # conservative for initial live rollout
 
     def __init__(
         self,
@@ -118,10 +108,10 @@ class MetaFVGv2(MetaFVG):
         active_hours=None,
     ):
         """
-        size_position here is a FALLBACK ONLY: the static lot size used if
-        _resolve_position_size can't compute a dynamic one (e.g. MT5
-        account_info()/symbol_info() unavailable). Normal operation ignores
-        it in favor of equity-percent sizing.
+        size_position is the fraction of account balance to risk if the stop
+        loss is hit (e.g. 0.005 = 0.5% of balance). It is also used as a
+        fallback lot size if the dynamic computation cannot run (MT5 info
+        unavailable or no SL provided).
         """
         super().__init__(symbols, timeframe, size_position, tag, limit_number_position, active_hours)
         self.atr_sensitivity = 2.0  # combined-mix override; base class default is 4
@@ -253,78 +243,9 @@ class MetaFVGv2(MetaFVG):
             self._log(f"Unknown state: {self.state}")
 
     # =========================================================================
-    # Position sizing -- equity-percent, matching the backtest convention
+    # Position sizing -- delegates to shared fixed-fraction helper on MetaStrategy
+    # (moved to base class so metamtou, metamlp, etc. can reuse it).
     # =========================================================================
 
-    def _resolve_position_size(self, symbol, price=None):
-        """
-        volume = (RISK_FRACTION * account_equity) / (contract_size * price),
-        converted to account currency if the symbol's profit currency
-        differs, then rounded to the broker's volume_step/min/max. Falls
-        back to self.size_position (static, from YAML) on any failure --
-        never raises, never blocks a trade over a sizing error.
-        """
-        try:
-            account_info = mt5.account_info()
-            if account_info is None or price is None or price <= 0:
-                self._log(f"{symbol}: sizing fallback (account_info unavailable or bad price)")
-                return self.size_position
-
-            symbol_info = mt5.symbol_info(symbol)
-            if symbol_info is None:
-                self._log(f"{symbol}: sizing fallback (symbol_info unavailable)")
-                return self.size_position
-
-            equity = account_info.equity
-            account_currency = account_info.currency
-            contract_size = symbol_info.trade_contract_size
-            profit_currency = symbol_info.currency_profit
-
-            value_per_lot = contract_size * price
-            if profit_currency != account_currency:
-                conv_rate = self._get_conversion_rate(profit_currency, account_currency)
-                if conv_rate is None:
-                    self._log(f"{symbol}: sizing fallback (no {profit_currency}->{account_currency} "
-                              f"conversion rate found)")
-                    return self.size_position
-                value_per_lot *= conv_rate
-
-            if value_per_lot <= 0:
-                self._log(f"{symbol}: sizing fallback (non-positive value_per_lot)")
-                return self.size_position
-
-            notional_target = self.RISK_FRACTION * equity
-            raw_volume = notional_target / value_per_lot
-
-            volume_min = symbol_info.volume_min
-            volume_max = symbol_info.volume_max
-            volume_step = symbol_info.volume_step
-            stepped = round(raw_volume / volume_step) * volume_step if volume_step > 0 else raw_volume
-            volume = round(max(volume_min, min(volume_max, stepped)), 2)
-
-            self._log(f"{symbol}: equity={equity:.2f} {account_currency} "
-                      f"notional_target={notional_target:.2f} value_per_lot={value_per_lot:.4f} "
-                      f"raw_volume={raw_volume:.4f} -> volume={volume}")
-            return volume
-        except Exception as e:
-            self._log(f"{symbol}: sizing fallback (exception: {e})")
-            return self.size_position
-
-    @staticmethod
-    def _get_conversion_rate(from_ccy: str, to_ccy: str):
-        """Best-effort spot conversion rate from from_ccy to to_ccy via a
-        directly-tradeable MT5 symbol (either FROMTO or TOFROM), or None if
-        no such symbol is found/visible."""
-        if from_ccy == to_ccy:
-            return 1.0
-        for pair, invert in ((f"{from_ccy}{to_ccy}", False), (f"{to_ccy}{from_ccy}", True)):
-            info = mt5.symbol_info(pair)
-            if info is None:
-                continue
-            if not info.visible:
-                mt5.symbol_select(pair, True)
-            tick = mt5.symbol_info_tick(pair)
-            if tick is None or tick.bid <= 0:
-                continue
-            return (1.0 / tick.bid) if invert else tick.bid
-        return None
+    def _resolve_position_size(self, symbol, price=None, sl=None):
+        return self._fixed_fraction_position_size(symbol, price=price, sl=sl)

@@ -160,6 +160,13 @@ class MetaMTOU(MetaStrategy):
         self.trade_target: Optional[float] = None
         self.trade_bars_in: int = 0
 
+    # ─── position sizing ──────────────────────────────────────────────────
+    # size_position is interpreted as the fraction of account balance to
+    # LOSE if the stop-loss is hit. Delegates to the shared helper on
+    # MetaStrategy. Not in metascal.DEFAULT_STRATEGY_PARAMS by design.
+    def _resolve_position_size(self, symbol, price=None, sl=None):
+        return self._fixed_fraction_position_size(symbol, price=price, sl=sl)
+
     # ─── fit ───────────────────────────────────────────────────────────────
 
     def fit(self):

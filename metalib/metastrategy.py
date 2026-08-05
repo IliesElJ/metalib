@@ -152,17 +152,158 @@ class MetaStrategy(ABC):
         """
         pass
 
-    def _resolve_position_size(self, symbol, price=None):
+    def _resolve_position_size(self, symbol, price=None, sl=None):
         """
         Returns the order volume (MT5 lots) for `symbol` at `price`.
 
         Default behavior, unchanged for every existing strategy: the static
         per-instance self.size_position set at construction. Subclasses that
-        want dynamic sizing (e.g. MetaFVGv2's equity-percent sizing, matching
-        the convention used in its backtest) override this method instead of
-        touching execute() itself.
+        want dynamic sizing override this method. `sl` is passed through so
+        subclasses can implement SL-distance-based risk sizing.
         """
         return self.size_position
+
+    # =========================================================================
+    # Shared fixed-fraction risk sizing (used by SL-based strategies)
+    # =========================================================================
+
+    NOTIONAL_CAP_MULT = 5.0
+    FX_MIN_SL_PIPS = 5
+
+    def _fixed_fraction_position_size(self, symbol, price=None, sl=None):
+        """
+        Sizes so that hitting the stop loss costs exactly self.size_position *
+        balance in account currency:
+
+            volume = (size_position * balance) / (sl_distance * vpu)
+
+        where vpu = contract_size * fx_conv(profit_ccy -> account_ccy) is the
+        P&L per lot per 1.0 unit of price move.
+
+        Safety layers:
+          - FX minimum SL floor: for FX pairs (trade_calc_mode == 0), sl_distance
+            used for sizing is raised to FX_MIN_SL_PIPS * pip_size when smaller.
+            The order's actual SL price is unchanged.
+          - Notional cap: volume * contract_size * price (in account ccy) <=
+            NOTIONAL_CAP_MULT * balance. Trims volume down when tight SLs would
+            otherwise blow past this.
+
+        Falls back to self.size_position as a raw lot count on any failure
+        (missing MT5 info, missing SL, missing FX conversion). Never raises.
+        """
+        try:
+            account_info = mt5.account_info()
+            if account_info is None or price is None or price <= 0:
+                self._log(f"{symbol}: sizing fallback (account_info unavailable or bad price)")
+                return self.size_position
+
+            if not sl or sl <= 0:
+                self._log(f"{symbol}: sizing fallback (no SL provided)")
+                return self.size_position
+
+            sl_distance = abs(price - sl)
+            if sl_distance <= 0:
+                self._log(f"{symbol}: sizing fallback (SL == entry price)")
+                return self.size_position
+
+            symbol_info = mt5.symbol_info(symbol)
+            if symbol_info is None:
+                self._log(f"{symbol}: sizing fallback (symbol_info unavailable)")
+                return self.size_position
+
+            balance = account_info.balance
+            account_currency = account_info.currency
+            contract_size = symbol_info.trade_contract_size
+            profit_currency = symbol_info.currency_profit
+
+            value_per_price_unit = contract_size
+            if profit_currency != account_currency:
+                conv_rate = self._get_conversion_rate(profit_currency, account_currency)
+                if conv_rate is None:
+                    self._log(f"{symbol}: sizing fallback (no {profit_currency}->{account_currency} "
+                              f"conversion rate found)")
+                    return self.size_position
+                value_per_price_unit *= conv_rate
+
+            if value_per_price_unit <= 0:
+                self._log(f"{symbol}: sizing fallback (non-positive value_per_price_unit)")
+                return self.size_position
+
+            # Minimum SL width for FX pairs (sizing only, SL level unchanged)
+            if symbol_info.trade_calc_mode == 0:
+                pip_size = 0.01 if "JPY" in symbol else 0.0001
+                min_sl = self.FX_MIN_SL_PIPS * pip_size
+                if sl_distance < min_sl:
+                    self._log(
+                        f"{symbol}: SL distance {sl_distance:.6f} below "
+                        f"{self.FX_MIN_SL_PIPS}-pip minimum ({min_sl:.6f}), "
+                        f"clamping for sizing"
+                    )
+                    sl_distance = min_sl
+
+            risk_amount = self.size_position * balance
+            raw_volume = risk_amount / (sl_distance * value_per_price_unit)
+
+            volume_min = symbol_info.volume_min
+            volume_max = symbol_info.volume_max
+            volume_step = symbol_info.volume_step
+            stepped = round(raw_volume / volume_step) * volume_step if volume_step > 0 else raw_volume
+            volume = round(max(volume_min, min(volume_max, stepped)), 2)
+
+            # Hard notional cap
+            max_notional = self.NOTIONAL_CAP_MULT * balance
+            notional_per_lot = contract_size * price
+            if profit_currency != account_currency:
+                notional_per_lot *= value_per_price_unit / contract_size
+            notional = volume * notional_per_lot
+            if notional > max_notional and notional_per_lot > 0:
+                volume_capped = round(max_notional / notional_per_lot, 2)
+                volume_capped = round(max(volume_min, min(volume_max, volume_capped)), 2)
+                self._log(
+                    f"{symbol}: notional cap triggered "
+                    f"({notional:.0f} > {max_notional:.0f}) -> volume {volume} -> {volume_capped}"
+                )
+                volume = volume_capped
+
+            self._log(
+                f"{symbol}: balance={balance:.2f} {account_currency} "
+                f"risk={self.size_position*100:.2f}% -> risk_amount={risk_amount:.2f} "
+                f"sl_dist={sl_distance:.6f} sl%={sl_distance/price*100:.3f}% "
+                f"vpu={value_per_price_unit:.4f} raw={raw_volume:.4f} -> volume={volume}"
+            )
+            return volume
+        except Exception as e:
+            self._log(f"{symbol}: sizing fallback (exception: {e})")
+            return self.size_position
+
+    @staticmethod
+    def _get_conversion_rate(from_ccy: str, to_ccy: str):
+        """
+        Best-effort spot conversion rate from from_ccy to to_ccy via a
+        directly-tradeable MT5 symbol (either FROMTO or TOFROM), or None if
+        no such symbol is found/visible.
+        """
+        if from_ccy == to_ccy:
+            return 1.0
+        for pair, invert in ((f"{from_ccy}{to_ccy}", False), (f"{to_ccy}{from_ccy}", True)):
+            info = mt5.symbol_info(pair)
+            if info is None:
+                continue
+            if not info.visible:
+                mt5.symbol_select(pair, True)
+            tick = mt5.symbol_info_tick(pair)
+            if tick is None or tick.bid <= 0:
+                continue
+            return (1.0 / tick.bid) if invert else tick.bid
+        return None
+
+    def _log(self, message: str) -> None:
+        """
+        Default no-op-friendly logger --- most subclasses override this with
+        a tag-prefixing print. Provided here so _fixed_fraction_position_size
+        can log even from a strategy that hasn't defined its own _log.
+        """
+        print(f"{self.tag}::    {message}")
 
     def execute(
         self,
@@ -213,7 +354,7 @@ class MetaStrategy(ABC):
         # sizing_price is independent of the `price` var above (only ever set
         # when entry is falsy) so this never touches that existing branch.
         sizing_price = entry if entry is not None else price
-        volume = self._resolve_position_size(symbol, sizing_price)
+        volume = self._resolve_position_size(symbol, sizing_price, sl=sl)
 
         # Construct the request dictionary
         request = {

@@ -1,9 +1,23 @@
+# size_position: fixed-fraction risk. 0.0025 = 0.25% of balance lost if SL hits.
+# MetaMLP._resolve_position_size delegates to
+# MetaStrategy._fixed_fraction_position_size, which computes lots as
+#     lots = (size_position * balance) / (sl_distance * value_per_price_unit)
+# with a 5-pip FX minimum SL floor and a 5x-balance notional cap.
+# Falls back to size_position as raw lots on MT5 error / missing SL.
+# MetaMLP is NOT in metascal.DEFAULT_STRATEGY_PARAMS -- MetaScale will not
+# overwrite these values.
+#
+# 0.25% target chosen from trades/month analysis (~110/mo across 7 tags):
+# keeps monthly loss vol near 0.5% of balance under a sqrt(N) independence
+# model with a 2x safety margin for burst-correlated fills. See
+# metalib/research/reports/metafvg_v2_sizing_report.pdf sec. 4.
+
 AUDCHF_H1_MLP:
   strategy_type: metamlp
   symbols: [AUDCHF]
   timeframe: mt5.TIMEFRAME_H1
   tag: metamlp_audchf
-  size_position: 0.05
+  size_position: 0.0025
   active_hours: None
   rolling_windows: [6, 24, 120]
   thresholds: [-7.0, -5.0, -1.0, 1.0, 5.0, 7.0]
@@ -19,7 +33,7 @@ AUDCAD_H1_MLP:
   symbols: [AUDCAD]
   timeframe: mt5.TIMEFRAME_H1
   tag: metamlp_audcad
-  size_position: 0.05
+  size_position: 0.0025
   active_hours: None
   rolling_windows: [6, 24, 120]
   thresholds: [ -7.0, -5.0, -1.0, 1.0, 5.0, 7.0 ]
@@ -35,7 +49,7 @@ NZDCHF_H1_MLP:
   symbols: [NZDCHF]
   timeframe: mt5.TIMEFRAME_H1
   tag: metamlp_nzdchf
-  size_position: 0.05
+  size_position: 0.0025
   active_hours: None
   rolling_windows: [6, 24, 120]
   thresholds: [ -7.0, -5.0, -1.0, 1.0, 5.0, 7.0 ]
@@ -51,7 +65,7 @@ EURCHF_H1_MLP:
   symbols: [EURCHF]
   timeframe: mt5.TIMEFRAME_H1
   tag: metamlp_eurchf
-  size_position: 0.05
+  size_position: 0.0025
   active_hours: None
   rolling_windows: [ 6, 24, 120 ]
   thresholds: [ -7.0, -5.0, -1.0, 1.0, 5.0, 7.0 ]
@@ -67,7 +81,7 @@ CADCHF_H1_MLP:
   symbols: [CADCHF]
   timeframe: mt5.TIMEFRAME_H1
   tag: metamlp_cadchf
-  size_position: 0.05
+  size_position: 0.0025
   active_hours: None
   rolling_windows: [ 6, 24, 120 ]
   thresholds: [ -7.0, -5.0, -1.0, 1.0, 5.0, 7.0 ]
@@ -83,7 +97,7 @@ GBPCHF_H1_MLP:
   symbols: [GBPCHF]
   timeframe: mt5.TIMEFRAME_M1
   tag: metamlp_gbpchf
-  size_position: 0.05
+  size_position: 0.0025
   active_hours: None
   rolling_windows: [ 6, 24, 120 ]
   thresholds: [ -7.0, -5.0, -1.0, 1.0, 5.0, 7.0 ]
@@ -99,7 +113,7 @@ EURGBP_H1_MLP:
   symbols: [EURGBP]
   timeframe: mt5.TIMEFRAME_H1
   tag: metamlp_eurgbp
-  size_position: 0.05
+  size_position: 0.0025
   active_hours: None
   rolling_windows: [ 6, 24, 120 ]
   thresholds: [ -7.0, -5.0, -1.0, 1.0, 5.0, 7.0 ]
